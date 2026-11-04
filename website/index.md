@@ -60,7 +60,7 @@ err := markdown.NewConverter().Convert(src, w)
 ## What you can do with it
 
 - **Build a tech blog or documentation site.** In Go, add the library to your app; in any other language, call `fhl`. [How](use-cases.html#static-site-builds)
-- **Turn a folder into a basic static site.** `fhl --static-site -o dist/ docs/` makes pages that open as they are, with heading ids, links between pages and one style sheet to add your styles to. [How](use-cases.html#a-documentation-site)
+- **Turn a folder into a basic static site.** `fhl --static-site -o dist/ docs/` makes pages that open as they are, with heading ids, links between pages and one style sheet to add your styles to. This site is built that way, in CI. [How](use-cases.html#a-documentation-site)
 - **Convert a lot of Markdown at once.** `fhl -o dist/ docs/` converts a whole folder in one run. [How](use-cases.html#convert-a-folder)
 - **Let an AI agent publish documents.** The AI writes Markdown, `fhl` turns it into HTML, and the AI styles it. `--json` gives the result in a form a program can read. [How](cli.html#ai-agents)
 - **Check documents in CI.** `fhl --check --strict docs/` fails when a code block has no language name or a language `fhl` does not color. [How](use-cases.html#check-in-ci)
@@ -178,6 +178,6 @@ Names, aliases and file name patterns are the same as [Chroma](https://github.co
 - [Themes and CSS](themes.html): the color themes, CSS variables and token classes.
 - [Chroma compatibility](compatibility.html): what matches Chroma, what was changed, and why it is fast.
 
-This site is built from Markdown with `fhl`, and its code blocks are highlighted by fasthighlight. See [the source](https://github.com/toshi-kuji/fasthighlight/tree/main/website) and [the build script](https://github.com/toshi-kuji/fasthighlight/blob/main/website/build.sh) on GitHub.
+This site is built from Markdown with `fhl` in CI: on every push to `main`, [a GitHub Actions workflow](https://github.com/toshi-kuji/fasthighlight/blob/main/.github/workflows/pages.yml) runs [the build script](https://github.com/toshi-kuji/fasthighlight/blob/main/website/build.sh) and publishes the result on GitHub Pages. Its code blocks are highlighted by fasthighlight. See [the source](https://github.com/toshi-kuji/fasthighlight/tree/main/website) on GitHub.
 
 </div>
