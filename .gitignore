@@ -1,0 +1,11 @@
+# Files produced by Go benchmarks
+/bench-bin/
+*.prof
+*.test
+out-*.html
+
+# Node
+node_modules/
+
+# Output of website/build.sh
+/_site/

@@ -1,0 +1,11 @@
+{
+  "name": "fasthighlight-bench-node",
+  "private": true,
+  "type": "module",
+  "description": "Node baselines for fasthighlight: markdown-it + highlight.js / Shiki",
+  "dependencies": {
+    "highlight.js": "11.12.0",
+    "markdown-it": "15.0.3",
+    "shiki": "4.5.0"
+  }
+}
