@@ -2,7 +2,7 @@
 
 # fasthighlight
 
-fasthighlight is a Go library and a command (`fhl`) that turn Markdown into HTML with syntax-highlighted code blocks, fast. Each of the 24 supported languages has its own hand-written tokenizer, with no regular expressions. The highlighting follows the language definitions of [Chroma](https://github.com/alecthomas/chroma) 2.27.0, with a few deliberate fixes.
+fasthighlight is a Go library and a command (`fhl`) that turn Markdown into HTML with syntax-highlighted code blocks, fast. Each supported language has its own hand-written tokenizer, with no regular expressions. The highlighting follows the language definitions of [Chroma](https://github.com/alecthomas/chroma) 2.27.0, with a few deliberate fixes.
 
 - **Fast.** In our measurements, converting a Markdown document was about 4.4 to 4.6 times as fast as Node with markdown-it and highlight.js, and about 7 to 20 times as fast as Chroma with all its languages ([numbers](#speed)).
 - **Two ways in.** Go packages for Go programs (`markdown` adds highlighting to [goldmark](https://github.com/yuin/goldmark); `fasthighlight` highlights code on its own), and the `fhl` command for everything else (static site builds in other languages, CI, AI agents).
@@ -11,7 +11,7 @@ fasthighlight is a Go library and a command (`fhl`) that turn Markdown into HTML
 
 ## Supported languages
 
-Bash, C, C#, C++, CSS, Diff, Go, HTML, Java, JavaScript, JSON, Kotlin, Markdown, PHP, Python, R, Ruby, Rust, SQL, Swift, TOML, TypeScript, XML, YAML.
+fasthighlight supports 24 languages: Bash, C, C#, C++, CSS, Diff, Go, HTML, Java, JavaScript, JSON, Kotlin, Markdown, PHP, Python, R, Ruby, Rust, SQL, Swift, TOML, TypeScript, XML, YAML.
 
 The names, aliases and file name patterns are the same as Chroma's (`fhl --list-langs` prints them). Code blocks in other languages, or without a language name, are escaped but not colored.
 
@@ -131,7 +131,7 @@ import (
 )
 ```
 
-In a small program on Linux amd64 built with `-ldflags "-s -w"`, calling only `Highlight` took about 1.61 MB; importing the Go language added about 0.07 MB, and importing all 24 languages about 0.60 MB. Using `markdown.Converter` (with goldmark) added about 1.04 MB more. Only what you import is compiled into your program; the `fhl` command is not.
+In a small program on Linux amd64 built with `-ldflags "-s -w"`, calling only `Highlight` took about 1.61 MB; importing the Go language added about 0.07 MB, and importing all the languages (`lang/all`) about 0.60 MB. Using `markdown.Converter` (with goldmark) added about 1.04 MB more. Only what you import is compiled into your program; the `fhl` command is not.
 
 To list the code blocks that will not be colored before converting (for example, to warn about a language you did not import), parse the documents with `markdown.Converter.Parse`, call `markdown.Scan`, and then `markdown.Converter.Render`. To check a single language name, `fasthighlight.LookupSupported` tells whether fasthighlight supports it and which package to import.
 
@@ -160,7 +160,7 @@ If you register a language of your own, set `ParallelHint` with the same rule: `
 
 ## Compatibility with Chroma
 
-Chroma 2.27.0 is the reference, and the intended changes to its results are listed. For the 24 supported languages, the tokens are checked by fuzz tests to match Chroma everywhere except at those changes.
+Chroma 2.27.0 is the reference, and the intended changes to its results are listed. For the supported languages, the tokens are checked by fuzz tests to match Chroma everywhere except at those changes.
 
 The changes fix Chroma bugs and behavior that gets in the way of readers, such as a `}` inside a template literal ending the `${ … }` too early, generic type arguments in TypeScript (`Map<string, number>`) being colored as JSX tags, and everything after `?>` in PHP becoming an error. The full list is on the [compatibility page](https://toshi-kuji.github.io/fasthighlight/compatibility.html) of the documentation site.
 
@@ -168,7 +168,7 @@ The changes fix Chroma bugs and behavior that gets in the way of readers, such a
 
 Warm conversion of a whole Markdown document (median time per conversion, after initialization), measured on Nov 1, 2026 on a 4-core cloud machine with Go 1.25.0 and Node 22.23.4:
 
-| Implementation | `input.md` (30 KB, 6 code blocks) | `multilang.md` (25 KB, 25 code blocks in 24 languages) |
+| Implementation | `input.md` (30 KB, 6 code blocks) | `multilang.md` (25 KB, 25 code blocks: one in each supported language, and one plain text) |
 | --- | --- | --- |
 | fasthighlight | 0.61–0.72 ms | 2.1–2.2 ms |
 | Chroma (all languages) | 4.8–4.9 ms | 41.6–44.5 ms |

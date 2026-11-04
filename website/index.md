@@ -75,7 +75,7 @@ err := markdown.NewConverter().Convert(src, w)
 
 - **Designing a whole site.** `fhl --static-site` turns a folder into pages that open as they are, but navigation between pages and the page design are up to you.
 - **Running in the browser.** There is no browser version.
-- **Coloring languages other than the 24.** Code blocks in other languages are escaped but not colored.
+- **Coloring languages it does not support.** Code blocks in other languages are escaped but not colored.
 - **Starting `fhl` for every web request.** Starting takes a few milliseconds; in a Go server, use the library.
 
 </div>
@@ -95,7 +95,7 @@ Yes. `go install github.com/toshi-kuji/fasthighlight/cmd/fhl@latest` builds just
 No. `go get github.com/toshi-kuji/fasthighlight` downloads the whole module as one zip, but Go compiles only the packages you import. `fhl` is a `main` package, so it cannot be imported.
 
 **Do languages I don't use end up in my program?**
-Only the languages you import. `lang/all` registers all 24; `lang/golang` and the others register one each. [Choosing languages](library.html#choose-the-languages)
+Only the languages you import. `lang/all` registers all of them; `lang/golang` and the others register one each. [Choosing languages](library.html#choose-the-languages)
 
 **Does it work with goldmark?**
 Yes. Add `markdown.Extension` to your own goldmark: `goldmark.New(goldmark.WithExtensions(extension.GFM, &markdown.Extension{}))`.
@@ -121,13 +121,13 @@ They are escaped, without colors. `fhl --check` lists where they are.
 
 ## Speed
 
-Each of the 24 languages has its own hand-written tokenizer, which reads the code character by character instead of trying a grammar of regular expressions at each position. This is a choice of speed over the reach of shared grammars; [how it works and what it costs](compatibility.html#why-it-is-fast).
+Each supported language has its own hand-written tokenizer, which reads the code character by character instead of trying a grammar of regular expressions at each position. This is a choice of speed over the reach of shared grammars; [how it works and what it costs](compatibility.html#why-it-is-fast).
 
 The numbers below come from our own measurements. To try your own documents, run `fhl`: it prints the number of files and the time at the end, for example `fhl: 128 files, 412 code blocks (3 uncolored) in 0.21s`.
 
 ### Converting a whole Markdown document
 
-| Implementation | `input.md` (30 KB, 6 code blocks) | `multilang.md` (25 KB, 25 code blocks in 24 languages) |
+| Implementation | `input.md` (30 KB, 6 code blocks) | `multilang.md` (25 KB, 25 code blocks: one in each supported language, and one plain text) |
 | --- | --- | --- |
 | fasthighlight | 0.61–0.72 ms | 2.1–2.2 ms |
 | Chroma (all languages) | 4.8–4.9 ms | 41.6–44.5 ms |
@@ -152,13 +152,15 @@ The numbers below come from our own measurements. To try your own documents, run
 - **Input:** the 27 code blocks of `multilang.md` and `input.md` (except `text`), about 350 to 1,350 bytes each.
 - **Output:** fasthighlight `Highlight`; syntect `ClassedHTMLGenerator` (`ClassStyle::Spaced`); giallo `HtmlRenderer` with `css_class_prefix`. All three write classes.
 - **Environment:** Nov 3, 2026, a 4-core cloud machine, Go 1.25.0, Rust 1.97.0 (release build), syntect 5.3.0, giallo 0.5.2. Median of 9 rounds of 200 runs per snippet; the three were run in turn, three times each, in the same session.
-- **Note:** the output differs in detail (the number of `<span>`s goes either way depending on the language, and the three color differently). syntect's default grammars have no TypeScript, TOML, Kotlin or Swift. giallo supports more than 220 languages; fasthighlight supports 24. Only small snippets were measured. We wrote the measurement ourselves and have not checked that it uses each library the way its authors recommend.
+- **Note:** the output differs in detail (the number of `<span>`s goes either way depending on the language, and the three color differently). syntect's default grammars have no TypeScript, TOML, Kotlin or Swift. giallo supports more than 220 languages, many more than fasthighlight. Only small snippets were measured. We wrote the measurement ourselves and have not checked that it uses each library the way its authors recommend.
 
 </div>
 
 <div class="langs">
 
 ## Supported languages
+
+fasthighlight supports <!-- LANG-COUNT --> languages.
 
 <!-- LANGS -->
 

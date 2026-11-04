@@ -180,6 +180,6 @@ Keep the program small by importing only the languages you use.
 import _ "github.com/toshi-kuji/fasthighlight/lang/golang"
 ```
 
-`lang/all` imports all 24.
+`lang/all` imports all the languages.
 
 More: [Choose the languages](library.html#choose-the-languages)

@@ -14,7 +14,7 @@ go install github.com/toshi-kuji/fasthighlight/cmd/fhl@latest
 
 <!-- Add after the first release: a single binary for Linux, macOS and Windows (amd64, arm64) on the releases page (TODO-releases). No dependencies. -->
 
-All 24 languages are built in. `fhl --version` prints the version; `fhl` and the library share one version.
+All the supported languages are built in. `fhl --version` prints the version; `fhl` and the library share one version.
 
 ## Use
 
