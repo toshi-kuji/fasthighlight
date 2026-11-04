@@ -1,0 +1,159 @@
+/*
+ * Styles of the fasthighlight documentation site (light only).
+ * website/build.sh appends this file to the highlight.css that every page reads, after the code colors.
+ * The pages are plain HTML from Markdown (headings, paragraphs, lists, tables, code blocks) plus a few
+ * <div class="..."> sections on the top page, so the rules below select elements and those classes.
+ */
+:root {
+  --site-text: #0c1524;          /* body text: the navy of the logo */
+  --site-muted: #5a6475;         /* secondary text */
+  --site-link: #0a5fd6;          /* links: a darker logo blue, for contrast on white and on tinted backgrounds */
+  --site-blue-1: #60bcfe;        /* the three blues of the logo, for accents only (not for text) */
+  --site-blue-2: #1096fe;
+  --site-blue-3: #0b6cf9;
+  --site-background: #ffffff;
+  --site-tint: #f4f8fe;          /* tinted panels and table headers */
+  --site-line: #dfe6ef;          /* borders */
+  --site-code-inline: #eef3fa;   /* background of inline code */
+  --site-width: 52rem;           /* width of the text column */
+  --site-radius: 8px;
+  --site-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Noto Sans JP", sans-serif;
+  --site-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* page */
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+  max-width: var(--site-width);
+  background: var(--site-background);
+  color: var(--site-text);
+  font-family: var(--site-font);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+img { max-width: 100%; height: auto; }
+
+/* the line of links at the top of each page ([fasthighlight] · [Contents]) */
+body > p:first-child {
+  margin: 0 0 2rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--site-line);
+  font-size: 0.9rem;
+  color: var(--site-muted);
+}
+
+/* headings */
+h1, h2, h3, h4 { line-height: 1.3; font-weight: 700; }
+h1 { margin: 0 0 1.25rem; font-size: 2.1rem; letter-spacing: -0.01em; }
+h2 {
+  margin: 3rem 0 1rem;
+  padding-bottom: 0.4rem;
+  font-size: 1.5rem;
+  border-bottom: 3px solid transparent;
+  border-image: linear-gradient(90deg, var(--site-blue-1), var(--site-blue-2) 40%, var(--site-blue-3) 70%, transparent 70%) 1;
+}
+h3 { margin: 2rem 0 0.75rem; font-size: 1.2rem; }
+h4 { margin: 1.5rem 0 0.5rem; font-size: 1rem; }
+h1 code, h2 code, h3 code { font-size: 0.9em; }
+
+/* text */
+p, ul, ol, table, pre, blockquote { margin: 0 0 1rem; }
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.25rem 0; }
+li > ul, li > ol { margin: 0.25rem 0 0; }
+a { color: var(--site-link); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
+strong { font-weight: 700; }
+hr { border: 0; border-top: 1px solid var(--site-line); margin: 2.5rem 0; }
+blockquote {
+  margin-left: 0;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid var(--site-blue-2);
+  background: var(--site-tint);
+  border-radius: 0 var(--site-radius) var(--site-radius) 0;
+}
+blockquote > :last-child { margin-bottom: 0; }
+
+/* code */
+code { font-family: var(--site-mono); font-size: 0.875em; }
+:not(pre) > code {
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--site-code-inline);
+  word-break: break-word;
+}
+pre.highlight {
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--site-line);
+  border-radius: var(--site-radius);
+  overflow-x: auto;
+  line-height: 1.55;
+  font-size: 0.95rem;
+  tab-size: 4;
+}
+
+/* tables: scroll sideways on narrow screens instead of widening the page */
+table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.925rem;
+}
+th, td { padding: 0.5rem 0.75rem; border: 1px solid var(--site-line); vertical-align: top; text-align: left; }
+th { background: var(--site-tint); font-weight: 600; white-space: nowrap; }
+
+/* top page: hero */
+.hero { padding: 1.5rem 0 1rem; text-align: center; }
+.hero p[align="center"] { margin-bottom: 0.5rem; }
+.hero h1 {
+  /* the logo already shows the name; the heading stays for the page title and screen readers */
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+.hero h1 + p { max-width: 36rem; margin: 0 auto 1.5rem; font-size: 1.2rem; color: var(--site-muted); }
+.hero pre.highlight { max-width: max-content; margin: 0 auto 1rem; text-align: left; } /* as wide as the command, scrolling on narrow screens */
+.hero p:last-child { font-weight: 600; }
+
+/* top page: sections */
+.two-ways h3 { margin-top: 1.75rem; }
+.uses ul, .not-for ul { list-style: none; padding-left: 0; }
+.uses ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.75rem;
+}
+.uses li {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--site-line);
+  border-radius: var(--site-radius);
+  background: var(--site-background);
+}
+.uses li strong { display: block; margin-bottom: 0.25rem; }
+.not-for {
+  margin-top: 3rem;
+  padding: 0.25rem 1.25rem 0.5rem;
+  background: var(--site-tint);
+  border-radius: var(--site-radius);
+}
+.not-for h2 { margin-top: 1rem; }
+.not-for li { padding-left: 1.25rem; position: relative; }
+.not-for li::before { content: "–"; position: absolute; left: 0; color: var(--site-muted); }
+.faq p { padding-left: 1rem; border-left: 3px solid var(--site-line); }
+.faq strong { display: block; margin-bottom: 0.2rem; }
+.speed ul { font-size: 0.925rem; color: var(--site-muted); }
+.langs table { font-size: 0.85rem; }
+.pages ul { padding-left: 1.25rem; }
+
+/* themes page: samples */
+.theme-sample { margin-bottom: 1.5rem; }
+
+@media (max-width: 40rem) {
+  body { padding-top: 1rem; font-size: 0.975rem; }
+  h1 { font-size: 1.7rem; }
+  h2 { font-size: 1.3rem; }
+  .hero h1 + p { font-size: 1.05rem; }
+  pre.highlight { font-size: 0.875rem; }
+}
