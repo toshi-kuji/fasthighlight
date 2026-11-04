@@ -4,7 +4,7 @@
 
 # fasthighlight
 
-Fast syntax highlighting written in Go, without regular expressions. Add it to goldmark to highlight code blocks in Markdown, or use the command `fhl` from any language to turn Markdown into HTML, up to a basic static site.
+Fast syntax highlighting written in Go, without regular expressions. Add it to goldmark to highlight code blocks in Markdown, or use the command `fhl` from a terminal, a script or a program in another language to turn Markdown into HTML, up to a basic static site.
 
 ```sh
 go install github.com/toshi-kuji/fasthighlight/cmd/fhl@latest
@@ -22,12 +22,12 @@ go install github.com/toshi-kuji/fasthighlight/cmd/fhl@latest
 
 | | Library `fasthighlight` | Command `fhl` |
 | --- | --- | --- |
-| For | Go developers building an app | Developers in any language, AI agents, anyone with a terminal |
+| For | Go developers building an app | Developers using other programming languages, AI agents, anyone with a terminal |
 | How | Call it from your program | Run a command |
 | Main job | Build HTML conversion into your app | Turn Markdown and code files into HTML |
 | Good at | Web servers, blogs, documentation services | Static site builds, converting many files at once, automation |
 
-The library is a part you build into Go apps. `fhl` is a document tool you can use from any language as an external command. Both run the same engine.
+The library is a part you build into Go apps. `fhl` is a document tool you run as a command: from a terminal, a script or a program in another language. Both run the same engine.
 
 ### The command
 
