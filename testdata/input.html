@@ -1,0 +1,333 @@
+<h1>Proposal: Pretty IslandsをPreactからHonoへ移行する</h1>
+<p><strong>提案日</strong>　2026年10月28日<br>
+<strong>対象</strong>　Pretty Islandsフレームワーク<br>
+<strong>基準文書</strong>　<code>pretty-islands-framework.md</code>（2026年10月28日改訂版、3.4節「PreactのVDOMが担う役割」を含む最新版）<br>
+<strong>状態</strong>　設計変更提案。Hono版の実装・性能・Cloudflare本番環境での動作は未検証。</p>
+<h2>1. 提案の要旨</h2>
+<p>Pretty IslandsのHTMLレンダリングとHTTP処理を、<strong>Preact JSX／Suspense／Workers Native <code>fetch()</code> による手組みRouter・Middleware</strong>から、<strong>Honoの<code>html</code>ヘルパー／Hono Router・Middleware／SSEによる非同期HTML断片配信</strong>へ移行する。</p>
+<p>移行後の基本構成は、<strong>Vite + Hono（<code>html</code>、Router、Middleware、Streaming Helper）+ Cloudflare Workers/workerd + DSD + Custom Elements + pnpm 12管理のNode.js</strong>とする。Hono JSX、<code>hono/jsx/dom</code>、Preact、ページ全体のHydration、独自VDOMは採用しない。</p>
+<p>Server Islandsは、HTMLドキュメントの初期応答で領域とfallbackを描画し、後続の<strong>SSE（Server-Sent Events）<strong>で完成した断片を順不同に届け、ブラウザ上の小さな共通クライアントで所定の領域へ挿入する方式へ変更する。HTML生成は常にサーバー側の<code>hono/html</code>が担い、ブラウザはHTMLの</strong>生成</strong>ではなく<strong>挿入とCustom Elementの起動</strong>だけを担当する。</p>
+<p>この提案はフレームワークの共通能力を定めるものであり、個別サイトがServer Islandsを使うことを義務づけない。<code>static</code>、<code>cache</code>、<code>dynamic</code>の3モード、CloudflareのWorkers Cacheによる共有キャッシュ境界、AI実装・CI検証・人間承認という原則は維持する。</p>
+<h2>2. なぜ変更するのか</h2>
+<h3>2.1. PreactのVDOMをブラウザで利用していない</h3>
+<p>現行のPretty IslandsではPreactはSSR専用であり、ブラウザではHydrationもVDOM差分更新も行わない。JSXからVNodeを生成し、SSRレンダラーが走査してHTMLを出力する方式は正しく機能するが、この用途で必須の中間表現ではない。<code>hono/html</code>はTagged Template Literalを使ってHTML断片を構成するため、PreactのVNodeツリーやSSRレンダラーを必要としない。</p>
+<p>ここでの論点は「Honoのほうが常に高速」という断定ではなく、<strong>必要な責任と依存関係を減らせる</strong>という設計上の見通しである。CPU使用量、割り当てメモリ、TTFB、HTML生成速度の差は、同じページ・同じデータをworkerdで比較して判断する。</p>
+<h3>2.2. JSXではなくHTMLそのものを中心に書ける</h3>
+<p>Honoの<code>html</code>は文字列補間を自動エスケープし、安全なHTML断片を関数で組み合わせられる。HTML、<code>&lt;template shadowrootmode=&quot;open&quot;&gt;</code>、Custom Element、フォーム、CSSはブラウザが解釈する表記に近い形で記述できる。Preact用のDSD属性型拡張も不要になる。</p>
+<h3>2.3. RouterとMiddlewareを標準機構へ任せられる</h3>
+<p>現行要綱ではHTTP入口をNative <code>fetch()</code>と通常の関数で実装している。その方法は小規模で明快だが、ルート数、認証方式、HTTPメソッド、SSEエンドポイント、エラーハンドリングが増えると、実装の重複と順序制御が課題となる。HonoのRouterとMiddlewareはこれらを小さなAPIで統合できる。</p>
+<p>これはCloudflare Workersの実行環境をHonoに「置換」することではない。Honoは<strong>Workersの<code>fetch()</code>上で動くHTTPアプリケーション層</strong>であり、workerd、Bindings、Static Assets、Workers Cacheは引き続きCloudflareの機能として利用する。</p>
+<h2>3. 移行前後の責任分担</h2>
+<table>
+<thead>
+<tr>
+<th>領域</th>
+<th>現行</th>
+<th>提案後</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTML生成</td>
+<td>Preact JSX + <code>preact-render-to-string</code></td>
+<td><strong><code>hono/html</code></strong>。Tagged Template Literalと関数による部品化</td>
+</tr>
+<tr>
+<td>JSX</td>
+<td>Preact JSX</td>
+<td><strong>HTML生成には使用しない</strong>。TSXを使う必要をなくす</td>
+</tr>
+<tr>
+<td>Server Islands</td>
+<td>Preact Suspense Streaming</td>
+<td><strong>Hono html + SSE + DOM断片挿入</strong></td>
+</tr>
+<tr>
+<td>非同期順不同表示</td>
+<td>Suspenseの差し替えスクリプト</td>
+<td>SSEイベントと独立した小さなブラウザ用ランタイム</td>
+</tr>
+<tr>
+<td>Router</td>
+<td>Native <code>fetch()</code>内の通常の関数</td>
+<td><strong>Hono Router</strong></td>
+</tr>
+<tr>
+<td>Middleware</td>
+<td>通常のTS関数を手動合成</td>
+<td><strong>Hono Middleware</strong>。適用順とスコープを宣言</td>
+</tr>
+<tr>
+<td>エラー処理</td>
+<td>Native <code>fetch()</code>の例外処理</td>
+<td>Hono <code>app.onError()</code>。ストリーム開始後はSSEエラーイベント</td>
+</tr>
+<tr>
+<td><code>static</code></td>
+<td>Preactによる事前生成HTML</td>
+<td><strong>同じ<code>hono/html</code>部品をNode.jsビルド時に文字列化</strong></td>
+</tr>
+<tr>
+<td><code>cache</code></td>
+<td>完成HTMLをWorkers Cacheで共有</td>
+<td><strong>同じ<code>hono/html</code>部品で完成HTMLを返す</strong>。SSEしない</td>
+</tr>
+<tr>
+<td><code>dynamic</code></td>
+<td>Preact SSR、必要ならSuspense</td>
+<td><strong>Honoで初期HTML</strong>。Server Islands利用時のみSSE</td>
+</tr>
+<tr>
+<td>Client Islands</td>
+<td>DSD + Custom Elements</td>
+<td><strong>維持</strong>。SSR用コンポーネントだけ<code>hono/html</code>へ書き換え</td>
+</tr>
+<tr>
+<td>Vite / Cloudflare</td>
+<td>Vite、<code>@cloudflare/vite-plugin</code>、workerd</td>
+<td><strong>維持</strong></td>
+</tr>
+<tr>
+<td>テストと環境</td>
+<td>Vitest、Cloudflare Vitest integration、pnpm 12</td>
+<td><strong>維持</strong>。Hono固有の境界テストを追加</td>
+</tr>
+</tbody>
+</table>
+<h3>構成図</h3>
+<pre class="highlight" data-lang="text"><code><span class="line"><span class="cl">AIのクラウド環境 / GitHub Actions
+</span></span><span class="line"><span class="cl">  pnpm 12 → プロジェクト固定のNode.js → Vite / Vitest / 型・Lint・Format
+</span></span><span class="line"><span class="cl">                              │
+</span></span><span class="line"><span class="cl">                    Cloudflare Vite Plugin
+</span></span><span class="line"><span class="cl">                              │
+</span></span><span class="line"><span class="cl">                           workerd
+</span></span><span class="line"><span class="cl">                              │
+</span></span><span class="line"><span class="cl">              Hono Router + Hono Middleware
+</span></span><span class="line"><span class="cl">               ├─ static  → ビルド時に生成したHTML → Static Assets
+</span></span><span class="line"><span class="cl">               ├─ cache   → 完成HTML → Cached EntryPoint → Workers Cache
+</span></span><span class="line"><span class="cl">               └─ dynamic → Hono htmlによる初期HTML（Cache OFF）
+</span></span><span class="line"><span class="cl">                                └─ 必要なページだけ /fragments SSE（Cache OFF）
+</span></span><span class="line"><span class="cl">                                          │
+</span></span><span class="line"><span class="cl">ブラウザ                                  │
+</span></span><span class="line"><span class="cl">  ├─ 初期HTMLをそのまま表示               │
+</span></span><span class="line"><span class="cl">  ├─ Server Islands用の小さな外部JS ←────┘
+</span></span><span class="line"><span class="cl">  │      └─ 完成したHTML断片を指定位置に挿入
+</span></span><span class="line"><span class="cl">  └─ DSD + Custom Elementsが挿入済みDOMに動作を追加
+</span></span></code></pre><h2>4. Hono JSXを採用しない理由</h2>
+<p>Honoの<code>hono/jsx</code>もSSRに使え、<code>hono/jsx/streaming</code>には実験的なSuspenseがある。ただしサーバー側のHono JSXは<code>JSXNode</code>という中間ノードを生成し、その構造をHTMLへ直列化する。これはPreactより簡潔な実装であり得るが、今回の「SSR用VNode相当の中間表現を避ける」という目的を直接は満たさない。</p>
+<p>一方、<code>hono/html</code>はHTML断片を直接構成し、DSDの記述や関数合成とも相性がよい。したがって<strong>HonoのHTTP機能は採用するが、Hono JSXとJSX Suspenseは採用しない</strong>。<code>hono/jsx/dom</code>もClient Islandsの設計と重複するため使わない。</p>
+<p>代償も明記する。Tagged Template LiteralはJSXと異なり、HTML属性・構造の型チェックや補完をTSXコンポーネントの型検査に全面的には任せられない。テンプレートのHTML検証、URLポリシー、DSDの構造テスト、型付きPropsは別の検査で補う。コンポーネントの条件分岐や繰り返しもTS関数として明示的に組み立てる。</p>
+<pre class="highlight" data-lang="ts"><code><span class="line"><span class="cl"><span class="kr">import</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono/html&#39;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kr">type</span> <span class="nx">SearchProps</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">placeholder</span>: <span class="kt">string</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kr">export</span> <span class="kr">const</span> <span class="nx">Search</span> <span class="o">=</span> <span class="p">({</span> <span class="nx">placeholder</span> <span class="p">}</span><span class="o">:</span> <span class="nx">SearchProps</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">html</span><span class="sb">`
+</span></span></span><span class="line"><span class="cl"><span class="sb">  &lt;site-search&gt;
+</span></span></span><span class="line"><span class="cl"><span class="sb">    &lt;template shadowrootmode=&#34;open&#34;&gt;
+</span></span></span><span class="line"><span class="cl"><span class="sb">      &lt;form action=&#34;/search&#34; method=&#34;get&#34;&gt;
+</span></span></span><span class="line"><span class="cl"><span class="sb">        &lt;input type=&#34;search&#34; name=&#34;q&#34; placeholder=&#34;</span><span class="si">${</span><span class="nx">placeholder</span><span class="si">}</span><span class="sb">&#34;&gt;
+</span></span></span><span class="line"><span class="cl"><span class="sb">        &lt;button type=&#34;submit&#34;&gt;検索&lt;/button&gt;
+</span></span></span><span class="line"><span class="cl"><span class="sb">      &lt;/form&gt;
+</span></span></span><span class="line"><span class="cl"><span class="sb">    &lt;/template&gt;
+</span></span></span><span class="line"><span class="cl"><span class="sb">  &lt;/site-search&gt;
+</span></span></span><span class="line"><span class="cl"><span class="sb">`</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kr">export</span> <span class="kr">const</span> <span class="nx">Page</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">html</span><span class="sb">`
+</span></span></span><span class="line"><span class="cl"><span class="sb">  &lt;!doctype html&gt;
+</span></span></span><span class="line"><span class="cl"><span class="sb">  &lt;html lang=&#34;ja&#34;&gt;
+</span></span></span><span class="line"><span class="cl"><span class="sb">    &lt;body&gt;&lt;main&gt;</span><span class="si">${</span><span class="nx">Search</span><span class="p">({</span> <span class="nx">placeholder</span><span class="o">:</span> <span class="s1">&#39;キーワード&#39;</span> <span class="p">})</span><span class="si">}</span><span class="sb">&lt;/main&gt;&lt;/body&gt;
+</span></span></span><span class="line"><span class="cl"><span class="sb">  &lt;/html&gt;
+</span></span></span><span class="line"><span class="cl"><span class="sb">`</span>
+</span></span></code></pre><p>この例の通常の補間文字列はHonoによってエスケープされる。<code>raw()</code>や<code>&lt;script&gt;</code>等の直接記述については第8章の制約を適用する。</p>
+<h2>5. Server IslandsをHono html + SSEへ置き換える</h2>
+<h3>5.1. 非同期処理と表示順序の関係</h3>
+<p>ページの上部にA（800ms）、その下にB（100ms）がある場合、両方のデータ取得を同時に開始しても、<strong>完成HTMLを文書上のA→Bの順にストリームへ追加するだけ</strong>なら、Bの表示はAの完了を待つ。HTMLは上から順に解析され、後から送ったバイト列で既に送信したDOM位置を直接書き換えられないからである。</p>
+<p>Preact Suspenseは初期HTMLにA・Bのfallbackを配置し、完成した断片と差し替えスクリプトを後から送り、ブラウザで本来の位置に戻す。<strong>順不同表示の本質は、後着の断片を元のDOM位置へ差し替えるクライアント処理</strong>である。</p>
+<h3>5.2. SSEは「不可欠」ではなく、今回選ぶプロトコル</h3>
+<p><strong>順不同表示にSSEが論理的に必須というわけではない。</strong> 単一HTMLレスポンスに差し替えスクリプトを混ぜる方法、<code>fetch()</code>のReadableStreamから独自形式のフレームを読む方法、WebSocket等でも実現できる。SSEを採用する理由は、HTML本文と非同期更新を分離し、HTTPの一方向イベント、名前付きイベント、ブラウザの<code>EventSource</code>、Honoの<code>streamSSE()</code>を使ってプロトコルを単純にできるためである。</p>
+<p>したがって、正確な表現は「<strong>順不同表示にはクライアント側の挿入処理が必要であり、この提案では完成したHTML断片を配信する手段としてSSEを選ぶ</strong>」である。</p>
+<p>また、SSEはHTMLとして自動表示されない。ブラウザはJSON等としてイベントデータを受け取り、外部JSがHTML断片を解析・挿入する。これはクライアントでUIをレンダリングするCSRではなく、サーバー生成HTMLを後から挿入する方式である。</p>
+<h3>5.3. 配信手順</h3>
+<ol>
+<li><code>GET /page</code>が必要な基本内容、A・Bのプレースホルダー、外部SSEクライアントJSを持つ初期HTMLを返す。基本内容は初期SSRで確定させる。</li>
+<li>ブラウザが初期HTMLを解析し、外部JSが<strong>同一オリジンのSSEエンドポイント</strong>へ接続する。</li>
+<li>SSEエンドポイントでA・Bの処理を<strong>並列に開始</strong>する。ページの初期リクエストで開始したPromiseが自動的に共有されるわけではない点に注意する。</li>
+<li>Bが100msで完成すれば、<code>fragment</code>イベントでBのHTMLと固定IDを送る。クライアントはBのプレースホルダーへ挿入する。</li>
+<li>Aが800msで完成すれば、Aを挿入する。全件処理後に<code>done</code>を送信し、EventSourceを閉じる。</li>
+<li>部品単位の失敗は<code>fragment-error</code>で通知し、失敗箇所だけ既定の表示へ切り替える。</li>
+</ol>
+<pre class="highlight" data-lang="text"><code><span class="line"><span class="cl">初期HTML :  [Header] [A: 読み込み中] [B: 読み込み中] [Footer]
+</span></span><span class="line"><span class="cl">100ms    :  SSE fragment(B) → Bだけ完成表示
+</span></span><span class="line"><span class="cl">800ms    :  SSE fragment(A) → Aも完成表示
+</span></span><span class="line"><span class="cl">完了     :  SSE done → 接続を閉じる
+</span></span></code></pre><p>イベント形式の概念例は次のとおり。</p>
+<pre class="highlight" data-lang="text"><code><span class="line"><span class="cl">event: fragment
+</span></span><span class="line"><span class="cl">data: {&#34;id&#34;:&#34;popular&#34;,&#34;html&#34;:&#34;&lt;section&gt;人気記事&lt;/section&gt;&#34;}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">event: fragment
+</span></span><span class="line"><span class="cl">data: {&#34;id&#34;:&#34;recommended&#34;,&#34;html&#34;:&#34;&lt;section&gt;おすすめ記事&lt;/section&gt;&#34;}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">event: done
+</span></span><span class="line"><span class="cl">data: {}
+</span></span><span class="line"><span class="cl">
+</span></span></code></pre><p>Honoの<code>streamSSE()</code>を利用して送信する。複数のPromiseが同時に完了しても、SSEへの書き込みは<strong>完了イベントをキューで直列化</strong>してフレームの混線を防ぐ。クライアントは既知のIDのみ受け付け、同じIDへの重複適用、古いページからのイベント、接続切断後の書き込みを防ぐ。</p>
+<h3>5.4. 通信・運用上の代償</h3>
+<ul>
+<li>HTMLとSSEは<strong>別々のHTTPリクエスト</strong>になる。EventSource開始には初期HTMLと外部JSの読み込みが必要で、Suspenseの1レスポンス内Streamingより更新開始が遅れる可能性がある。</li>
+<li>非同期部品のデータ取得はSSEリクエストの寿命で管理する。初期HTML側で同じ取得を行うと二重計算になり得る。</li>
+<li>EventSourceは切断時に再接続を試みる。有限のSSR更新では<code>done</code>で明示的に閉じ、再接続による再実行や二重表示を設計・検査する。ページ遷移やAbort時はキャンセル可能なI/Oを中断する。</li>
+<li>通常のEventSourceは任意のAuthorizationヘッダーを渡すAPIを持たない。認証は同一オリジンのCookieとサーバー側の再認証を基本とし、秘密トークンをURLクエリに置かない。CORS、SameSite、権限検査、キャッシュ禁止をSSEにも適用する。</li>
+<li>重要コンテンツ、SEO対象の本文、JS無効でも必須の内容は初期SSRで提供する。SSEが使えない時の代替として、同じサーバーレンダラーによる完成HTMLの非Streaming経路も検討する。</li>
+<li>SSEイベントとDOM差し替えの自作部分は<strong>小規模であっても専用の共通コード</strong>になる。「独自Islands Runtimeを一切持たない」から「固定IDによる限定的な断片更新だけを持つ」へ規約を修正する。</li>
+</ul>
+<h2>6. 三つの配信モードは維持する</h2>
+<h3><code>static</code></h3>
+<p>Node.jsで<code>hono/html</code>の関数を実行して完成HTMLを生成し、Viteの資産manifestに基づいてハッシュ付きJS・CSSを組み込み、Cloudflare Static Assetsへ配置する。SSEは原則不要。コンテンツ変更時は再ビルドする。</p>
+<h3><code>cache</code></h3>
+<p>Hono RouterがCache OFFのGatewayでURL正規化とアクセス制御を行い、共有可能な公開ページだけをCache ONの<code>CachedRenderer</code> EntryPointへ渡す。<code>CachedRenderer</code>は<code>hono/html</code>で<strong>非同期処理をすべて完了させたHTML</strong>を返す。SSEとStreamingは使用しない。TTLはCloudflareのキャッシュ応答ヘッダーで制御する。</p>
+<p><strong>Honoの<code>hono/cache</code>ミドルウェアやCloudflare Cache APIを、新しいWorkers Cache設定と混同しない。</strong> 本提案の標準は引き続きEntryPoint単位の<strong>Workers Cache</strong>であり、Cache HIT時は対象EntryPointのHono handler自体が動かない。GatewayのMiddlewareはHIT前に動くが、Cache対象EntryPoint内のMiddlewareはHIT時には動かない。</p>
+<h3><code>dynamic</code></h3>
+<p>Hono Routerが毎リクエスト応答する。<code>Cache-Control: private, no-store</code>を付け、Cache OFF EntryPointで実行する。Server Islandsの有無はページごとに選び、利用する時のみSSEエンドポイントと外部JSを付ける。SSEも<code>no-store</code>とし、ユーザーごとの認証・権限を改めて検査する。</p>
+<p>ページの<code>mode</code>、EntryPointのCache ON/OFF、実際の課金は別レイヤーとして扱う、という現行要綱の原則を維持する。Static AssetsとGatewayの照合、ルート衝突のビルド検査も引き継ぐ。</p>
+<h2>7. Hono Router・Middlewareへ移行する意義</h2>
+<p>Native <code>fetch()</code>は残るが、その中のルーティングと共通処理をHonoへ委譲する。主な利点は、メソッド別・パス別の宣言、パラメータの取得、<code>app.route()</code>による機能単位の分割、<code>app.use()</code>のスコープ指定、リクエスト前後の処理、エラー応答、Bindingsの型付け、テスト用の<code>app.request()</code>である。</p>
+<pre class="highlight" data-lang="ts"><code><span class="line"><span class="cl"><span class="kr">import</span> <span class="p">{</span> <span class="nx">Hono</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono&#39;</span>
+</span></span><span class="line"><span class="cl"><span class="kr">import</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono/html&#39;</span>
+</span></span><span class="line"><span class="cl"><span class="kr">import</span> <span class="p">{</span> <span class="nx">streamSSE</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono/streaming&#39;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kr">type</span> <span class="nx">Bindings</span> <span class="o">=</span> <span class="p">{</span> <span class="cm">/* D1・KV・R2等、プロジェクトで定義 */</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">app</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Hono</span><span class="o">&lt;</span><span class="p">{</span> <span class="nx">Bindings</span>: <span class="kt">Bindings</span> <span class="p">}</span><span class="o">&gt;</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nx">app</span><span class="p">.</span><span class="nx">use</span><span class="p">(</span><span class="s1">&#39;*&#39;</span><span class="p">,</span> <span class="kr">async</span> <span class="p">(</span><span class="nx">c</span><span class="p">,</span> <span class="nx">next</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">// ここにはリクエストIDや共通ヘッダーなどを置く
+</span></span></span><span class="line"><span class="cl">  <span class="k">await</span> <span class="nx">next</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="p">})</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nx">app</span><span class="p">.</span><span class="kr">get</span><span class="p">(</span><span class="s1">&#39;/articles&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">c</span><span class="p">)</span> <span class="o">=&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">c</span><span class="p">.</span><span class="nx">html</span><span class="p">(</span><span class="nx">html</span><span class="sb">`&lt;h1&gt;記事一覧&lt;/h1&gt;`</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="s1">&#39;Cache-Control&#39;</span><span class="o">:</span> <span class="s1">&#39;private, no-store&#39;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}),</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nx">app</span><span class="p">.</span><span class="kr">get</span><span class="p">(</span><span class="s1">&#39;/articles/fragments&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">c</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">c</span><span class="p">.</span><span class="nx">header</span><span class="p">(</span><span class="s1">&#39;Cache-Control&#39;</span><span class="p">,</span> <span class="s1">&#39;private, no-store&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="nx">streamSSE</span><span class="p">(</span><span class="nx">c</span><span class="p">,</span> <span class="kr">async</span> <span class="p">(</span><span class="nx">stream</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// ここで独立した断片の生成を開始し、完了順にwriteSSEする
+</span></span></span><span class="line"><span class="cl">    <span class="k">await</span> <span class="nx">stream</span><span class="p">.</span><span class="nx">writeSSE</span><span class="p">({</span> <span class="nx">event</span><span class="o">:</span> <span class="s1">&#39;done&#39;</span><span class="p">,</span> <span class="nx">data</span><span class="o">:</span> <span class="s1">&#39;{}&#39;</span> <span class="p">})</span>
+</span></span><span class="line"><span class="cl">  <span class="p">})</span>
+</span></span><span class="line"><span class="cl"><span class="p">})</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nx">app</span><span class="p">.</span><span class="nx">onError</span><span class="p">((</span><span class="nx">error</span><span class="p">,</span> <span class="nx">c</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="nx">error</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="nx">c</span><span class="p">.</span><span class="nx">text</span><span class="p">(</span><span class="s1">&#39;Internal Server Error&#39;</span><span class="p">,</span> <span class="mi">500</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">})</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kr">export</span> <span class="k">default</span> <span class="nx">app</span>
+</span></span></code></pre><p>上は<strong>HTTP入口とSSEのAPI形状を示す概念例</strong>であり、正規化、認証、エラー通知、断片生成は未実装。現行の型付きルートmanifestを廃止する必要はなく、<code>mode</code>・<code>ttl</code>・<code>auth</code>等の宣言からHonoのルート登録と検査を生成する設計も可能である。ただし単なるHonoルートとmanifestの<strong>二重管理</strong>は避け、どちらを正とするかを決める。</p>
+<p>Cache OFFのGatewayとCache ONのNamed EntryPointはCloudflare固有の境界として保持する。<code>export default app</code>は通常のHTTP入口には使えるが、Named EntryPointと<code>ctx.exports</code>を要する構成では<strong>Honoアプリを各EntryPointの<code>fetch()</code>から呼ぶ薄いAdapter</strong>を作る。これはRouterを再実装することではない。<code>ctx.exports</code>利用時の互換性フラグ、EntryPoint別キャッシュ、実際のルーティングはPoCで確認する。</p>
+<p>Honoの<code>app.onError()</code>は応答開始前の例外処理に有効だが、<strong>SSEストリーム開始後の失敗をHTTP 500へ巻き戻すことはできない</strong>。断片単位のエラーイベント、ログ、タイムアウトを別途実装する。</p>
+<p><strong>比較上の注意</strong>。HTTPのルート数がごく少なければNative <code>fetch()</code>のままでも十分に明快である。Honoへの移行メリットは単に「速い」ことではなく、今後のページ・API・認証・SSEエンドポイント増加に対して規約化されたルートとMiddlewareの管理ができる点にある。Middlewareを無差別に積み重ねると、逆に処理の見通しが悪くなる。</p>
+<h2>8. エスケープとSSEのHTML挿入に関するセキュリティ境界</h2>
+<p><strong>Honoの自動エスケープは必要条件だが、SSEでブラウザにHTMLを挿入する安全性を単独で保証するものではない。</strong> レイヤーごとに明確な規約を置く。</p>
+<ol>
+<li><strong>HTMLテキスト・通常属性</strong>。外部データは<code>html\</code>...${value}...`<code>の通常補間だけで渡す。自分でエスケープ済みの文字列を</code>raw()`で入れない。HTML断片を合成する際も、手書きの文字列連結で安全印を偽造しない。</li>
+<li><strong><code>raw()</code>とテンプレート本文</strong>。<code>raw()</code>はエスケープを迂回する。テンプレート内に直接書いたHTMLや<code>&lt;script&gt;</code>も自動サニタイズされない。未信頼入力、外部CMSのHTML、リッチテキストを無検査で通さない。</li>
+<li><strong>URL・CSS・JSという別文脈</strong>。HTML属性をエスケープしても<code>href=&quot;javascript:...&quot;</code>等の危険なURLスキームは検証されない。URLは許可するスキーム・相対パスを明示し、イベントハンドラー属性と動的インラインScriptは原則禁止する。</li>
+<li><strong>SSEエンベロープ</strong>。断片HTMLはSSEの<code>data</code>へJSONとして格納し、<code>writeSSE()</code>へ渡す。手動で<code>data: ${html}\n\n</code>と連結しない。JSONを解析してから、既知の断片IDのみに適用する。</li>
+<li><strong>DOM挿入</strong>。<code>innerHTML</code>はDeclarative Shadow DOMを構築しない。DSDを含む断片には<code>setHTMLUnsafe()</code>等のDSD対応APIが必要だが、<strong><code>setHTMLUnsafe()</code>は既定ではサニタイズしないXSS sink</strong>である。許可済みサーバーテンプレートのみを挿入する、必要に応じてSanitizer/Trusted Typesを導入する、外部HTMLは別途サニタイズする、という多層防御をとる。SanitizerがDSDやCustom Elementsの必要な要素を残すかは実ブラウザで検査する。</li>
+<li><strong>CSP</strong>。SSE受信とDOM更新を外部module JSにまとめ、<code>script-src 'self'</code>等でインライン差し替えスクリプトを不要にする。Client Island内の<code>&lt;style&gt;</code>のCSP hash、<code>style-src</code>、Trusted Typesとの整合性は維持・再テストする。</li>
+<li><strong>認証・キャッシュ</strong>。SSE URLへ秘密情報を載せず、同一オリジン・Cookie認証を基本にする。接続ごとにユーザー権限を検査し、レスポンスを<code>no-store</code>にする。SSEは読み取り専用GETとし、状態変更は別の適切なAPIで扱う。</li>
+</ol>
+<p>最小の受信処理は次のような形になる。ただし、ここでは<strong>断片がすべて信頼できるサーバーテンプレートから生成され、IDが許可されている</strong>ことを前提とし、製品コードではポリシー・Sanitizer・認証・接続管理を補う。</p>
+<pre class="highlight" data-lang="js"><code><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">allowedIds</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Set</span><span class="p">([</span><span class="s1">&#39;popular&#39;</span><span class="p">,</span> <span class="s1">&#39;recommended&#39;</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">source</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">EventSource</span><span class="p">(</span><span class="s1">&#39;/articles/fragments&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nx">source</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;fragment&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">event</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="kr">const</span> <span class="nx">payload</span> <span class="o">=</span> <span class="nx">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">data</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">allowedIds</span><span class="p">.</span><span class="nx">has</span><span class="p">(</span><span class="nx">payload</span><span class="p">.</span><span class="nx">id</span><span class="p">)</span> <span class="o">||</span> <span class="k">typeof</span> <span class="nx">payload</span><span class="p">.</span><span class="nx">html</span> <span class="o">!==</span> <span class="s1">&#39;string&#39;</span><span class="p">)</span> <span class="k">return</span>
+</span></span><span class="line"><span class="cl">  <span class="kr">const</span> <span class="nx">target</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="nx">payload</span><span class="p">.</span><span class="nx">id</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">target</span> <span class="o">||</span> <span class="nx">target</span><span class="p">.</span><span class="nx">dataset</span><span class="p">.</span><span class="nx">completed</span> <span class="o">===</span> <span class="s1">&#39;true&#39;</span><span class="p">)</span> <span class="k">return</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">// DSDを含む可能性があるためinnerHTMLは使わない。
+</span></span></span><span class="line"><span class="cl">  <span class="c1">// payload.htmlは信頼できるサーバーテンプレートからの生成に限定する。
+</span></span></span><span class="line"><span class="cl">  <span class="nx">target</span><span class="p">.</span><span class="nx">setHTMLUnsafe</span><span class="p">(</span><span class="nx">payload</span><span class="p">.</span><span class="nx">html</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">target</span><span class="p">.</span><span class="nx">dataset</span><span class="p">.</span><span class="nx">completed</span> <span class="o">=</span> <span class="s1">&#39;true&#39;</span>
+</span></span><span class="line"><span class="cl"><span class="p">})</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nx">source</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;fragment-error&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">event</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">// 必要に応じて失敗した部分だけエラー状態へ変更する。
+</span></span></span><span class="line"><span class="cl"><span class="p">})</span>
+</span></span><span class="line"><span class="cl"><span class="nx">source</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;done&#39;</span><span class="p">,</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="nx">source</span><span class="p">.</span><span class="nx">close</span><span class="p">())</span>
+</span></span></code></pre><h2>9. Client Islandsをどうするか</h2>
+<p>Client Islandsの基本構造は<strong>変更しない</strong>。SSR用のHono <code>html</code>関数と、ブラウザ用Custom Elementを一組として配置する。</p>
+<ul>
+<li>SSR部品は<code>*.ts</code>の<code>html</code>関数に変更する。<code>&lt;site-search&gt;&lt;template shadowrootmode=&quot;open&quot;&gt;...&lt;/template&gt;&lt;/site-search&gt;</code>を返し、JSがなくてもフォームが機能するHTMLを作る。</li>
+<li>ブラウザ側は<code>*.element.ts</code>のCustom Elementとし、既存のDOMを保持したままイベント、状態、動作を追加する。Hydrationは行わない。</li>
+<li>SSEで届く断片に<strong>新しい</strong>Client Islandが含まれる場合、DSD対応パーサーで構築し、定義済みCustom Elementのupgradeに任せる。早期起動、ShadowRoot内部の構築完了、再接続、解放は従来どおり検証する。</li>
+<li><strong>既に稼働中のClient IslandをSSEで置き換えない</strong>。その内部に差し替え対象を設けることも標準では認めない。更新が必要ならCustom Elementの専用APIまたは別枠の静的プレースホルダーとして明示する。</li>
+<li>ページにClient IslandもServer Islandもなければ、ブラウザへフレームワークJSを送らない。Server Islandを使うページにはSSE受信の小さな外部JSだけを追加する。</li>
+<li>DSD内のCSSを<code>&lt;style&gt;</code>として生成する既存方針は維持。ただしHTML挿入APIとSanitizerの相互作用、重複Style、CSP hashを確認する。</li>
+</ul>
+<h2>10. 移行順序と受け入れ条件</h2>
+<h3>フェーズ1　Hono htmlによるHTML生成への置換</h3>
+<ul>
+<li>代表的な<code>static</code>・<code>cache</code>・<code>dynamic</code>のページを同一の<code>hono/html</code>関数で生成する。</li>
+<li>テキスト・属性・URL、フォーム、DSD、CSS、エラー時HTTPステータスについて出力を比較する。</li>
+<li>VNode/Preactへの依存を切り、TSXの型拡張とPreact固有のAST検査を整理する。新しいHTML・import境界検査を負例テスト付きで実装する。</li>
+</ul>
+<h3>フェーズ2　Server IslandsをSSEへ移行</h3>
+<ul>
+<li>二つ以上の非同期断片でA=遅い、B=速いケースを再現し、Bを先に表示できることをブラウザで測る。</li>
+<li>エスケープ、CSP、DSD、Client Islandのupgrade、接続切断、再接続、失敗、タイムアウト、同時完了の順序を検査する。</li>
+<li>基本コンテンツがSSEなしでも閲覧できることを確認する。</li>
+<li>初期HTMLとSSEを合わせた表示速度・リクエスト数・CPU・メモリ・送信バイト数をPreact Suspense版と比較する。</li>
+</ul>
+<h3>フェーズ3　Router・Middlewareの移行</h3>
+<ul>
+<li>Honoのルート宣言と既存のページ<code>mode</code>宣言の対応を一元化する。</li>
+<li>認証、URL正規化、セキュリティヘッダー、ログ、404/405、例外処理の適用順をテストする。</li>
+<li>Cache OFF Gateway→Cache ON Named EntryPointへの呼び出し、Static Assetsとのルート衝突を確認する。</li>
+</ul>
+<h3>フェーズ4　CI、Preview、本番</h3>
+<ul>
+<li><code>pnpm install --frozen-lockfile</code>からビルドとworkerd内のVitestが再現する。</li>
+<li><code>createTestHarness()</code>でビルド成果物とStatic AssetsのHTTP結合テストを実施する。</li>
+<li>Cloudflare実環境でCache HIT/MISS、認証境界、Static Assetsの配信・課金を確認する。</li>
+<li>AIがPRを作り、CIと人間のPreview確認を経てマージ・デプロイする既存運用は維持する。</li>
+</ul>
+<p><strong>受け入れ条件</strong>は、①3モードを維持、②SSEによる順不同表示が実証される、③DSD/Custom Elementsが問題なく起動する、④エスケープ・CSP・認証・キャッシュ分離がテストで説明できる、⑤workerdとCloudflare本番で動作する、⑥Preact除去の実益（依存量・コード量・計測値）を確認できること、とする。</p>
+<h2>11. 代替案・残るリスク</h2>
+<p>この提案は決定事項ではなく、PreactのSuspenseが提供していた完成済みの非同期境界管理を<strong>明示的に小さな共通処理へ移す</strong>変更である。SSEの追加リクエスト、認証、切断、再接続、HTML挿入という運用負担があるため、単なるパッケージ削除ではない。</p>
+<p>最大の分岐は<strong>SSEクライアントを実装・保守する負担が、VNode/Preact依存を外す利益より小さいか</strong>である。もしSSEで表示開始が明確に遅くなる、複雑なネストや再試行を要する、重要コンテンツまでJS依存になるのであれば、Preact Suspenseを維持する方が合理的である。反対に、Server Islandsを「固定IDの独立したHTML断片を一度だけ差し替える」用途に限定できれば、独自処理は小さく保てる。</p>
+<p>また、Hono Router・MiddlewareはPreactの撤去とは別の設計判断であり、段階を分けて検証できる。<code>hono/html</code>だけを採用してNative <code>fetch()</code>を続けることも可能だが、長期的な共通基盤としてはHonoのHTTP層へ寄せるメリットがある、というのが本提案の立場である。</p>
+<h2>12. 提案する決定</h2>
+<ol>
+<li><strong>HTML生成の標準をPreact JSXから<code>hono/html</code>に変更する。Hono JSXは使用しない。</strong></li>
+<li><strong>HonoのRouter・MiddlewareをHTTPの標準入口とし、CloudflareのBindings・EntryPoint・Workers Cacheは引き続きCloudflare側の責任とする。</strong></li>
+<li><strong>Server Islandsの順不同表示を、初期HTMLのfallback + <code>streamSSE()</code> + 外部JSによる限定的なDOM断片挿入に変更する。</strong> SSE自体は必須技術ではなく、今回の選択であることを明記する。</li>
+<li><strong>Client IslandsはDSD + Custom Elementsのまま維持し、SSR生成部分だけをHono <code>html</code>へ変更する。</strong></li>
+<li><strong>Vite、Cloudflare Vite Plugin、workerd、Vitest、pnpm 12管理のNode.js、CI・AI Land、3配信モードは維持する。</strong></li>
+<li><strong>まずPoCで検証し、テスト合格と実測で移行を確定する。</strong> 本文中の概念コードを無検証の本番実装と見なさない。</li>
+</ol>
+<hr>
+<h2>参考資料</h2>
+<h3>現行設計（提案の基準）</h3>
+<ul>
+<li><code>pretty-islands-framework.md</code>、2026年10月28日最新版。特に1章、3.4節、5〜13章、16〜20章。</li>
+</ul>
+<h3>公式仕様・一次資料</h3>
+<ul>
+<li><a href="https://hono.dev/docs/helpers/html">Hono HTML Helper</a>　<code>html</code>、<code>raw</code>、HTML断片の関数合成。</li>
+<li><a href="https://hono.dev/docs/helpers/streaming">Hono Streaming Helper</a>　<code>stream()</code>、<code>streamSSE()</code>、ストリーム開始後のエラーの扱い。</li>
+<li><a href="https://hono.dev/docs/api/routing">Hono Routing</a>　Router、登録順、HTTPメソッド。</li>
+<li><a href="https://hono.dev/docs/guides/middleware">Hono Middleware</a>　<code>app.use()</code>、型付きMiddleware、例外処理。</li>
+<li><a href="https://hono.dev/docs/api/hono">Hono App API</a>　<code>app.fetch()</code>、<code>app.route()</code>、<code>app.onError()</code>。</li>
+<li><a href="https://hono.dev/docs/guides/jsx">Hono JSX</a>　<code>hono/jsx/streaming</code>のSuspenseは<code>hono/html</code>とは別の機能。</li>
+<li><a href="https://developers.cloudflare.com/workers/framework-guides/web-apps/more-web-frameworks/hono/">Cloudflare Hono Guide</a>　HonoとCloudflare Vite Pluginの併用。</li>
+<li><a href="https://developers.cloudflare.com/workers/cache/configuration/">Cloudflare Workers Cache Configuration</a>　EntryPoint単位のCacheとGateway構成。</li>
+<li><a href="https://developers.cloudflare.com/workers/runtime-apis/context/">Cloudflare Workers Context API</a>　<code>ctx.exports</code>と必要なcompatibility flag。</li>
+<li><a href="https://developers.cloudflare.com/workers/runtime-apis/streams/">Cloudflare Workers Streams</a>　ReadableStreamによるレスポンス配信。</li>
+<li><a href="https://developer.mozilla.org/en-US/docs/Web/API/EventSource/EventSource">MDN EventSource</a>　SSE受信APIの性質と認証オプション。</li>
+<li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/setHTMLUnsafe">MDN setHTMLUnsafe</a>　DSD対応とXSS sinkとしての注意。</li>
+<li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML">MDN innerHTML</a>　DSDを構築しない挙動。</li>
+</ul>
+<p><strong>検証状況の区別</strong>　HonoのAPI、Cloudflare Cache、EventSource、DOMの仕様は上記公式資料で確認した。Pretty Islands固有のHono版構成、SSE断片挿入、Named EntryPoint連携、性能・課金・本番動作は本提案では未検証であり、10章のテストで確認する。</p>

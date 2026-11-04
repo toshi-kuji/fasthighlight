@@ -1,0 +1,60 @@
+name: CI
+
+# Run only when a file that affects the test results changes (allowlist).
+# Changes to only documentation (*.md, docs/, website/), images (assets/),
+# benchmark scripts (scripts/ except release.sh, bench/node/)
+# do not trigger it. When CI starts reading more files, add them to the paths of both push and pull_request.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.go'
+      - '**go.mod'
+      - '**go.sum'
+      - '**/testdata/**'
+      - 'bench/internal/chromadata/data/**'
+      - '.github/workflows/**'
+      - 'scripts/release.sh'
+  pull_request:
+    paths:
+      - '**.go'
+      - '**go.mod'
+      - '**go.sum'
+      - '**/testdata/**'
+      - 'bench/internal/chromadata/data/**'
+      - '.github/workflows/**'
+      - 'scripts/release.sh'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - name: vet (main module)
+        run: go vet ./...
+      - name: test (main module)
+        run: go test -race -count=1 ./...
+      - name: vet and test (comparison with Chroma)
+        working-directory: compat
+        run: |
+          go vet ./...
+          go test -race -count=1 ./...
+      - name: fuzz (short)
+        run: |
+          go test -run='^$' -fuzz=FuzzTokenise -fuzztime=20s .
+          go test -run='^$' -fuzz=FuzzConvert -fuzztime=20s ./markdown
+          (cd compat && go test -run='^$' -fuzz=FuzzHTMLMatchesChroma -fuzztime=20s .)
+          (cd compat && go test -run='^$' -fuzz=FuzzTokensMatchChroma -fuzztime=20s .)
+      - name: vet and build (comparison implementations)
+        working-directory: bench
+        run: |
+          go vet ./...
+          go build -o /dev/null ./chroma-all ./chroma-subset ./chroma-subset-prof ./chroma-init
+          go build -o /dev/null -tags 'grammar_subset grammar_subset_typescript grammar_subset_javascript' ./gotreesitter
+      - name: fhl distribution archives (only check that they can be built)
+        run: scripts/release.sh dev "$RUNNER_TEMP/dist"
