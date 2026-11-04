@@ -47,10 +47,11 @@ func (w *writer) write(path string, data []byte) (writeStatus, error) {
 		if fi, serr := os.Stat(path); serr == nil && fi.IsDir() {
 			return 0, fmt.Errorf("fhl: %s is a folder; choose another -o", path)
 		}
-		// A file that exists but cannot be read cannot be compared, so it counts as a different file.
-		// (If it cannot be written either, an error is reported below.)
-		_, lerr := os.Lstat(path)
-		exists = lerr == nil
+		// fhl reads an existing file before it overwrites it. One it cannot read is an error, even with --force,
+		// rather than a file overwritten unseen. (If the path cannot be looked at either, writing reports the error.)
+		if _, lerr := os.Lstat(path); lerr == nil {
+			return 0, fmt.Errorf("fhl: %s already exists but cannot be read: %v; make it readable or remove it", path, cause(err))
+		}
 	}
 	if exists && !w.force && !w.all {
 		if !w.interactive {

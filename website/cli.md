@@ -121,6 +121,7 @@ If an output file already exists:
 - Without a terminal (CI, scripts, AI agents), nobody can answer, so `fhl` stops with an error that mentions `--force`.
 - `--force` overwrites without asking.
 - A file whose content would not change is left alone, without asking.
+- A file that `fhl` cannot read is an error, even with `--force`: `fhl` reads an existing file before overwriting it, and does not overwrite what it cannot see. Make it readable, or remove it.
 
 ## Collisions
 

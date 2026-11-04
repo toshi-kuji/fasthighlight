@@ -966,29 +966,30 @@ func TestOverwriteUnreadable(t *testing.T) {
 	}
 	dir := t.TempDir()
 	writeFiles(t, dir, map[string]string{"README.md": readme, "README.html": "old"})
-	if err := os.Chmod(filepath.Join(dir, "README.html"), 0o200); err != nil {
+	p := filepath.Join(dir, "README.html")
+	if err := os.Chmod(p, 0o200); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { os.Chmod(filepath.Join(dir, "README.html"), 0o644) })
-	// It cannot be compared, so it counts as an existing file: not overwritten without a terminal or --force.
-	code, _, stderr := fhlRun(t, dir, "", false, "README.md")
-	if code != 1 || !strings.Contains(stderr, "fhl: README.html already exists; use --force to overwrite it") {
-		t.Fatalf("not a terminal: code %d, %q", code, stderr)
+	t.Cleanup(func() { os.Chmod(p, 0o644) })
+	// fhl cannot see what is in it, so it is an error, on a terminal or not, and even with --force.
+	for _, c := range []struct {
+		stdin       string
+		interactive bool
+		args        []string
+	}{
+		{"", false, []string{"README.md"}},
+		{"y\n", true, []string{"README.md"}},
+		{"", false, []string{"--force", "README.md"}},
+	} {
+		code, _, stderr := fhlRun(t, dir, c.stdin, c.interactive, c.args...)
+		if code != 1 || !strings.Contains(stderr, "fhl: README.html already exists but cannot be read") ||
+			strings.Contains(stderr, "overwrite README.html?") {
+			t.Errorf("%v (terminal %v): code %d, %q", c.args, c.interactive, code, stderr)
+		}
 	}
-	// On a terminal, fhl asks first.
-	code, _, stderr = fhlRun(t, "", "n\n", true, "README.md")
-	if code != 0 || !strings.Contains(stderr, "overwrite README.html?") {
-		t.Fatalf("terminal: code %d, %q", code, stderr)
-	}
-	os.Chmod("README.html", 0o644)
-	if readFile(t, "README.html") != "old" {
-		t.Fatalf("overwritten without --force or a yes")
-	}
-	os.Chmod("README.html", 0o200)
-	code, _, stderr = fhlRun(t, "", "", false, "--force", "README.md")
-	os.Chmod("README.html", 0o644)
-	if code != 0 || readFile(t, "README.html") != readmeHTML {
-		t.Fatalf("--force: code %d, %q", code, stderr)
+	os.Chmod(p, 0o644)
+	if readFile(t, p) != "old" {
+		t.Errorf("an unreadable file was overwritten")
 	}
 }
 
@@ -1034,7 +1035,15 @@ func TestJSONWriteError(t *testing.T) {
 	t.Chdir(dir)
 	var errOut bytes.Buffer
 	code := run([]string{"--json", "-o", "out/", "a.md"}, env{stdin: strings.NewReader(""), stdout: failWriter{}, stderr: &errOut})
-	if code != 1 || !strings.Contains(errOut.String(), "--json") {
+	if code != 1 || !strings.Contains(errOut.String(), "fhl: cannot write the --json result") {
 		t.Errorf("code %d, %q", code, errOut.String())
+	}
+	// The lists, too, fail when standard output cannot be written.
+	for _, args := range [][]string{{"--list-langs"}, {"--list-langs", "--json"}, {"--list-themes"}, {"--list-themes", "--json"}} {
+		errOut.Reset()
+		code := run(args, env{stdin: strings.NewReader(""), stdout: failWriter{}, stderr: &errOut})
+		if code != 1 || !strings.Contains(errOut.String(), "fhl: cannot write to standard output") {
+			t.Errorf("%v: code %d, %q", args, code, errOut.String())
+		}
 	}
 }
