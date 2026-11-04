@@ -79,7 +79,7 @@ Code blocks look like this:
 
 ## A static site
 
-`--static-site` turns one folder of Markdown into a static site: pages that open in a browser as they are, in the same folder layout, ready to put on any web server or GitHub Pages.
+`--static-site` turns one folder of Markdown into a basic static site: pages that open in a browser as they are, in the same folder layout, ready to put on any web server or GitHub Pages. It is a starting point: the styles and the page layout are yours to add.
 
 ```sh
 fhl --static-site -o dist/ docs/
@@ -98,7 +98,7 @@ fhl --static-site --theme=light --html-lang ja -o dist/ docs/
 
 - **No styles beyond the code colors.** Headings, paragraphs and tables look as the browser shows them by default.
 - **No navigation, no template.** Pages do not link to each other unless your Markdown does.
-- **No way to add your own CSS or `<head>` content.** To use your own style sheet, add a `<link>` to the pages after converting them, for example with a short script.
+- **No options for your own CSS or `<head>` content.** Add your styles to the `highlight.css` at the top of the output after converting: every page already links to it. Converting again writes it anew (after asking, or with `--force`), so add them again each time (this site's [build script](https://github.com/toshi-kuji/fasthighlight/blob/main/website/build.sh) appends its style sheet this way). For other `<head>` content, edit the pages after converting, for example with a short script.
 
 ### Before you run it
 

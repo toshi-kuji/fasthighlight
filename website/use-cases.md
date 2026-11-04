@@ -38,7 +38,7 @@ Turn a folder of Markdown into a static site, and publish the output folder as i
 fhl --static-site --raw-html=unsafe --theme=light -o dist/ docs/
 ```
 
-Pages get a minimal `<head>`, headings get ids, links to `.md` files point to the pages, and images are copied. Write an `index.md` and your own links between pages; `fhl` adds no navigation and no styles beyond the code colors. Drop `--raw-html=unsafe` unless you write HTML in the Markdown yourself.
+Pages get a minimal `<head>`, headings get ids, links to `.md` files point to the pages, and images are copied. Write an `index.md` and your own links between pages; `fhl` adds no navigation and no styles beyond the code colors. To style the site, add your CSS to `dist/highlight.css` after converting. Drop `--raw-html=unsafe` unless you write HTML in the Markdown yourself.
 
 More: [A static site](cli.html#a-static-site) (what to prepare and what to watch out for), `fhl --help`
 

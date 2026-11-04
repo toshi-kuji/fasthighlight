@@ -4,7 +4,7 @@
 
 # fasthighlight
 
-Turn Markdown into HTML with syntax-highlighted code blocks, fast. A Go library, and a command (`fhl`) for everything else.
+Fast syntax highlighting written in Go, without regular expressions. Add it to goldmark to highlight code blocks in Markdown, or use the command `fhl` from any language to turn Markdown into HTML, up to a basic static site.
 
 ```sh
 go install github.com/toshi-kuji/fasthighlight/cmd/fhl@latest
@@ -60,7 +60,7 @@ err := markdown.NewConverter().Convert(src, w)
 ## What you can do with it
 
 - **Build a tech blog or documentation site.** In Go, add the library to your app; in any other language, call `fhl`. [How](use-cases.html#static-site-builds)
-- **Turn a folder into a static site.** `fhl --static-site -o dist/ docs/` makes pages that open as they are, with heading ids and links between pages. [How](use-cases.html#a-documentation-site)
+- **Turn a folder into a basic static site.** `fhl --static-site -o dist/ docs/` makes pages that open as they are, with heading ids, links between pages and one style sheet to add your styles to. [How](use-cases.html#a-documentation-site)
 - **Convert a lot of Markdown at once.** `fhl -o dist/ docs/` converts a whole folder in one run. [How](use-cases.html#convert-a-folder)
 - **Let an AI agent publish documents.** The AI writes Markdown, `fhl` turns it into HTML, and the AI styles it. `--json` gives the result in a form a program can read. [How](cli.html#ai-agents)
 - **Check documents in CI.** `fhl --check --strict docs/` fails when a code block has no language name or a language `fhl` does not color. [How](use-cases.html#check-in-ci)
@@ -73,7 +73,7 @@ err := markdown.NewConverter().Convert(src, w)
 
 ## What it is not for
 
-- **Designing a whole site.** `fhl --static-site` turns a folder into pages that open as they are, but navigation between pages and the page design are up to you.
+- **Replacing a full site generator.** `fhl --static-site` makes a basic site to build on: the page design, navigation and templates are up to you or your AI agent.
 - **Running in the browser.** There is no browser version.
 - **Coloring languages it does not support.** Code blocks in other languages are escaped but not colored.
 - **Starting `fhl` for every web request.** Starting takes a few milliseconds; in a Go server, use the library.
