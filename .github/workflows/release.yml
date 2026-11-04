@@ -1,0 +1,30 @@
+name: Release
+
+# When a tag (vX.Y.Z) is pushed, build the distribution archives of fhl and attach them to the release page.
+# The archives are built by scripts/release.sh (CI also runs it with the version set to dev to check that it works).
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: vet and test
+        run: |
+          go vet ./...
+          go test -race -count=1 ./...
+      - name: Build the archives
+        run: scripts/release.sh "$GITHUB_REF_NAME" dist
+      - name: Attach to the release page
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
