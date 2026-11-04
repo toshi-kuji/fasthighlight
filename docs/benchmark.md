@@ -4,7 +4,7 @@ How the speed numbers in the README and on the documentation site were measured,
 
 ## What you need
 
-- Go 1.25 or later (`go 1.25` in `go.mod`; if your Go is older, the `go` command fetches a newer toolchain).
+- Go 1.25 or later (`go 1.25` in `bench/go.mod` and `compat/go.mod`, because Chroma 2.27.0 needs it; if your Go is older, the `go` command fetches a newer toolchain). fasthighlight itself needs Go 1.24 or later.
 - To measure the comparison implementations too: Node 22 or later, and npm.
 - An input Markdown document. There are three:
   - `testdata/input.md` (the default): about 30 KB, 350 lines, 6 code blocks (2 TypeScript, 1 JavaScript, 3 plain text).

@@ -13,7 +13,7 @@ This page covers the basics. The full API is on pkg.go.dev:
 go get github.com/toshi-kuji/fasthighlight
 ```
 
-The module has two kinds of packages. One `go get` covers both.
+It needs Go 1.24 or later. The module has two kinds of packages. One `go get` covers both.
 
 | Package | What it does | Depends on |
 | --- | --- | --- |

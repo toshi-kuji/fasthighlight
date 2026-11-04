@@ -78,7 +78,7 @@ The colors are CSS variables (`--highlight-keyword`, `--highlight-string`, …) 
 go get github.com/toshi-kuji/fasthighlight
 ```
 
-The module has two kinds of packages:
+It needs Go 1.24 or later. The module has two kinds of packages:
 
 - `github.com/toshi-kuji/fasthighlight` highlights code. It has no dependencies outside the standard library.
 - `github.com/toshi-kuji/fasthighlight/markdown` turns Markdown into HTML with highlighted code blocks, using goldmark.
