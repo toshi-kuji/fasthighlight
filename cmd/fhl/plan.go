@@ -86,6 +86,7 @@ func plan(o *options) (jobs []*job, errs []*planError, err error) {
 			continue
 		}
 		folders++
+		skip := outputFolder(mode, o.out)
 		werr := filepath.WalkDir(in, func(p string, d fs.DirEntry, err error) error {
 			if err != nil {
 				errs = append(errs, &planError{msg: fmt.Sprintf("fhl: cannot read %s: %v", p, cause(err)), inputs: []string{p}})
@@ -96,6 +97,9 @@ func plan(o *options) (jobs []*job, errs []*planError, err error) {
 					return filepath.SkipDir
 				}
 				return nil
+			}
+			if p != in && d.IsDir() && skip(p) {
+				return filepath.SkipDir // the output folder, inside the input folder: earlier output is not input
 			}
 			if d.IsDir() || !isMarkdown(p) {
 				return nil
@@ -382,6 +386,16 @@ func joinAnd(names []string) string {
 }
 
 // copyJob is a file that --static-site copies as it is.
+// outputFolder returns a function that tells whether the folder p is the output folder (-o DIR/), so that a walk
+// of an input folder that contains it can skip it. Without an output folder, it is always false.
+func outputFolder(mode int, out string) func(p string) bool {
+	if mode != outDir {
+		return func(string) bool { return false }
+	}
+	key := fileKey(out)
+	return func(p string) bool { return fileKey(p) == key }
+}
+
 type copyJob struct{ src, dst string }
 
 // planCopies lists the files in the folder in that are not Markdown (images and so on), to be copied to the same
@@ -398,6 +412,7 @@ func planCopies(in, out string, outputs []string) ([]copyJob, []*planError) {
 	}
 	var copies []copyJob
 	var errs []*planError
+	skip := outputFolder(outDir, out)
 	_ = filepath.WalkDir(in, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			errs = append(errs, &planError{msg: fmt.Sprintf("fhl: cannot read %s: %v", p, cause(err)), inputs: []string{p}})
@@ -408,6 +423,9 @@ func planCopies(in, out string, outputs []string) ([]copyJob, []*planError) {
 				return filepath.SkipDir
 			}
 			return nil
+		}
+		if p != in && d.IsDir() && skip(p) {
+			return filepath.SkipDir // the output folder, inside the input folder: the pages and copies just written
 		}
 		if d.IsDir() || isMarkdown(p) {
 			return nil

@@ -52,6 +52,7 @@ The HTML file is named after the input, with `.html` (`README.md` becomes `READM
 
 - `highlight.css` is written once per folder that gets HTML, and shared by the HTML in it. It is not written with `--single-html` or `-o -`. With `--static-site`, it is written once, at the top of the output ([A static site](#a-static-site)).
 - The same input always gives the same output, byte for byte.
+- The output folder can be inside an input folder (`-o docs/dist/ docs/`): it is skipped when the input folder is read, so earlier output is not converted or copied again.
 
 ### The HTML
 
@@ -120,6 +121,7 @@ If an output file already exists:
 - Without a terminal (CI, scripts, AI agents), nobody can answer, so `fhl` stops with an error that mentions `--force`.
 - `--force` overwrites without asking.
 - A file whose content would not change is left alone, without asking.
+- A file that `fhl` cannot read is an error, even with `--force`: `fhl` reads an existing file before overwriting it, and does not overwrite what it cannot see. Make it readable, or remove it.
 
 ## Collisions
 

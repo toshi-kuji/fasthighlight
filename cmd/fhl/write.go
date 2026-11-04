@@ -35,29 +35,35 @@ type writer struct {
 // write writes data to path. If the file already exists, the overwrite rules apply.
 func (w *writer) write(path string, data []byte) (writeStatus, error) {
 	old, err := os.ReadFile(path)
+	exists := false
 	switch {
 	case err == nil:
 		if bytes.Equal(old, data) {
 			return unchanged, nil
 		}
-		if !w.force && !w.all {
-			if !w.interactive {
-				return 0, fmt.Errorf("fhl: %s already exists; use --force to overwrite it", path)
-			}
-			switch w.ask(path) {
-			case "y":
-			case "a":
-				w.all = true
-			default:
-				return skipped, nil
-			}
-		}
+		exists = true
 	case errors.Is(err, fs.ErrNotExist):
 	default:
 		if fi, serr := os.Stat(path); serr == nil && fi.IsDir() {
 			return 0, fmt.Errorf("fhl: %s is a folder; choose another -o", path)
 		}
-		// Even if it cannot be read, it may still be writable (if not, an error is reported below).
+		// fhl reads an existing file before it overwrites it. One it cannot read is an error, even with --force,
+		// rather than a file overwritten unseen. (If the path cannot be looked at either, writing reports the error.)
+		if _, lerr := os.Lstat(path); lerr == nil {
+			return 0, fmt.Errorf("fhl: %s already exists but cannot be read: %v; make it readable or remove it", path, cause(err))
+		}
+	}
+	if exists && !w.force && !w.all {
+		if !w.interactive {
+			return 0, fmt.Errorf("fhl: %s already exists; use --force to overwrite it", path)
+		}
+		switch w.ask(path) {
+		case "y":
+		case "a":
+			w.all = true
+		default:
+			return skipped, nil
+		}
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return 0, fmt.Errorf("fhl: cannot write %s: %v", path, cause(err))

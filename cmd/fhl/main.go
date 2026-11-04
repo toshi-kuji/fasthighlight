@@ -99,9 +99,9 @@ func run(args []string, e env) int {
 		fmt.Fprintln(e.stdout, "fhl "+versionString())
 		return 0
 	case o.listLangs:
-		return listLangs(e.stdout, o.json)
+		return outputStatus(e, listLangs(e.stdout, o.json))
 	case o.listThemes:
-		return listThemes(e.stdout, o.json)
+		return outputStatus(e, listThemes(e.stdout, o.json))
 	}
 	if msg := checkOptions(o); msg != "" {
 		fmt.Fprintln(e.stderr, msg)
@@ -302,8 +302,12 @@ func run(args []string, e env) int {
 	r.Summary.Skipped = len(r.Skipped)
 	r.Summary.Errors = len(r.Errors)
 	r.Summary.Seconds = float64(time.Since(start).Round(time.Millisecond)) / float64(time.Second)
+	jsonFailed := false
 	if o.json {
-		writeJSON(e.stdout, r)
+		if err := writeJSON(e.stdout, r); err != nil {
+			fmt.Fprintf(e.stderr, "fhl: cannot write the --json result: %v\n", err)
+			jsonFailed = true
+		}
 	} else if !o.quiet {
 		for _, u := range r.Uncolored {
 			at := u.File
@@ -320,7 +324,7 @@ func run(args []string, e env) int {
 			r.Summary.Files, r.Summary.Blocks, r.Summary.Uncolored, r.Summary.Seconds)
 	}
 	switch {
-	case len(r.Errors) > 0:
+	case len(r.Errors) > 0, jsonFailed:
 		return 1
 	case o.strict && len(r.Uncolored) > 0:
 		return 2
@@ -391,7 +395,7 @@ func versionString() string {
 }
 
 // listLangs writes the list of supported languages.
-func listLangs(w io.Writer, asJSON bool) int {
+func listLangs(w io.Writer, asJSON bool) error {
 	type lang struct {
 		Name      string   `json:"name"`
 		Aliases   []string `json:"aliases"`
@@ -409,8 +413,7 @@ func listLangs(w io.Writer, asJSON bool) int {
 	for _, l := range langs {
 		fmt.Fprintf(tw, "%s\t%s\t%s\n", l.Name, strings.Join(l.Aliases, ", "), strings.Join(l.Filenames, ", "))
 	}
-	tw.Flush()
-	return 0
+	return tw.Flush()
 }
 
 // themeError returns the error message for the value of --theme, or "" if it is valid.
@@ -420,7 +423,7 @@ func themeError(v string) string {
 }
 
 // listThemes writes the list of available color themes.
-func listThemes(w io.Writer, asJSON bool) int {
+func listThemes(w io.Writer, asJSON bool) error {
 	type entry struct {
 		Name  string `json:"name"`
 		Label string `json:"label"`
@@ -441,16 +444,23 @@ func listThemes(w io.Writer, asJSON bool) int {
 	for _, t := range list {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", t.Name, t.Label, t.Light, t.Dark)
 	}
-	tw.Flush()
-	return 0
+	return tw.Flush()
 }
 
-func writeJSON(w io.Writer, v any) int {
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(v); err != nil {
+// outputStatus returns the exit status for a command that writes only to standard output: 1, with a message, if
+// the writing failed (for example, a full disk or a closed pipe).
+func outputStatus(e env, err error) int {
+	if err != nil {
+		fmt.Fprintf(e.stderr, "fhl: cannot write to standard output: %v\n", err)
 		return 1
 	}
 	return 0
+}
+
+// writeJSON writes v to w as indented JSON.
+func writeJSON(w io.Writer, v any) error {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	enc.SetEscapeHTML(false)
+	return enc.Encode(v)
 }
