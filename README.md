@@ -183,4 +183,4 @@ Both documents are in [`testdata/`](testdata/). The implementations color code a
 
 ## License
 
-MIT. See [LICENSE](LICENSE). fasthighlight derives from Chroma and uses goldmark, and the color themes of `fhl` come from other projects; their licenses are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+MIT. See [LICENSE](LICENSE). The highlighting reproduces Chroma's lexing rules, token types and HTML output, the `markdown` package and `fhl` use goldmark, and the color themes of `fhl` are copied from other projects; their licenses are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
