@@ -123,7 +123,7 @@ They are escaped, without colors. `fhl --check` lists where they are.
 
 Each supported language has its own hand-written tokenizer, which reads the code character by character instead of trying a grammar of regular expressions at each position. This is a choice of speed over the reach of shared grammars; [how it works and what it costs](compatibility.html#why-it-is-fast).
 
-The numbers below come from our own measurements. To try your own documents, run `fhl`: it prints the number of files and the time at the end, for example `fhl: 128 files, 412 code blocks (3 uncolored) in 0.21s`.
+The numbers below come from our own measurements. Where the difference shows, and where it does not: [When the speed matters](use-cases.html#when-the-speed-matters). To try your own documents, run `fhl`: it prints the number of files and the time at the end, for example `fhl: 128 files, 412 code blocks (3 uncolored) in 0.21s`.
 
 ### Converting a whole Markdown document
 

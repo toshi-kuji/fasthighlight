@@ -2,7 +2,16 @@
 
 # Use cases
 
-What to run for common jobs. What each flag and function does is on [The command `fhl`](cli.html) and [The library](library.html).
+When the speed matters, and what to run for common jobs. What each flag and function does is on [The command `fhl`](cli.html) and [The library](library.html).
+
+## When the speed matters
+
+fasthighlight speeds up the highlighting of code; the rest of the Markdown is converted by goldmark. So the difference shows in two cases:
+
+- **Many code blocks, or long ones.** API references, tutorials and pages of source code, where most of the document is code. In a document that is mostly text, most of the time is goldmark's, and the difference is small.
+- **Converting on each request (server-side rendering).** When pages are made when someone opens them, because users write the Markdown, what a page shows depends on who reads it, or there are too many documents to build in advance. The time of each conversion becomes the server's load and the wait for every reader. See [A web server](#a-web-server).
+
+For anything else, such as converting a README now and then, any highlighter is fast enough. The numbers are under [Speed](index.html#speed) on the top page.
 
 ## With the command `fhl`
 
