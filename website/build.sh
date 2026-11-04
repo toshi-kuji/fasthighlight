@@ -58,7 +58,7 @@ for l in langs:
     names = ", ".join(f"`{a}`" for a in l["aliases"])
     files = ", ".join(f"`{f}`" for f in l["filenames"])
     rows.append(f"| {cell(l['name'])} | {cell(names)} | {cell(files)} |")
-markers = {"LANGS": "\n".join(rows)}
+markers = {"LANGS": "\n".join(rows), "LANG-COUNT": str(len(langs))}
 
 # <!-- THEMES -->: the themes.
 rows = ["| `THEME` | Name | Light | Dark |", "| --- | --- | --- | --- |"]

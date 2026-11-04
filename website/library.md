@@ -30,8 +30,10 @@ Either way, also import the languages to color (below).
 
 ```go
 import (
-	_ "github.com/toshi-kuji/fasthighlight/lang/all" // register all 24 languages
 	"github.com/toshi-kuji/fasthighlight/markdown"
+
+	_ "github.com/toshi-kuji/fasthighlight/lang/golang" // register the languages you use (here, Go)
+	// _ "github.com/toshi-kuji/fasthighlight/lang/all"  // or all the languages at once
 )
 
 err := markdown.NewConverter().Convert(src, w)
@@ -70,7 +72,7 @@ A language that is not registered is escaped without colors. To work with the to
 Languages are registered by importing their packages, as with `database/sql` drivers.
 
 ```go
-import _ "github.com/toshi-kuji/fasthighlight/lang/all" // all 24 languages
+import _ "github.com/toshi-kuji/fasthighlight/lang/all" // all the languages
 ```
 
 ```go
@@ -82,7 +84,7 @@ import (
 
 Only the languages you import are compiled into your program, and each language you import is compiled in even if no document uses it. Keyword tables and the like are built when a language is first used, not at import.
 
-In a small program on Linux amd64 built with `-ldflags "-s -w"`, calling only `Highlight` took about 1.61 MB; importing the Go language added about 0.07 MB, and importing all 24 languages about 0.60 MB. Using `markdown.Converter` (with goldmark) added about 1.04 MB more.
+In a small program on Linux amd64 built with `-ldflags "-s -w"`, calling only `Highlight` took about 1.61 MB; importing the Go language added about 0.07 MB, and importing all the languages (`lang/all`) about 0.60 MB. Using `markdown.Converter` (with goldmark) added about 1.04 MB more.
 
 ## Find code blocks that will not be colored
 
@@ -106,7 +108,7 @@ err := c.Render(w, doc)
 | `Unsupported` | fasthighlight does not support the language |
 | `NoLanguage` | the block has no language name |
 
-To check a single language name, use [`fasthighlight.LookupSupported`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight#LookupSupported). It searches all 24 languages, imported or not, and the result's `Package` is the package to import. [`LookupRegistered`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight#LookupRegistered) searches only the languages that can color now.
+To check a single language name, use [`fasthighlight.LookupSupported`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight#LookupSupported). It searches all the supported languages, imported or not, and the result's `Package` is the package to import. [`LookupRegistered`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight#LookupRegistered) searches only the languages that can color now.
 
 Language names are matched as in Chroma: case does not matter, and a name that is not a language name or alias is tried as a file extension (`mts`) or file name (`app.ts`). Only the first word after the ``` is used (`ts title="app.ts"` is `ts`).
 

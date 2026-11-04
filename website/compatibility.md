@@ -4,7 +4,7 @@
 
 fasthighlight follows [Chroma](https://github.com/alecthomas/chroma), the syntax highlighter widely used in Go, as its reference.
 
-> Chroma 2.27.0 is the reference, and the intended changes to its results are listed. For the 24 supported languages, the tokens are checked by fuzz tests to match Chroma everywhere except at those changes.
+> Chroma 2.27.0 is the reference, and the intended changes to its results are listed. For the supported languages, the tokens are checked by fuzz tests to match Chroma everywhere except at those changes.
 
 Fuzz tests compare the two on large numbers of generated inputs. They are a check, not a proof that every input matches.
 
@@ -57,7 +57,7 @@ Many highlighters, Chroma among them, use grammars made of regular expressions (
 
 ### How fasthighlight does it
 
-fasthighlight supports 24 languages, and each has its own hand-written tokenizer. From its current state and the next character, it goes straight to what needs doing: for a letter, it reads the whole name and looks it up in the keyword table. There is no step that tries many grammar rules at each position.
+fasthighlight supports a chosen set of languages ([the list](index.html#supported-languages)), and each has its own hand-written tokenizer. From its current state and the next character, it goes straight to what needs doing: for a letter, it reads the whole name and looks it up in the keyword table. There is no step that tries many grammar rules at each position.
 
 ### The trade-off
 
@@ -67,7 +67,7 @@ fasthighlight supports 24 languages, and each has its own hand-written tokenizer
 | Maintaining a grammar | edit the grammar file | edit the code |
 | Existing grammars | reusable | not usable as they are |
 | Speed | depends on a general regular expression engine | each language can be tuned |
-| Number of languages | many (giallo: more than 220) | 24 |
+| Number of languages | many (giallo: more than 220) | only the [supported ones](index.html#supported-languages) |
 
 To keep the maintenance down, fasthighlight follows Chroma's rules instead of designing its own, generates long word lists from Chroma's rules, and checks the result against Chroma with fuzz tests.
 
