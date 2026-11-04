@@ -1,11 +1,11 @@
 # Third-party notices
 
-fasthighlight uses or derives from the following software.
+fasthighlight reproduces, uses or copies from the following software. Each entry says what is used and where.
 
 ## Chroma
 
 - https://github.com/alecthomas/chroma
-- Used: token type values, names and CSS class names (mirrored in `token.go`), the lexing rules of the supported languages and of the regexp2 engine Chroma uses (reproduced without regular expressions in `internal/` and `lang/`), language names, aliases and filename patterns (mirrored in `catalog.go`), the coalescing of adjacent tokens (`CoalesceLimit`), the HTML output format of `formatters/html` (reproduced in `html.go`), lexer rules (XML) as the reference for tokenizers, and styles (`github.xml`, used by the baselines in `bench/`).
+- Used: token type values, names and CSS class names (mirrored in `token.go`), the lexing rules of the supported languages and of the regexp2 engine Chroma uses (reproduced without regular expressions in `internal/` and `lang/`, with the keyword and other word lists generated from Chroma's rules into the `lists.go` files), language names, aliases and filename patterns (mirrored in `catalog.go`), the coalescing of adjacent tokens (`CoalesceLimit`), the HTML output format of `formatters/html` (reproduced in `html.go`), lexer rules (XML) as the reference for tokenizers, and styles (`github.xml`, used by the baselines in `bench/`).
 
 ```
 Copyright (C) 2017 Alec Thomas
