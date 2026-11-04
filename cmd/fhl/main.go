@@ -302,8 +302,12 @@ func run(args []string, e env) int {
 	r.Summary.Skipped = len(r.Skipped)
 	r.Summary.Errors = len(r.Errors)
 	r.Summary.Seconds = float64(time.Since(start).Round(time.Millisecond)) / float64(time.Second)
+	jsonFailed := false
 	if o.json {
-		writeJSON(e.stdout, r)
+		if err := encodeJSON(e.stdout, r); err != nil {
+			fmt.Fprintf(e.stderr, "fhl: cannot write the --json result: %v\n", err)
+			jsonFailed = true
+		}
 	} else if !o.quiet {
 		for _, u := range r.Uncolored {
 			at := u.File
@@ -320,7 +324,7 @@ func run(args []string, e env) int {
 			r.Summary.Files, r.Summary.Blocks, r.Summary.Uncolored, r.Summary.Seconds)
 	}
 	switch {
-	case len(r.Errors) > 0:
+	case len(r.Errors) > 0, jsonFailed:
 		return 1
 	case o.strict && len(r.Uncolored) > 0:
 		return 2
@@ -446,11 +450,16 @@ func listThemes(w io.Writer, asJSON bool) int {
 }
 
 func writeJSON(w io.Writer, v any) int {
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(v); err != nil {
+	if encodeJSON(w, v) != nil {
 		return 1
 	}
 	return 0
+}
+
+// encodeJSON writes v to w as indented JSON.
+func encodeJSON(w io.Writer, v any) error {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	enc.SetEscapeHTML(false)
+	return enc.Encode(v)
 }

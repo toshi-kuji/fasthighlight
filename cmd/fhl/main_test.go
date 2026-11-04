@@ -959,3 +959,82 @@ func TestRewriteMDLink(t *testing.T) {
 		}
 	}
 }
+
+func TestOverwriteUnreadable(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("needs a file that is writable but not readable (not on Windows, and not as root)")
+	}
+	dir := t.TempDir()
+	writeFiles(t, dir, map[string]string{"README.md": readme, "README.html": "old"})
+	if err := os.Chmod(filepath.Join(dir, "README.html"), 0o200); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(filepath.Join(dir, "README.html"), 0o644) })
+	// It cannot be compared, so it counts as an existing file: not overwritten without a terminal or --force.
+	code, _, stderr := fhlRun(t, dir, "", false, "README.md")
+	if code != 1 || !strings.Contains(stderr, "fhl: README.html already exists; use --force to overwrite it") {
+		t.Fatalf("not a terminal: code %d, %q", code, stderr)
+	}
+	// On a terminal, fhl asks first.
+	code, _, stderr = fhlRun(t, "", "n\n", true, "README.md")
+	if code != 0 || !strings.Contains(stderr, "overwrite README.html?") {
+		t.Fatalf("terminal: code %d, %q", code, stderr)
+	}
+	os.Chmod("README.html", 0o644)
+	if readFile(t, "README.html") != "old" {
+		t.Fatalf("overwritten without --force or a yes")
+	}
+	os.Chmod("README.html", 0o200)
+	code, _, stderr = fhlRun(t, "", "", false, "--force", "README.md")
+	os.Chmod("README.html", 0o644)
+	if code != 0 || readFile(t, "README.html") != readmeHTML {
+		t.Fatalf("--force: code %d, %q", code, stderr)
+	}
+}
+
+func TestOutputInsideInput(t *testing.T) {
+	dir := t.TempDir()
+	writeFiles(t, dir, map[string]string{"docs/index.md": readme, "docs/img/logo.png": "PNG"})
+	for _, args := range [][]string{
+		{"--static-site", "-o", "docs/dist/", "docs/"},
+		{"-o", "docs/out/", "docs/"},
+	} {
+		for i := range 2 { // a second run must not convert or copy the first run's output
+			code, _, stderr := fhlRun(t, dir, "", false, append([]string{"--force"}, args...)...)
+			if code != 0 {
+				t.Fatalf("%v, run %d: code %d, %q", args, i+1, code, stderr)
+			}
+			dir = ""
+		}
+		out := filepath.Clean(args[len(args)-2])
+		var nested []string
+		filepath.WalkDir(out, func(p string, d os.DirEntry, err error) error {
+			if err == nil && d.IsDir() && p != out && strings.HasPrefix(d.Name(), filepath.Base(out)) {
+				nested = append(nested, p)
+			}
+			return nil
+		})
+		if len(nested) > 0 {
+			t.Errorf("%v: the output was copied into itself: %v", args, nested)
+		}
+	}
+	if !exists("docs/dist/index.html") || !exists("docs/dist/img/logo.png") || !exists("docs/out/index.html") {
+		t.Errorf("pages or copies missing")
+	}
+}
+
+// failWriter fails every write, like a full disk or a closed pipe.
+type failWriter struct{}
+
+func (failWriter) Write([]byte) (int, error) { return 0, errors.New("no space left on device") }
+
+func TestJSONWriteError(t *testing.T) {
+	dir := t.TempDir()
+	writeFiles(t, dir, map[string]string{"a.md": readme})
+	t.Chdir(dir)
+	var errOut bytes.Buffer
+	code := run([]string{"--json", "-o", "out/", "a.md"}, env{stdin: strings.NewReader(""), stdout: failWriter{}, stderr: &errOut})
+	if code != 1 || !strings.Contains(errOut.String(), "--json") {
+		t.Errorf("code %d, %q", code, errOut.String())
+	}
+}
