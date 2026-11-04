@@ -268,6 +268,18 @@ func LookupSupported(name string) *Language {
 	return catalog.lookup(name)
 }
 
+// IsPlainText reports whether a code block's language name marks it as plain text on purpose: the name or
+// an alias of Chroma's plaintext lexer (plaintext, text, plain, no-highlight), in any case. Such a block is
+// not highlighted, like any language that is not registered, but it is not missing a language, so
+// markdown.Scan and fhl do not report it.
+func IsPlainText(name string) bool {
+	switch strings.ToLower(name) {
+	case "plaintext", "text", "plain", "no-highlight":
+		return true
+	}
+	return false
+}
+
 // Languages returns the registered languages in name order.
 func Languages() []*Language {
 	registry.RLock()

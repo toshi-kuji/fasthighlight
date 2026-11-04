@@ -157,7 +157,7 @@ All flags and examples: `fhl --help`.
 
 ## Results and exit status
 
-At the end, `fhl` prints one summary line to standard error, plus one line per code block that is not colored:
+At the end, `fhl` prints one summary line to standard error, plus one line per code block that is not colored. Blocks marked as plain text (`text` and the like) are not listed or counted:
 
 ```text
 docs/setup.md:42: code block language "hs" is not supported (see fhl --list-langs)

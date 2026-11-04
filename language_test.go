@@ -134,3 +134,20 @@ func TestBuiltinsAreRegistered(t *testing.T) {
 		}
 	}
 }
+
+// The names of Chroma's plaintext lexer mark a code block as plain text on purpose.
+func TestIsPlainText(t *testing.T) {
+	for _, name := range []string{"text", "Text", "plaintext", "plain", "no-highlight", "PLAIN"} {
+		if !IsPlainText(name) {
+			t.Errorf("IsPlainText(%q) = false", name)
+		}
+	}
+	for _, name := range []string{"", "txt", "console", "go", "texts"} {
+		if IsPlainText(name) {
+			t.Errorf("IsPlainText(%q) = true", name)
+		}
+	}
+	if LookupSupported("text") != nil {
+		t.Errorf("text is a supported language")
+	}
+}

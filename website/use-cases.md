@@ -35,7 +35,7 @@ Fail a CI job when a code block has no language name, or a language `fhl` does n
 fhl --check --strict docs/
 ```
 
-`--check` writes nothing. With `--strict`, the exit status is 2 if any block is not colored, and each one is listed with its file and line.
+`--check` writes nothing. With `--strict`, the exit status is 2 if any block is not colored, and each one is listed with its file and line. Mark plain text as ` ```text `: such blocks are not counted.
 
 More: [Results and exit status](cli.html#results-and-exit-status), `fhl --help`
 

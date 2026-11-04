@@ -13,7 +13,7 @@ fasthighlight is fast syntax highlighting written in Go, without regular express
 
 fasthighlight supports 24 languages: Bash, C, C#, C++, CSS, Diff, Go, HTML, Java, JavaScript, JSON, Kotlin, Markdown, PHP, Python, R, Ruby, Rust, SQL, Swift, TOML, TypeScript, XML, YAML.
 
-The names, aliases and file name patterns are the same as Chroma's (`fhl --list-langs` prints them). Code blocks in other languages, or without a language name, are escaped but not colored.
+The names, aliases and file name patterns are the same as Chroma's (`fhl --list-langs` prints them). Code blocks in other languages, or without a language name, are escaped but not colored. Code blocks marked as plain text (`text`, `plaintext`, `plain` or `no-highlight`, the names of Chroma's plain text lexer) are escaped too, and are not reported as uncolored, since that is what they ask for.
 
 ## The command: `fhl`
 
