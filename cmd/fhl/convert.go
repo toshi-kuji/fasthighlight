@@ -149,7 +149,7 @@ func convertMarkdown(md goldmark.Markdown, name string, src []byte) (*converted,
 			switch {
 			case lang == "":
 				c.uncolored = append(c.uncolored, uncolored{File: name, Line: line, Reason: "no-language"})
-			case fh.LookupRegistered(lang) == nil:
+			case fh.LookupRegistered(lang) == nil && !fh.IsPlainText(lang): // plain text is uncolored on purpose
 				c.uncolored = append(c.uncolored, uncolored{File: name, Line: line, Lang: lang, Reason: "unsupported"})
 			}
 		}

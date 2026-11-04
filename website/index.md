@@ -113,7 +113,7 @@ Yes. `fhl` sets up goldmark with GFM and `markdown.Extension` itself, so that `-
 `fhl` has goldmark built in, so it needs nothing else to convert Markdown. It uses goldmark with GFM only; other goldmark extensions (such as footnotes) cannot be turned on from `fhl`. Installing `fhl` does not make goldmark available to your Go programs; for that, `go get` it in your module.
 
 **What happens to code blocks in languages it does not support?**
-They are escaped, without colors. `fhl --check` lists where they are.
+They are escaped, without colors. `fhl --check` lists where they are, except blocks marked as plain text (`text` and the like), which ask for no colors.
 
 </div>
 
@@ -165,6 +165,8 @@ fasthighlight supports <!-- LANG-COUNT --> languages.
 <!-- LANGS -->
 
 Names, aliases and file name patterns are the same as [Chroma](https://github.com/alecthomas/chroma)'s. The highlighting follows Chroma 2.27.0, with [a few deliberate fixes](compatibility.html).
+
+Code blocks marked as plain text (`text`, `plaintext`, `plain` or `no-highlight`, the names of Chroma's plain text lexer) are escaped without colors, and are not reported as uncolored, since that is what they ask for.
 
 </div>
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	_ "github.com/toshi-kuji/fasthighlight/lang/all"
@@ -81,4 +82,23 @@ func ExampleScan() {
 	// Output:
 	// guide.md:5: "cobol" は対象外の言語なので、色付けしない
 	// guide.md:9: 言語名がないので、色付けしない
+}
+
+// Plain text blocks are left uncolored on purpose, so they are not reported.
+func TestScanPlainText(t *testing.T) {
+	c := NewConverter()
+	d := c.Parse("a.md", []byte("```text\nx\n```\n\n```plaintext\ny\n```\n\n```no-highlight\nz\n```\n"))
+	r := Scan(d)
+	if r.Uncolored() || len(r.Unsupported) != 0 || len(r.NoLanguage) != 0 {
+		t.Errorf("plain text reported as uncolored: %+v", r)
+	}
+	var out bytes.Buffer
+	if err := c.Render(&out, d); err != nil {
+		t.Fatal(err)
+	}
+	// The HTML stays as before: escaped, like any language that is not highlighted.
+	if want := `<pre class="highlight" data-lang="text"><code><span class="line"><span class="cl">x
+</span></span></code></pre>`; !strings.Contains(out.String(), want) {
+		t.Errorf("HTML changed:\n%s", out.String())
+	}
 }

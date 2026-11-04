@@ -39,7 +39,8 @@ func (r *ScanResult) Uncolored() bool {
 }
 
 // Scan collects the language names of the documents' code blocks (those fenced with ``` or ~~~) and returns
-// the languages to highlight and the list of blocks that are not highlighted. Several documents are
+// the languages to highlight and the list of blocks that are not highlighted. Blocks marked as plain text
+// (see fasthighlight.IsPlainText) are not highlighted either, but are not listed. Several documents are
 // checked together, once. Scan does not prepare the languages (build keyword tables and so on): each
 // language is prepared when its first code block is highlighted.
 // Calling it before Render lets you report the list before conversion.
@@ -55,6 +56,8 @@ func Scan(docs ...*Document) *ScanResult {
 				r.NoLanguage = append(r.NoLanguage, cb)
 			case l != nil:
 				used[l] = true
+			case fh.IsPlainText(name):
+				// Plain text on purpose (text and the like): not highlighted, and not reported.
 			default:
 				if c := fh.LookupSupported(name); c != nil {
 					cb.Package = c.Package

@@ -108,6 +108,8 @@ err := c.Render(w, doc)
 | `Unsupported` | fasthighlight does not support the language |
 | `NoLanguage` | the block has no language name |
 
+Blocks marked as plain text (`text`, `plaintext`, `plain` or `no-highlight`) are not colored either, but are in none of the groups. [`fasthighlight.IsPlainText`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight#IsPlainText) tells such names.
+
 To check a single language name, use [`fasthighlight.LookupSupported`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight#LookupSupported). It searches all the supported languages, imported or not, and the result's `Package` is the package to import. [`LookupRegistered`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight#LookupRegistered) searches only the languages that can color now.
 
 Language names are matched as in Chroma: case does not matter, and a name that is not a language name or alias is tried as a file extension (`mts`) or file name (`app.ts`). Only the first word after the ``` is used (`ts title="app.ts"` is `ts`).

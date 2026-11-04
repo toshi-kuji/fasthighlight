@@ -525,7 +525,8 @@ func TestDataLang(t *testing.T) {
 
 func TestCheckAndStrict(t *testing.T) {
 	dir := t.TempDir()
-	writeFiles(t, dir, map[string]string{"docs/setup.md": "a\n\n```hs\nx\n```\n", "docs/intro.md": "```\nx\n```\n", "docs/ok.md": readme})
+	writeFiles(t, dir, map[string]string{"docs/setup.md": "a\n\n```hs\nx\n```\n", "docs/intro.md": "```\nx\n```\n", "docs/ok.md": readme,
+		"docs/plain.md": "```text\nx\n```\n\n```plain\ny\n```\n"}) // plain text is not reported
 	code, stdout, stderr := fhlRun(t, dir, "", false, "--check", "docs/")
 	if code != 0 || stdout != "" {
 		t.Fatalf("code %d, %q", code, stdout)
@@ -533,7 +534,7 @@ func TestCheckAndStrict(t *testing.T) {
 	for _, s := range []string{
 		filepath.Join("docs", "setup.md") + `:3: code block language "hs" is not supported (see fhl --list-langs)`,
 		filepath.Join("docs", "intro.md") + ":1: code block has no language name",
-		"fhl: 3 files, 3 code blocks (2 uncolored) in ",
+		"fhl: 4 files, 5 code blocks (2 uncolored) in ",
 	} {
 		if !strings.Contains(stderr, s) {
 			t.Errorf("no %q in %q", s, stderr)
