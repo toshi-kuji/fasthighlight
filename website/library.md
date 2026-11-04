@@ -30,8 +30,10 @@ Either way, also import the languages to color (below).
 
 ```go
 import (
-	_ "github.com/toshi-kuji/fasthighlight/lang/all" // register all 24 languages
 	"github.com/toshi-kuji/fasthighlight/markdown"
+
+	_ "github.com/toshi-kuji/fasthighlight/lang/golang" // register the languages you use (here, Go)
+	// _ "github.com/toshi-kuji/fasthighlight/lang/all"  // or all the languages at once
 )
 
 err := markdown.NewConverter().Convert(src, w)
