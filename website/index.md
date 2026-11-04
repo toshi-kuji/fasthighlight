@@ -12,7 +12,7 @@ go install github.com/toshi-kuji/fasthighlight/cmd/fhl@latest
 
 <!-- Add after the first release: download a single binary from the releases page (TODO-releases) -->
 
-[GitHub](https://github.com/toshi-kuji/fasthighlight) · [Contents](contents.html)
+[GitHub](https://github.com/toshi-kuji/fasthighlight) · [Contents](contents.html) · [Demo](themes.html#samples)
 
 </div>
 
