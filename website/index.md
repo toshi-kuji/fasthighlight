@@ -4,7 +4,7 @@
 
 # fasthighlight
 
-Turn Markdown into HTML with syntax-highlighted code blocks, fast. A Go library, and a command (`fhl`) for everything else.
+Fast syntax highlighting written in Go, without regular expressions. Add it to goldmark to highlight code blocks in Markdown, or use the command `fhl` from any language to turn Markdown into HTML, up to a basic static site.
 
 ```sh
 go install github.com/toshi-kuji/fasthighlight/cmd/fhl@latest
@@ -12,7 +12,7 @@ go install github.com/toshi-kuji/fasthighlight/cmd/fhl@latest
 
 <!-- Add after the first release: download a single binary from the releases page (TODO-releases) -->
 
-[GitHub](https://github.com/toshi-kuji/fasthighlight) · [Contents](contents.html)
+[GitHub](https://github.com/toshi-kuji/fasthighlight) · [Contents](contents.html) · [Demo](themes.html#samples)
 
 </div>
 
@@ -60,7 +60,7 @@ err := markdown.NewConverter().Convert(src, w)
 ## What you can do with it
 
 - **Build a tech blog or documentation site.** In Go, add the library to your app; in any other language, call `fhl`. [How](use-cases.html#static-site-builds)
-- **Turn a folder into a static site.** `fhl --static-site -o dist/ docs/` makes pages that open as they are, with heading ids and links between pages. [How](use-cases.html#a-documentation-site)
+- **Turn a folder into a basic static site.** `fhl --static-site -o dist/ docs/` makes pages that open as they are, with heading ids, links between pages and one style sheet to add your styles to. This site is built that way, in CI. [How](use-cases.html#a-documentation-site)
 - **Convert a lot of Markdown at once.** `fhl -o dist/ docs/` converts a whole folder in one run. [How](use-cases.html#convert-a-folder)
 - **Let an AI agent publish documents.** The AI writes Markdown, `fhl` turns it into HTML, and the AI styles it. `--json` gives the result in a form a program can read. [How](cli.html#ai-agents)
 - **Check documents in CI.** `fhl --check --strict docs/` fails when a code block has no language name or a language `fhl` does not color. [How](use-cases.html#check-in-ci)
@@ -73,7 +73,7 @@ err := markdown.NewConverter().Convert(src, w)
 
 ## What it is not for
 
-- **Designing a whole site.** `fhl --static-site` turns a folder into pages that open as they are, but navigation between pages and the page design are up to you.
+- **Replacing a full site generator.** `fhl --static-site` makes a basic site to build on: the page design, navigation and templates are up to you or your AI agent.
 - **Running in the browser.** There is no browser version.
 - **Coloring languages it does not support.** Code blocks in other languages are escaped but not colored.
 - **Starting `fhl` for every web request.** Starting takes a few milliseconds; in a Go server, use the library.
@@ -123,7 +123,7 @@ They are escaped, without colors. `fhl --check` lists where they are.
 
 Each supported language has its own hand-written tokenizer, which reads the code character by character instead of trying a grammar of regular expressions at each position. This is a choice of speed over the reach of shared grammars; [how it works and what it costs](compatibility.html#why-it-is-fast).
 
-The numbers below come from our own measurements. To try your own documents, run `fhl`: it prints the number of files and the time at the end, for example `fhl: 128 files, 412 code blocks (3 uncolored) in 0.21s`.
+The numbers below come from our own measurements. Where the difference shows, and where it does not: [When the speed matters](use-cases.html#when-the-speed-matters). To try your own documents, run `fhl`: it prints the number of files and the time at the end, for example `fhl: 128 files, 412 code blocks (3 uncolored) in 0.21s`.
 
 ### Converting a whole Markdown document
 
@@ -178,6 +178,6 @@ Names, aliases and file name patterns are the same as [Chroma](https://github.co
 - [Themes and CSS](themes.html): the color themes, CSS variables and token classes.
 - [Chroma compatibility](compatibility.html): what matches Chroma, what was changed, and why it is fast.
 
-This site is built from Markdown with `fhl`, and its code blocks are highlighted by fasthighlight. See [the source](https://github.com/toshi-kuji/fasthighlight/tree/main/website) and [the build script](https://github.com/toshi-kuji/fasthighlight/blob/main/website/build.sh) on GitHub.
+This site is built from Markdown with `fhl` in CI: on every push to `main`, [a GitHub Actions workflow](https://github.com/toshi-kuji/fasthighlight/blob/main/.github/workflows/pages.yml) runs [the build script](https://github.com/toshi-kuji/fasthighlight/blob/main/website/build.sh) and publishes the result on GitHub Pages. Its code blocks are highlighted by fasthighlight. See [the source](https://github.com/toshi-kuji/fasthighlight/tree/main/website) on GitHub.
 
 </div>

@@ -2,10 +2,10 @@
 
 # fasthighlight
 
-fasthighlight is a Go library and a command (`fhl`) that turn Markdown into HTML with syntax-highlighted code blocks, fast. Each supported language has its own hand-written tokenizer, with no regular expressions. The highlighting follows the language definitions of [Chroma](https://github.com/alecthomas/chroma) 2.27.0, with a few deliberate fixes.
+fasthighlight is fast syntax highlighting written in Go, without regular expressions: each supported language has its own hand-written tokenizer. The highlighting follows the language definitions of [Chroma](https://github.com/alecthomas/chroma) 2.27.0, with a few deliberate fixes. Add it to [goldmark](https://github.com/yuin/goldmark) to highlight the code blocks in Markdown, or use the command `fhl` from any language to turn Markdown into HTML, up to a basic static site.
 
 - **Fast.** In our measurements, converting a Markdown document was about 4.4 to 4.6 times as fast as Node with markdown-it and highlight.js, and about 7 to 20 times as fast as Chroma with all its languages ([numbers](#speed)).
-- **Two ways in.** Go packages for Go programs (`markdown` adds highlighting to [goldmark](https://github.com/yuin/goldmark); `fasthighlight` highlights code on its own), and the `fhl` command for everything else (static site builds in other languages, CI, AI agents).
+- **Two ways in.** Go packages for Go programs (`markdown` adds highlighting to goldmark; `fasthighlight` highlights code on its own), and the `fhl` command for everything else (static site builds in other languages, CI, AI agents).
 - **Small dependency footprint.** The highlighting package has no dependencies outside the standard library. The `markdown` package depends only on goldmark.
 - **Plain HTML and CSS.** Code blocks become `<pre class="highlight">` with short, widely used token classes (`k`, `s`, `nf`, … as in Pygments, Chroma and Rouge). The output is the same for the same input, byte for byte.
 
@@ -39,7 +39,7 @@ fhl -o dist/ docs/ --json          # machine-readable result, for scripts and AI
 fhl --help                         # all flags, with examples
 ```
 
-By default `fhl` writes the HTML of the document body only (no `<html>` or `<head>`), plus `highlight.css` with the code colors, so that you or an AI agent can put it into your own page and style it. `--single-html` makes a page that opens as it is, and `--static-site` turns a folder into pages that open as they are (with ids on headings, links to `.md` files rewritten to `.html`, and the other files copied), still with no styles beyond the code colors.
+By default `fhl` writes the HTML of the document body only (no `<html>` or `<head>`), plus `highlight.css` with the code colors, so that you or an AI agent can put it into your own page and style it. `--single-html` makes a page that opens as it is, and `--static-site` turns a folder into a basic static site: pages that open as they are, with ids on headings, links to `.md` files rewritten to `.html`, the other files copied, and one `highlight.css` at the top that every page links to. It has no styles beyond the code colors; add your own styles (by hand or with an AI agent) to that `highlight.css`.
 
 Other behavior worth knowing:
 
