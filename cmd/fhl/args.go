@@ -186,7 +186,7 @@ Flags:
   -o PATH            where to write: a file, a folder (ends with / or exists), or - for standard output.
                      Default: next to each input.
   --lang NAME        read code files and standard input as code of this language
-  --single-html      write a standalone HTML with the CSS embedded in <head>
+  --single-html      write a standalone HTML with the CSS embedded in <head>, and ids on headings
   --static-site      turn one folder into a static site: full pages linking one highlight.css at the
                      top, ids on headings, links to .md rewritten to .html, other files copied
   --html-lang LANG   the lang of <html> with --static-site (default "en")

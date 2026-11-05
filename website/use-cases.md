@@ -85,7 +85,7 @@ Make one Markdown file into one HTML file that opens as it is, to send to someon
 fhl --single-html README.md
 ```
 
-The CSS is in `<head>`, and nothing else is needed.
+The CSS is in `<head>`, and nothing else is needed. Headings get ids, so a table of contents in the Markdown (`[Setup](#setup)`) works.
 
 More: [The HTML](cli.html#the-html), `fhl --help`
 

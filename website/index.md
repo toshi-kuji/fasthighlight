@@ -166,7 +166,7 @@ fasthighlight supports <!-- LANG-COUNT --> languages.
 
 Names, aliases and file name patterns are the same as [Chroma](https://github.com/alecthomas/chroma)'s. The highlighting follows Chroma 2.27.0, with [a few deliberate fixes](compatibility.html).
 
-Code blocks marked as plain text (`text`, `plaintext`, `plain` or `no-highlight`, the names of Chroma's plain text lexer) are escaped without colors, and are not reported as uncolored, since that is what they ask for.
+Code blocks marked as plain text (`text`, `plaintext`, `plain` or `no-highlight`, the names of Chroma's plain text lexer) are escaped without colors, and are not reported as uncolored, since that is what they ask for. Write ` ```text ` for output, logs and anything else that should stay plain.
 
 </div>
 
