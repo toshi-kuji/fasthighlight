@@ -35,12 +35,15 @@ type converted struct {
 }
 
 // newMarkdown builds fhl's goldmark. It adds GFM and the fasthighlight extension and sets the handling of raw HTML to rawHTML.
-// For --static-site (site), it also gives headings ids and rewrites links to Markdown files to the .html pages.
-func newMarkdown(rawHTML string, p markdown.Parallelism, site bool) goldmark.Markdown {
+// For pages that open as they are (--single-html and --static-site, ids), it gives headings ids, so that links
+// within a page work. For --static-site (site), it also rewrites links to Markdown files to the .html pages.
+func newMarkdown(rawHTML string, p markdown.Parallelism, ids, site bool) goldmark.Markdown {
 	opts := []goldmark.Option{goldmark.WithExtensions(extension.GFM, &markdown.Extension{Parallelism: p})}
+	if ids {
+		opts = append(opts, goldmark.WithParserOptions(parser.WithAutoHeadingID()))
+	}
 	if site {
 		opts = append(opts, goldmark.WithParserOptions(
-			parser.WithAutoHeadingID(),
 			parser.WithASTTransformers(util.Prioritized(mdLinkRewriter{}, 1000)),
 		))
 	}

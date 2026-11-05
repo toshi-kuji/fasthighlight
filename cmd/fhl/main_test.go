@@ -164,7 +164,8 @@ func TestStdout(t *testing.T) {
 		t.Errorf("-o - wrote a file")
 	}
 	code, stdout, _ = fhlRun(t, "", "", false, "--single-html", "-o", "-", "README.md")
-	want := "<!DOCTYPE html>\n<meta charset=\"utf-8\">\n<title>Usage</title>\n<style>\n" + lookupTheme("default").css(modeBoth) + "</style>\n" + readmeHTML
+	want := "<!DOCTYPE html>\n<meta charset=\"utf-8\">\n<title>Usage</title>\n<style>\n" + lookupTheme("default").css(modeBoth) + "</style>\n" +
+		strings.Replace(readmeHTML, "<h1>", `<h1 id="usage">`, 1) // a standalone page: headings get ids
 	if code != 0 || stdout != want {
 		t.Errorf("--single-html -o -: code %d\n%s", code, stdout)
 	}
@@ -190,6 +191,10 @@ func TestSingleHTML(t *testing.T) {
 	}
 	if exists("highlight.css") {
 		t.Errorf("--single-html wrote highlight.css")
+	}
+	// Headings get ids, so links within the page work (as with --static-site).
+	if got := readFile(t, "README.html"); !strings.Contains(got, `<h1 id="usage">Usage</h1>`) {
+		t.Errorf("README.html: no heading id:\n%s", got)
 	}
 	got := readFile(t, "plain.html")
 	want := "<!DOCTYPE html>\n<meta charset=\"utf-8\">\n<title>plain.md</title>\n<style>\n" + lookupTheme("default").css(modeBoth) + "</style>\n<p>no heading &lt;b&gt;x&lt;/b&gt;</p>\n"
@@ -1046,5 +1051,38 @@ func TestJSONWriteError(t *testing.T) {
 		if code != 1 || !strings.Contains(errOut.String(), "fhl: cannot write to standard output") {
 			t.Errorf("%v: code %d, %q", args, code, errOut.String())
 		}
+	}
+}
+
+// In a conversion, at most three blocks per reason are listed, then a count; --check lists them all.
+func TestUncoloredSummary(t *testing.T) {
+	dir := t.TempDir()
+	var b strings.Builder
+	for i := range 5 {
+		fmt.Fprintf(&b, "```\n%d\n```\n\n", i) // no language name: lines 1, 5, 9, 13, 17
+	}
+	for _, l := range []string{"hs", "cobol", "fortran", "ada"} {
+		fmt.Fprintf(&b, "```%s\nx\n```\n\n", l) // lines 21, 25, 29, 33
+	}
+	writeFiles(t, dir, map[string]string{"a.md": b.String()})
+	code, _, stderr := fhlRun(t, dir, "", false, "a.md")
+	if code != 0 {
+		t.Fatalf("code %d, %q", code, stderr)
+	}
+	want := "a.md:1: code block has no language name\n" +
+		"a.md:5: code block has no language name\n" +
+		"a.md:9: code block has no language name\n" +
+		"fhl: 2 more code blocks have no language name (fhl --check lists all)\n" +
+		"a.md:21: code block language \"hs\" is not supported (see fhl --list-langs)\n" +
+		"a.md:25: code block language \"cobol\" is not supported (see fhl --list-langs)\n" +
+		"a.md:29: code block language \"fortran\" is not supported (see fhl --list-langs)\n" +
+		"fhl: 1 more code block in a language that is not supported (fhl --check lists all)\n" +
+		"fhl: 1 files, 9 code blocks (9 uncolored) in "
+	if !strings.HasPrefix(stderr, want) {
+		t.Errorf("conversion:\n%s\nwant:\n%s", stderr, want)
+	}
+	_, _, stderr = fhlRun(t, "", "", false, "--check", "a.md")
+	if strings.Contains(stderr, "more code block") || strings.Count(stderr, "a.md:") != 9 {
+		t.Errorf("--check does not list all:\n%s", stderr)
 	}
 }

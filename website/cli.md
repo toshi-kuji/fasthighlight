@@ -22,7 +22,7 @@ All the supported languages are built in. `fhl --version` prints the version; `f
 fhl README.md                      # README.html and highlight.css next to README.md
 fhl docs/                          # an .html next to each .md in docs/, and a highlight.css per folder
 fhl -o dist/ docs/                 # write into dist/, keeping the folder layout
-fhl --single-html README.md        # one standalone HTML file with the CSS in <head>
+fhl --single-html README.md        # one standalone HTML file: the CSS in <head>, heading ids
 fhl -o - README.md                 # body-only HTML to standard output
 cat note.md | fhl -o note.html -   # read standard input
 fhl main.go                        # a code file becomes one highlighted code block
@@ -58,7 +58,7 @@ The HTML file is named after the input, with `.html` (`README.md` becomes `READM
 
 By default, `fhl` writes only what goes inside `<body>`: no `<!DOCTYPE>`, `<head>` or link to the CSS. Load `highlight.css` from your own page or template.
 
-With `--single-html`, the file opens as it is. It has `<!DOCTYPE html>`, `<meta charset="utf-8">`, a `<title>` (the first heading, or the file name) and the CSS in a `<style>`, and nothing else.
+With `--single-html`, the file opens as it is. It has `<!DOCTYPE html>`, `<meta charset="utf-8">`, a `<title>` (the first heading, or the file name) and the CSS in a `<style>`, and nothing else. Headings get ids, as with `--static-site` ([Heading ids](#what-it-does)), so that a table of contents can link to them.
 
 Code blocks look like this:
 
@@ -91,7 +91,7 @@ fhl --static-site --theme=light --html-lang ja -o dist/ docs/
 
 - **Pages.** Each Markdown file becomes a page that starts with `<!DOCTYPE html>`, `<html lang="en">` (change it with `--html-lang`), the charset, the viewport, a `<title>` (the first heading, or the file name) and a link to `highlight.css`.
 - **One style sheet.** `highlight.css` is written once, at the top of the output, and every page links to it with a relative path, so the site works in any folder (such as `https://user.github.io/project/`).
-- **Heading ids.** Headings get ids, so you can link to sections: `## Results and exit status` becomes `results-and-exit-status`. A second heading with the same text gets `-1` added. A heading with no ASCII letters or digits (for example, only Japanese) becomes `heading`, `heading-1` and so on.
+- **Heading ids.** Headings get ids (with `--single-html` too), so you can link to sections: `## Results and exit status` becomes `results-and-exit-status`. A second heading with the same text gets `-1` added. A heading with no ASCII letters or digits (for example, only Japanese) becomes `heading`, `heading-1` and so on.
 - **Links between pages.** Relative links to Markdown files are rewritten to the pages: `[setup](guide.md#setup)` becomes `guide.html#setup`. Links that start with a scheme (`https:`), `/` or `#` are left alone.
 - **Other files.** Images and any other files in the folder are copied to the same place in the output. Files and folders whose names start with `.` are skipped.
 
@@ -141,7 +141,7 @@ Before converting, `fhl` compares every input and every file it would write.
 | Flag | Meaning |
 | --- | --- |
 | `-o PATH` | where to write (above) |
-| `--single-html` | a standalone HTML with the CSS in `<head>` |
+| `--single-html` | a standalone HTML with the CSS in `<head>`, and ids on headings |
 | `--static-site` | turn one folder into a static site ([A static site](#a-static-site)) |
 | `--html-lang LANG` | the `lang` of `<html>` with `--static-site` (default `en`) |
 | `--theme=MODE:THEME` | code colors: `MODE` is `light`, `dark` or `both`, and `THEME` is one of `fhl --list-themes` (default `both:default`; see [Themes and CSS](themes.html)) |
@@ -157,12 +157,15 @@ All flags and examples: `fhl --help`.
 
 ## Results and exit status
 
-At the end, `fhl` prints one summary line to standard error, plus one line per code block that is not colored. Blocks marked as plain text (`text` and the like) are not listed or counted:
+At the end, `fhl` prints one summary line to standard error, after the code blocks that are not colored, one line each as `file:line:`. A conversion lists up to three for each reason (no language name, unsupported language) and counts the rest; `--check` lists them all. Blocks marked as plain text (`text` and the like) are not listed or counted, so write ` ```text ` for output, logs and anything else that should stay plain.
 
 ```text
-docs/setup.md:42: code block language "hs" is not supported (see fhl --list-langs)
 docs/intro.md:10: code block has no language name
-fhl: 128 files, 412 code blocks (3 uncolored) in 0.21s
+docs/intro.md:31: code block has no language name
+docs/usage.md:7: code block has no language name
+fhl: 13 more code blocks have no language name (fhl --check lists all)
+docs/setup.md:42: code block language "hs" is not supported (see fhl --list-langs)
+fhl: 128 files, 412 code blocks (17 uncolored) in 0.21s
 ```
 
 `-q` prints errors only. Errors say what happened and what to do next, in one line:

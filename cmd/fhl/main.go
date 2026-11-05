@@ -161,7 +161,7 @@ func run(args []string, e env) int {
 	}
 	mds := make(chan goldmark.Markdown, o.jobs) // reused by the converting goroutines
 	for range o.jobs {
-		mds <- newMarkdown(o.rawHTML, parallel, o.staticSite)
+		mds <- newMarkdown(o.rawHTML, parallel, o.single || o.staticSite, o.staticSite)
 	}
 	convert := func(j *job) result {
 		src := stdinData
@@ -309,17 +309,7 @@ func run(args []string, e env) int {
 			jsonFailed = true
 		}
 	} else if !o.quiet {
-		for _, u := range r.Uncolored {
-			at := u.File
-			if u.Line > 0 {
-				at = fmt.Sprintf("%s:%d", u.File, u.Line)
-			}
-			if u.Reason == "no-language" {
-				fmt.Fprintf(e.stderr, "%s: code block has no language name\n", at)
-			} else {
-				fmt.Fprintf(e.stderr, "%s: code block language %q is not supported (see fhl --list-langs)\n", at, u.Lang)
-			}
-		}
+		writeUncolored(e.stderr, r.Uncolored, o.check)
 		fmt.Fprintf(e.stderr, "fhl: %d files, %d code blocks (%d uncolored) in %.2fs\n",
 			r.Summary.Files, r.Summary.Blocks, r.Summary.Uncolored, r.Summary.Seconds)
 	}
@@ -445,6 +435,47 @@ func listThemes(w io.Writer, asJSON bool) error {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", t.Name, t.Label, t.Light, t.Dark)
 	}
 	return tw.Flush()
+}
+
+// uncoloredExamples is how many uncolored code blocks of each reason a conversion lists; the rest are counted.
+const uncoloredExamples = 3
+
+// writeUncolored lists the code blocks that are not colored, one line each, in the form file:line: that editors
+// and CI read. With --check (all), it lists every one. Otherwise, to keep a conversion quiet, it lists the first
+// uncoloredExamples of each reason (no language name, unsupported language) and counts the rest.
+func writeUncolored(w io.Writer, list []uncolored, all bool) {
+	for _, reason := range []string{"no-language", "unsupported"} {
+		n := 0
+		for _, u := range list {
+			if u.Reason != reason {
+				continue
+			}
+			n++
+			if !all && n > uncoloredExamples {
+				continue
+			}
+			at := u.File
+			if u.Line > 0 {
+				at = fmt.Sprintf("%s:%d", u.File, u.Line)
+			}
+			if reason == "no-language" {
+				fmt.Fprintf(w, "%s: code block has no language name\n", at)
+			} else {
+				fmt.Fprintf(w, "%s: code block language %q is not supported (see fhl --list-langs)\n", at, u.Lang)
+			}
+		}
+		if more := n - uncoloredExamples; !all && more > 0 {
+			blocks, have, lang := "code blocks", "have", "a language that is"
+			if more == 1 {
+				blocks, have = "code block", "has"
+			}
+			if reason == "no-language" {
+				fmt.Fprintf(w, "fhl: %d more %s %s no language name (fhl --check lists all)\n", more, blocks, have)
+			} else {
+				fmt.Fprintf(w, "fhl: %d more %s in %s not supported (fhl --check lists all)\n", more, blocks, lang)
+			}
+		}
+	}
 }
 
 // outputStatus returns the exit status for a command that writes only to standard output: 1, with a message, if

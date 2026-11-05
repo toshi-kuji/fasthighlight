@@ -13,7 +13,7 @@ fasthighlight is fast syntax highlighting written in Go, without regular express
 
 fasthighlight supports 24 languages: Bash, C, C#, C++, CSS, Diff, Go, HTML, Java, JavaScript, JSON, Kotlin, Markdown, PHP, Python, R, Ruby, Rust, SQL, Swift, TOML, TypeScript, XML, YAML.
 
-The names, aliases and file name patterns are the same as Chroma's (`fhl --list-langs` prints them). Code blocks in other languages, or without a language name, are escaped but not colored. Code blocks marked as plain text (`text`, `plaintext`, `plain` or `no-highlight`, the names of Chroma's plain text lexer) are escaped too, and are not reported as uncolored, since that is what they ask for.
+The names, aliases and file name patterns are the same as Chroma's (`fhl --list-langs` prints them). Code blocks in other languages, or without a language name, are escaped but not colored. Code blocks marked as plain text (`text`, `plaintext`, `plain` or `no-highlight`, the names of Chroma's plain text lexer) are escaped too, and are not reported as uncolored, since that is what they ask for. Write ` ```text ` for output, logs and anything else that should stay plain.
 
 ## The command: `fhl`
 
@@ -28,7 +28,7 @@ The names, aliases and file name patterns are the same as Chroma's (`fhl --list-
 fhl README.md                      # README.html and highlight.css next to README.md
 fhl docs/                          # an .html next to each .md in docs/, and a highlight.css per folder
 fhl -o dist/ docs/                 # write into dist/, keeping the folder layout
-fhl --single-html README.md        # one standalone HTML file with the CSS in <head>
+fhl --single-html README.md        # one standalone HTML file: the CSS in <head>, heading ids
 fhl --static-site -o dist/ docs/   # a static site: full pages, heading ids, other files copied
 fhl -o - README.md                 # body-only HTML to standard output
 cat note.md | fhl -o note.html -   # read standard input
@@ -39,13 +39,14 @@ fhl -o dist/ docs/ --json          # machine-readable result, for scripts and AI
 fhl --help                         # all flags, with examples
 ```
 
-By default `fhl` writes the HTML of the document body only (no `<html>` or `<head>`), plus `highlight.css` with the code colors, so that you or an AI agent can put it into your own page and style it. `--single-html` makes a page that opens as it is, and `--static-site` turns a folder into a basic static site: pages that open as they are, with ids on headings, links to `.md` files rewritten to `.html`, the other files copied, and one `highlight.css` at the top that every page links to. It has no styles beyond the code colors; add your own styles (by hand or with an AI agent) to that `highlight.css`.
+By default `fhl` writes the HTML of the document body only (no `<html>` or `<head>`), plus `highlight.css` with the code colors, so that you or an AI agent can put it into your own page and style it. `--single-html` makes a page that opens as it is, with ids on headings so that links within the page work, and `--static-site` turns a folder into a basic static site: pages that open as they are, with ids on headings, links to `.md` files rewritten to `.html`, the other files copied, and one `highlight.css` at the top that every page links to. It has no styles beyond the code colors; add your own styles (by hand or with an AI agent) to that `highlight.css`.
 
 Other behavior worth knowing:
 
 - Existing files are overwritten only after asking `[y/N/a]` on a terminal. Without a terminal (CI, scripts, AI agents), `fhl` stops with an error unless `--force` is given. Files whose content would not change are left alone.
 - Raw HTML in Markdown is escaped by default, so it shows up as text. `--raw-html=omit` drops it, and `--raw-html=unsafe` passes it through (only for Markdown you trust).
 - Front matter (`---` … `---` at the top) is skipped.
+- Code blocks that are not colored are listed on standard error as `file:line:`, up to three for each reason (no language name, unsupported language), followed by a count of the rest. `--check` lists them all.
 - Exit status: 0 for success, 1 for errors, 2 for uncolored code blocks with `--strict`.
 
 ### Themes
