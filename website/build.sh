@@ -10,10 +10,13 @@
 #  3. Convert the work folder with fhl --static-site.
 #  4. Append the site styles (website/style.css, if it exists) and the theme sample CSS to the
 #     highlight.css that every page reads.
+#  5. Copy the Google Search Console verification file (website/google*.html) as it is, and write
+#     sitemap.xml, listing every page under SITE_URL (default: the GitHub Pages address).
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 out="${1:-$root/_site}"
+site_url="${SITE_URL:-https://toshi-kuji.github.io/fasthighlight/}"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
@@ -127,5 +130,34 @@ if [ -f "$root/website/style.css" ]; then
 	{ echo; cat "$root/website/style.css"; } >>"$out/highlight.css"
 fi
 cat "$work/themes.css" >>"$out/highlight.css"
+
+# 5. The Search Console verification file, byte for byte (Google compares its contents), and sitemap.xml.
+shopt -s nullglob
+for f in "$root"/website/google*.html; do
+	cp "$f" "$out/"
+done
+shopt -u nullglob
+python3 - "$out" "$site_url" <<'PY'
+import os, sys
+from xml.sax.saxutils import escape
+
+out, base = sys.argv[1], sys.argv[2].rstrip("/") + "/"
+pages = []
+for dirpath, _, files in os.walk(out):
+    for name in files:
+        rel = os.path.relpath(os.path.join(dirpath, name), out).replace(os.sep, "/")
+        if not name.endswith(".html") or (dirpath == out and name.startswith("google")):
+            continue
+        if rel == "index.html":
+            rel = ""
+        elif rel.endswith("/index.html"):
+            rel = rel[: -len("index.html")]
+        pages.append(rel)
+lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+for rel in sorted(pages):
+    lines.append(f"  <url><loc>{escape(base + rel)}</loc></url>")
+lines.append("</urlset>")
+open(os.path.join(out, "sitemap.xml"), "w", encoding="utf-8").write("\n".join(lines) + "\n")
+PY
 
 echo "build.sh: wrote $out"

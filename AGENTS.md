@@ -61,7 +61,7 @@ CI (`.github/workflows/ci.yml`) runs the tests, the checks, the comparison with 
 | `cmd/bench`, `cmd/prof` | Benchmarks and `pprof` |
 | `bench/` | Comparison implementations (Chroma, gotreesitter, Node). A separate Go module, so that they are not dependencies of the core |
 | `testdata/` | Documents used by the benchmarks and tests (`input.md`, `multilang.md`), and the expected HTML of `input.md` (`input.html`), made with Chroma's formatter with the outer class name changed to `highlight` |
-| `website/` | The documentation site: the pages in Markdown, `style.css`, and `build.sh` |
+| `website/` | The documentation site: the pages in Markdown, `style.css`, `build.sh`, and the Google Search Console verification file (`google*.html`, copied as it is; do not edit or remove it) |
 | `docs/` | `benchmark.md`: how to run the benchmarks |
 
 ## Rules
