@@ -1,11 +1,21 @@
 name: Release
 
-# When a tag (vX.Y.Z) is pushed, build the distribution archives of fhl and attach them to the release page.
+# Build the distribution archives of fhl and attach them to a release page, in one of two ways:
+#   - push a tag vX.Y.Z: the release is made for that tag;
+#   - run this workflow by hand on main (Actions → Release → Run workflow, or the API) with a version
+#     vX.Y.Z: the release and its tag are made here, on the commit the run started from.
+# A tag made by this workflow (with GITHUB_TOKEN) does not start another run, so a release is not made twice.
 # The archives are built by scripts/release.sh (CI also runs it with the version set to dev to check that it works).
 on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, vX.Y.Z (the tag is made on main)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -13,8 +23,24 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      # The version comes from the input or the tag; it is passed through the environment, never pasted into a script.
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
+      - name: Check the version (run by hand)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "Run this workflow on main (it ran on $GITHUB_REF)." >&2; exit 1
+          fi
+          if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "The version must look like v1.2.3 (got \"$VERSION\")." >&2; exit 1
+          fi
+          if [ -n "$(git ls-remote --tags origin "refs/tags/$VERSION")" ]; then
+            echo "The tag $VERSION already exists; choose another version." >&2; exit 1
+          fi
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -23,8 +49,12 @@ jobs:
           go vet ./...
           go test -race -count=1 ./...
       - name: Build the archives
-        run: scripts/release.sh "$GITHUB_REF_NAME" dist
+        run: scripts/release.sh "$VERSION" dist
       - name: Attach to the release page
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            # Makes the tag on the commit this run checked out.
+            gh release create "$VERSION" dist/* --title "$VERSION" --generate-notes --target "$GITHUB_SHA"
+          else
+            gh release create "$VERSION" dist/* --title "$VERSION" --generate-notes --verify-tag
+          fi
