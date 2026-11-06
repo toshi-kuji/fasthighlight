@@ -84,7 +84,7 @@ import (
 
 Only the languages you import are compiled into your program, and each language you import is compiled in even if no document uses it. Keyword tables and the like are built when a language is first used, not at import.
 
-In a small program on Linux amd64 built with Go 1.25.0 and `-ldflags "-s -w"`, calling only `Highlight` took about 1.63 MB; importing the Go language added about 0.07 MB, and importing all the languages (`lang/all`) about 0.77 MB. Using `markdown.Converter` (with goldmark) added about 1.04 MB more.
+As of v0.2.0, in a small program on Linux amd64 built with Go 1.25.0 and `-ldflags "-s -w"`, calling only `Highlight` took about 1.63 MB; importing the Go language added about 0.07 MB, and importing all the languages (`lang/all`) about 0.77 MB. Using `markdown.Converter` (with goldmark) added about 1.04 MB more.
 
 ## Find code blocks that will not be colored
 

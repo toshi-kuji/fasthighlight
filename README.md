@@ -132,7 +132,7 @@ import (
 )
 ```
 
-In a small program on Linux amd64 built with Go 1.25.0 and `-ldflags "-s -w"`, calling only `Highlight` took about 1.63 MB; importing the Go language added about 0.07 MB, and importing all the languages (`lang/all`) about 0.77 MB. Using `markdown.Converter` (with goldmark) added about 1.04 MB more. Only what you import is compiled into your program; the `fhl` command is not.
+As of v0.2.0, in a small program on Linux amd64 built with Go 1.25.0 and `-ldflags "-s -w"`, calling only `Highlight` took about 1.63 MB; importing the Go language added about 0.07 MB, and importing all the languages (`lang/all`) about 0.77 MB. Using `markdown.Converter` (with goldmark) added about 1.04 MB more. Only what you import is compiled into your program; the `fhl` command is not.
 
 To list the code blocks that will not be colored before converting (for example, to warn about a language you did not import), parse the documents with `markdown.Converter.Parse`, call `markdown.Scan`, and then `markdown.Converter.Render`. To check a single language name, `fasthighlight.LookupSupported` tells whether fasthighlight supports it and which package to import.
 
