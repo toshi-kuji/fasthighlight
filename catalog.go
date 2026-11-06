@@ -77,6 +77,20 @@ var catalog = func() languageSet {
 			Package:   langPackage + "html",
 		},
 		{
+			Name:    "HTTP",
+			Aliases: []string{"http"},
+			Package: langPackage + "http",
+		},
+		{
+			Name:    "INI",
+			Aliases: []string{"ini", "cfg", "dosini"},
+			Filenames: []string{
+				"*.ini", "*.cfg", "*.inf", "*.service", "*.socket", "*.container", "*.network", "*.build",
+				"*.pod", "*.kube", "*.volume", "*.image", ".gitconfig", ".editorconfig", "pylintrc", ".pylintrc",
+			},
+			Package: langPackage + "ini",
+		},
+		{
 			Name:      "JSON",
 			Aliases:   []string{"json", "jsonl"},
 			Filenames: []string{"*.json", "*.jsonl", "*.jsonc", "*.json5", "*.avsc", ".luaurc"},

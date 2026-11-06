@@ -12,6 +12,8 @@ import (
 	_ "github.com/toshi-kuji/fasthighlight/lang/diff"
 	_ "github.com/toshi-kuji/fasthighlight/lang/golang"
 	_ "github.com/toshi-kuji/fasthighlight/lang/html"
+	_ "github.com/toshi-kuji/fasthighlight/lang/http"
+	_ "github.com/toshi-kuji/fasthighlight/lang/ini"
 	_ "github.com/toshi-kuji/fasthighlight/lang/java"
 	_ "github.com/toshi-kuji/fasthighlight/lang/javascript"
 	_ "github.com/toshi-kuji/fasthighlight/lang/json"

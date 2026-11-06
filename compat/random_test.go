@@ -193,6 +193,19 @@ var pieces = map[string][]string{
 		"<<", "<<-", "<<<", "EOF", "'EOF'", "&&", "||", "&", "|", ";", "<", ">", "[", "]", "{", "1", "16#", "2#1",
 		"**", "*", "-", "%", "$@", "$1", "$_a", "日本", "٣",
 	},
+	"HTTP": {
+		"\n", "\n", "\n\n", " ", "  ", "\t", ":", ": ", "GET", "POST ", "GET / HTTP/1.1\n", "PUT /a\nb HTTP/2 ",
+		"DELETE x HTTP/1.0", "HTTP/", "HTTP/1.1 200 OK\n", "HTTP/2 404", "HTTP/1.2", "HTTP/3 20", "0", "٣", " 1.1",
+		"Host", "Host: a\n", "Content-Type", "content-type", "Content-Type: ", "Content-Type: application/json\n",
+		"Content-Type: text/xml; charset=x\n", "Content-Type:  text/html  \n", "application/ld+json", "text/css",
+		"application/javascript", "text/x-ini", "text/x-python", "text/x-markdown", "text/x-unknown", ";", "+",
+		"{\"a\": [1, true]}", "<a b=\"c\">", "</a>", "&amp;", "a { color: red }", "var a = 1;", "// c", "[s]",
+		"k = v", "def f():", "# h", "x", "日本", " ",
+	},
+	"INI": {
+		"\n", " ", "\t", " ", ";", "#", "[", "]", "[s]", "[a]b]", "=", " = ", "key", "a b", "value", "\n ",
+		"\n\t", "\n x", "\n\tx", ";c", "# c", "日本",
+	},
 }
 
 // TestRandomPiecesMatchChroma checks that any arrangement of the fragments gives exactly the same token
