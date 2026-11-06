@@ -23,6 +23,7 @@ import (
 	_ "github.com/toshi-kuji/fasthighlight/lang/react"
 	_ "github.com/toshi-kuji/fasthighlight/lang/ruby"
 	_ "github.com/toshi-kuji/fasthighlight/lang/rust"
+	_ "github.com/toshi-kuji/fasthighlight/lang/scss"
 	_ "github.com/toshi-kuji/fasthighlight/lang/sql"
 	_ "github.com/toshi-kuji/fasthighlight/lang/swift"
 	_ "github.com/toshi-kuji/fasthighlight/lang/toml"
