@@ -9,7 +9,7 @@ func TestBuiltinParallelHints(t *testing.T) {
 		"Bash": true, "C": true, "C#": true, "C++": true, "CSS": true, "Go": true, "Java": true, "JavaScript": true,
 		"Kotlin": true, "PHP": true, "Python": true, "R": true, "Ruby": true, "Rust": true, "Swift": true, "TypeScript": true,
 		"react": true, "SCSS": true,
-		"Bash Session": true, "Docker": true, "Makefile": true,
+		"Bash Session": true, "Docker": true, "Makefile": true, "PowerShell": true,
 	}
 	for _, l := range Builtins() {
 		hint := HintDefault

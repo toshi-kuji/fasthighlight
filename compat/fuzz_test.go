@@ -70,7 +70,7 @@ func FuzzHTMLMatchesChroma(f *testing.F) {
 // matches Chroma (chromaMode).
 var exactLanguages = []string{"Bash", "C", "C++", "C#", "CSS", "Diff", "Go", "HTML", "Java", "JavaScript", "JSON", "Kotlin", "markdown", "PHP", "Python", "R", "Ruby", "Rust", "SQL", "Swift", "TOML", "TypeScript", "XML", "YAML",
 	// Added after the first 24: new languages go at the end, so the saved fuzz inputs keep their language.
-	"react", "SCSS", "Bash Session", "Docker", "Makefile", "HTTP", "INI"}
+	"react", "SCSS", "Bash Session", "Docker", "Makefile", "HTTP", "INI", "GraphQL", "PowerShell", "Protocol Buffer"}
 
 // chromaMode returns the tokenizer of l with the switch that matches Chroma turned on (it does the same
 // preprocessing as Language.Tokenise). For a language without such a switch, it returns l.Tokenise as is.

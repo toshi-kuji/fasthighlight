@@ -239,6 +239,30 @@ var pieces = map[string][]string{
 		"\n", " ", "\t", " ", ";", "#", "[", "]", "[s]", "[a]b]", "=", " = ", "key", "a b", "value", "\n ",
 		"\n\t", "\n x", "\n\tx", ";c", "# c", "日本",
 	},
+	"PowerShell": {
+		"\n", " ", "\t", "#", "##", "#requires", "#Requires ", "-Version", "-Modules", "-x", "<#", "#>", "&lt;#", "#&gt;",
+		".", ".synopsis", ".Notes", ".link", "(", ")", "$(", "@(", "@{", "{", "}", "[", "]", "[int]", "[a.b[]]", "@\"\n",
+		"\n\"@", "@'\n", "\n'@", "\"", "\"\"", "'", "''", "`", "`n", "`N", "`$", "`\"", "$", "$x", "$_", "${", "${env:x}",
+		"$env:", "$global:x", "global:", "script:", "@@", "@", "$true", "$TRUE", "$null", "$false", "function ",
+		"filter", "workflow", "class ", "configuration", ":", "::", "x", "a", "C:", "Get-Item", "foreach", "ForEach",
+		"if", "in", "else", "param", "Parameter", "alias", "mandatory", "helpuri", "?", "%", "-eq", "-and", "-NotLike",
+		"-f", "-file", "ls ", "cd", "sort", "r ", "1", "1.5", ".5", "1e5", "-1", "+2", "10kb", "3MB", "d", "m", "f",
+		"=", "+", "*", "|", ";", ",", "<", ">", "&", "!", "-", "_", "K", "ſ", "İ", "日本", "٣", " ",
+	},
+	"GraphQL": {
+		"\n", " ", "\t", ",", "#", "# c", "query", "mutation", "type", "types", "input", "enum", "on", "extend", "schema",
+		"directive", "...", "..", ".", "FIELD", "FIELD_DEFINITION", "QUERY", "x", "Name", "_a", "1", "12", "0", ".5",
+		".5i", "e", "E", "+", "-", "i", "@", "@dep", ":", "$", "$v", "(", ")", "{", "}", "[", "]", "!", "|", "=", "\"",
+		"\"\"", "\"\"\"", "\\", "\\\"", "\\x41", "\\u0041", "\\U0001F600", "\\101", "\\8", "true", "null", "日本", "é",
+		"٣", " ",
+	},
+	"Protocol Buffer": {
+		"\n", " ", "\t", "/", "//", "/*", "*/", "*", "\\", "\\\n", "\"", "'", "a", "a.b", "_x", "=", " = ", "+", "-",
+		";", ",", "{", "}", "[", "]", "(", ")", "<", ">", "package", "package ", "message ", "extend ", "enum ",
+		"service ", "rpc ", "oneof ", "group ", "import", "syntax", "option", "default", "map", "extensions", "int32",
+		"string", "true", "false", "inf", "-inf", "nan", "0", "1", "07", "08", "0x1F", "0x", "1.", ".5", "1e5", "e",
+		"E", "f", "F", "L", "u", "日本", "é", "٣", " ",
+	},
 }
 
 // TestRandomPiecesMatchChroma checks that any arrangement of the fragments gives exactly the same token
