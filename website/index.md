@@ -10,7 +10,7 @@ Fast syntax highlighting written in Go, without regular expressions. Add it to g
 go install github.com/toshi-kuji/fasthighlight/cmd/fhl@latest
 ```
 
-<!-- Add after the first release: download a single binary from the releases page (TODO-releases) -->
+Or download a single binary for Linux, macOS or Windows from the [releases page](https://github.com/toshi-kuji/fasthighlight/releases). No Go needed.
 
 [GitHub](https://github.com/toshi-kuji/fasthighlight) · [Contents](contents.html) · [Demo](themes.html#samples)
 
@@ -89,7 +89,7 @@ Both. The core is the Go library, and `fhl` is a command built on it (it convert
 
 **Can I install only the command?**
 Yes. `go install github.com/toshi-kuji/fasthighlight/cmd/fhl@latest` builds just `fhl`. Go downloads the whole module (with the library source) to build it.
-<!-- After the first release, add: the binary on the releases page is a single file with the library built in; no Go needed. -->
+The binary on the [releases page](https://github.com/toshi-kuji/fasthighlight/releases) is a single file with the library built in; no Go needed.
 
 **Does the library bring the command's code into my program?**
 No. `go get github.com/toshi-kuji/fasthighlight` downloads the whole module as one zip, but Go compiles only the packages you import. `fhl` is a `main` package, so it cannot be imported.

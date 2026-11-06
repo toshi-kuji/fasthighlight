@@ -12,7 +12,7 @@ This page covers the basics. All flags and examples: run `fhl --help`.
 go install github.com/toshi-kuji/fasthighlight/cmd/fhl@latest
 ```
 
-<!-- Add after the first release: a single binary for Linux, macOS and Windows (amd64, arm64) on the releases page (TODO-releases). No dependencies. -->
+Or download an archive for your system (Linux, macOS or Windows; amd64 or arm64) from the [releases page](https://github.com/toshi-kuji/fasthighlight/releases), and put `fhl` on your `PATH`. It is a single binary with no dependencies; Go is not needed.
 
 All the supported languages are built in. `fhl --version` prints the version; `fhl` and the library share one version.
 
