@@ -8,15 +8,16 @@ import (
 
 // Writing HTML. The output is byte-for-byte the same as Chroma 2.27.0's formatters/html used with
 // WithClasses(true), except for the outer wrapper's class name (Chroma uses chroma, here it is highlight)
-// and the data-lang below (Copyright (C) 2017 Alec Thomas, MIT License; see THIRD_PARTY_NOTICES.md).
+// and the data-lang and language- class below (Copyright (C) 2017 Alec Thomas, MIT License; see THIRD_PARTY_NOTICES.md).
 //
 // The shape of the output:
 //
 //	<pre class="highlight"><code><span class="line"><span class="cl">…</span></span>…</code></pre>
 //
 // When the code block's language name is known (Highlight, and the markdown package's Extension and
-// Converter), <pre> gets data-lang="language name" (Chroma's output does not have it). WriteHTML does not
-// know the language name, so it does not add it.
+// Converter), <pre> gets data-lang="language name" and <code> gets class="language-language name", the
+// class CommonMark recommends and other tools read (Chroma's output has neither). Both hold the name as
+// written in the code block. WriteHTML does not know the language name, so it adds neither.
 //
 // Each line is wrapped in <span class="line"><span class="cl">, and tokens are wrapped in a <span> with the
 // type's class name. Types whose class name is empty (such as Text) are not wrapped. Lines are split as
@@ -72,7 +73,8 @@ func WriteHTML(w io.Writer, toks []Token) error {
 	return writeHTML(w, toks, "")
 }
 
-// writeHTML is the same as WriteHTML. If lang is not empty, <pre> gets data-lang="lang".
+// writeHTML is the same as WriteHTML. If lang is not empty, <pre> gets data-lang="lang" and <code> gets
+// class="language-lang".
 func writeHTML(w io.Writer, toks []Token, lang string) error {
 	sw, ok := w.(io.StringWriter)
 	var bw *bufio.Writer
@@ -86,7 +88,9 @@ func writeHTML(w io.Writer, toks []Token, lang string) error {
 	} else {
 		hw.str(preLang)
 		hw.escape(lang)
-		hw.str(`"><code>`)
+		hw.str(`"><code class="language-`)
+		hw.escape(lang)
+		hw.str(`">`)
 	}
 	for _, t := range toks {
 		hw.token(t)
@@ -205,7 +209,7 @@ func (h *htmlWriter) escape(s string) {
 }
 
 // Highlight turns one code block into HTML. lang is the code block's language name; if it is not empty,
-// it is put in the <pre> data-lang. A language that is not registered is written as Text without
+// it is put in the <pre> data-lang and the <code> class (language-lang). A language that is not registered is written as Text without
 // highlighting (only escaped).
 func Highlight(w io.Writer, lang, code string) error {
 	return writeBlock(w, LookupRegistered(lang), lang, code)

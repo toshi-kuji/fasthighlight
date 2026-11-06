@@ -63,10 +63,10 @@ With `--single-html`, the file opens as it is. It has `<!DOCTYPE html>`, `<meta 
 Code blocks look like this:
 
 ```html
-<pre class="highlight" data-lang="go"><code><span class="line"><span class="cl"><span class="nx">fmt</span>…
+<pre class="highlight" data-lang="go"><code class="language-go"><span class="line"><span class="cl"><span class="nx">fmt</span>…
 ```
 
-`data-lang` holds the language name written in the Markdown. It is there for unsupported languages too, and missing when there is no language name. Elements get no `style` attributes, except the column alignment of GFM tables. Token classes are explained in [Themes and CSS](themes.html).
+`data-lang` on `<pre>` and the `language-` class on `<code>` (the class CommonMark recommends, which tools that turn HTML back into Markdown read) hold the language name as written in the Markdown: ` ```golang ` gives `language-golang`. They are there for unsupported languages too, and missing when there is no language name. Elements get no `style` attributes, except the column alignment of GFM tables. Token classes are explained in [Themes and CSS](themes.html).
 
 ### Raw HTML in Markdown
 

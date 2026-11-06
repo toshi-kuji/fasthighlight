@@ -513,9 +513,11 @@ func (r *chromaCodeRenderer) render(w util.BufWriter, src []byte, node ast.Node,
 		toks = []fh.Token{{Type: fh.Text, Value: code.String()}}
 	}
 	out := chromaHTML(r.t, toks)
-	// The language name of the code block goes into data-lang (Chroma's output does not have it).
-	if name := string(b.Language(src)); name != "" {
-		out = strings.Replace(out, `<pre class="highlight"`, `<pre class="highlight" data-lang="`+html.EscapeString(name)+`"`, 1)
+	// The language name of the code block goes into data-lang and the language- class of <code> (Chroma's
+	// output has neither).
+	if name := html.EscapeString(string(b.Language(src))); name != "" {
+		out = strings.Replace(out, `<pre class="highlight"><code>`,
+			`<pre class="highlight" data-lang="`+name+`"><code class="language-`+name+`">`, 1)
 	}
 	_, err := io.WriteString(w, out)
 	return ast.WalkContinue, err

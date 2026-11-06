@@ -379,7 +379,7 @@ func (t *theme) css(m mode) string {
 		b.WriteString(" * Dark colors only.\n")
 	}
 	b.WriteString(" * The colors are collected in the CSS variables of :root (--highlight-*); change the values to change the colors.\n")
-	b.WriteString(" * A code block is <pre class=\"highlight\" data-lang=\"language name\">, and tokens are <span> elements with short class names.\n")
+	b.WriteString(" * A code block is <pre class=\"highlight\" data-lang=\"language name\"><code class=\"language-language name\">, and tokens are <span> elements with short class names.\n")
 	b.WriteString(" */\n")
 	vars := func(indent string, p palette) {
 		for _, r := range roles {

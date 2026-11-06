@@ -9,7 +9,8 @@
 // The HTML it writes has the form <pre class="highlight"><code>…</code></pre>, and tokens are wrapped in
 // <span>s with short class names such as k (keyword), s (string), and nf (function name) (the naming
 // shared by Pygments, Chroma, and Rouge). Colors are applied with CSS. If a language name is given,
-// <pre> gets data-lang="language name" (even for a language that is not registered).
+// <pre> gets data-lang="language name" and <code> gets class="language-language name", as written in
+// the code block (even for a language that is not registered).
 //
 // # Usage
 //

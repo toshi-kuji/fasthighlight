@@ -95,7 +95,7 @@
 </tbody>
 </table>
 <h3>構成図</h3>
-<pre class="highlight" data-lang="text"><code><span class="line"><span class="cl">AIのクラウド環境 / GitHub Actions
+<pre class="highlight" data-lang="text"><code class="language-text"><span class="line"><span class="cl">AIのクラウド環境 / GitHub Actions
 </span></span><span class="line"><span class="cl">  pnpm 12 → プロジェクト固定のNode.js → Vite / Vitest / 型・Lint・Format
 </span></span><span class="line"><span class="cl">                              │
 </span></span><span class="line"><span class="cl">                    Cloudflare Vite Plugin
@@ -117,7 +117,7 @@
 <p>Honoの<code>hono/jsx</code>もSSRに使え、<code>hono/jsx/streaming</code>には実験的なSuspenseがある。ただしサーバー側のHono JSXは<code>JSXNode</code>という中間ノードを生成し、その構造をHTMLへ直列化する。これはPreactより簡潔な実装であり得るが、今回の「SSR用VNode相当の中間表現を避ける」という目的を直接は満たさない。</p>
 <p>一方、<code>hono/html</code>はHTML断片を直接構成し、DSDの記述や関数合成とも相性がよい。したがって<strong>HonoのHTTP機能は採用するが、Hono JSXとJSX Suspenseは採用しない</strong>。<code>hono/jsx/dom</code>もClient Islandsの設計と重複するため使わない。</p>
 <p>代償も明記する。Tagged Template LiteralはJSXと異なり、HTML属性・構造の型チェックや補完をTSXコンポーネントの型検査に全面的には任せられない。テンプレートのHTML検証、URLポリシー、DSDの構造テスト、型付きPropsは別の検査で補う。コンポーネントの条件分岐や繰り返しもTS関数として明示的に組み立てる。</p>
-<pre class="highlight" data-lang="ts"><code><span class="line"><span class="cl"><span class="kr">import</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono/html&#39;</span>
+<pre class="highlight" data-lang="ts"><code class="language-ts"><span class="line"><span class="cl"><span class="kr">import</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono/html&#39;</span>
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl"><span class="kr">type</span> <span class="nx">SearchProps</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">placeholder</span>: <span class="kt">string</span> <span class="p">}</span>
 </span></span><span class="line"><span class="cl">
@@ -156,12 +156,12 @@
 <li>Aが800msで完成すれば、Aを挿入する。全件処理後に<code>done</code>を送信し、EventSourceを閉じる。</li>
 <li>部品単位の失敗は<code>fragment-error</code>で通知し、失敗箇所だけ既定の表示へ切り替える。</li>
 </ol>
-<pre class="highlight" data-lang="text"><code><span class="line"><span class="cl">初期HTML :  [Header] [A: 読み込み中] [B: 読み込み中] [Footer]
+<pre class="highlight" data-lang="text"><code class="language-text"><span class="line"><span class="cl">初期HTML :  [Header] [A: 読み込み中] [B: 読み込み中] [Footer]
 </span></span><span class="line"><span class="cl">100ms    :  SSE fragment(B) → Bだけ完成表示
 </span></span><span class="line"><span class="cl">800ms    :  SSE fragment(A) → Aも完成表示
 </span></span><span class="line"><span class="cl">完了     :  SSE done → 接続を閉じる
 </span></span></code></pre><p>イベント形式の概念例は次のとおり。</p>
-<pre class="highlight" data-lang="text"><code><span class="line"><span class="cl">event: fragment
+<pre class="highlight" data-lang="text"><code class="language-text"><span class="line"><span class="cl">event: fragment
 </span></span><span class="line"><span class="cl">data: {&#34;id&#34;:&#34;popular&#34;,&#34;html&#34;:&#34;&lt;section&gt;人気記事&lt;/section&gt;&#34;}
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">event: fragment
@@ -191,7 +191,7 @@
 <p>ページの<code>mode</code>、EntryPointのCache ON/OFF、実際の課金は別レイヤーとして扱う、という現行要綱の原則を維持する。Static AssetsとGatewayの照合、ルート衝突のビルド検査も引き継ぐ。</p>
 <h2>7. Hono Router・Middlewareへ移行する意義</h2>
 <p>Native <code>fetch()</code>は残るが、その中のルーティングと共通処理をHonoへ委譲する。主な利点は、メソッド別・パス別の宣言、パラメータの取得、<code>app.route()</code>による機能単位の分割、<code>app.use()</code>のスコープ指定、リクエスト前後の処理、エラー応答、Bindingsの型付け、テスト用の<code>app.request()</code>である。</p>
-<pre class="highlight" data-lang="ts"><code><span class="line"><span class="cl"><span class="kr">import</span> <span class="p">{</span> <span class="nx">Hono</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono&#39;</span>
+<pre class="highlight" data-lang="ts"><code class="language-ts"><span class="line"><span class="cl"><span class="kr">import</span> <span class="p">{</span> <span class="nx">Hono</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono&#39;</span>
 </span></span><span class="line"><span class="cl"><span class="kr">import</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono/html&#39;</span>
 </span></span><span class="line"><span class="cl"><span class="kr">import</span> <span class="p">{</span> <span class="nx">streamSSE</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono/streaming&#39;</span>
 </span></span><span class="line"><span class="cl">
@@ -239,7 +239,7 @@
 <li><strong>認証・キャッシュ</strong>。SSE URLへ秘密情報を載せず、同一オリジン・Cookie認証を基本にする。接続ごとにユーザー権限を検査し、レスポンスを<code>no-store</code>にする。SSEは読み取り専用GETとし、状態変更は別の適切なAPIで扱う。</li>
 </ol>
 <p>最小の受信処理は次のような形になる。ただし、ここでは<strong>断片がすべて信頼できるサーバーテンプレートから生成され、IDが許可されている</strong>ことを前提とし、製品コードではポリシー・Sanitizer・認証・接続管理を補う。</p>
-<pre class="highlight" data-lang="js"><code><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">allowedIds</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Set</span><span class="p">([</span><span class="s1">&#39;popular&#39;</span><span class="p">,</span> <span class="s1">&#39;recommended&#39;</span><span class="p">])</span>
+<pre class="highlight" data-lang="js"><code class="language-js"><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">allowedIds</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Set</span><span class="p">([</span><span class="s1">&#39;popular&#39;</span><span class="p">,</span> <span class="s1">&#39;recommended&#39;</span><span class="p">])</span>
 </span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">source</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">EventSource</span><span class="p">(</span><span class="s1">&#39;/articles/fragments&#39;</span><span class="p">)</span>
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl"><span class="nx">source</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;fragment&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">event</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
