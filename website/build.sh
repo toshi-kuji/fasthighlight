@@ -12,6 +12,8 @@
 #     highlight.css that every page reads.
 #  5. Copy the Google Search Console verification file (website/google*.html) as it is, and write
 #     sitemap.xml, listing every page under SITE_URL (default: the GitHub Pages address).
+#  6. Copy the icon (website/favicon.png) and link it from every page, and add the site name to the
+#     title of every page but the top one (as search results and tabs show the title alone).
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -158,6 +160,28 @@ for rel in sorted(pages):
     lines.append(f"  <url><loc>{escape(base + rel)}</loc></url>")
 lines.append("</urlset>")
 open(os.path.join(out, "sitemap.xml"), "w", encoding="utf-8").write("\n".join(lines) + "\n")
+PY
+
+# 6. The icon and the page titles. fhl writes <title> from the first heading and a <link> to highlight.css
+#    (with a relative path); the icon link goes after it, with the same path.
+cp "$root/website/favicon.png" "$out/"
+python3 - "$out" <<'PY'
+import os, re, sys
+
+out, site = sys.argv[1], "fasthighlight"
+for dirpath, _, files in os.walk(out):
+    for name in files:
+        if not name.endswith(".html") or (dirpath == out and name.startswith("google")):
+            continue
+        path = os.path.join(dirpath, name)
+        html = open(path, encoding="utf-8").read()
+        css = re.search(r'<link rel="stylesheet" href="([^"]*)highlight\.css">\n', html)
+        if not css:
+            sys.exit(f"build.sh: no highlight.css link in {path}")
+        html = html[:css.end()] + f'<link rel="icon" type="image/png" href="{css.group(1)}favicon.png">\n' + html[css.end():]
+        if os.path.relpath(path, out) != "index.html":
+            html = re.sub(r"<title>(.*?)</title>", lambda m: f"<title>{m.group(1)} – {site}</title>", html, count=1)
+        open(path, "w", encoding="utf-8").write(html)
 PY
 
 echo "build.sh: wrote $out"
