@@ -1,5 +1,5 @@
 // Package json is the JSON tokenizer. It is used by lang/json (JSON) and by the languages that embed JSON
-// (Docker).
+// (Docker, and the body of HTTP messages in internal/http).
 //
 // Token types and boundaries reproduce the rules of Chroma 2.27.0's json.xml without regular expressions.
 package json

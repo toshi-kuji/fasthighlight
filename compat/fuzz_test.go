@@ -11,6 +11,7 @@ import (
 	"github.com/toshi-kuji/fasthighlight/internal/c"
 	"github.com/toshi-kuji/fasthighlight/internal/golang"
 	"github.com/toshi-kuji/fasthighlight/internal/html"
+	"github.com/toshi-kuji/fasthighlight/internal/http"
 	"github.com/toshi-kuji/fasthighlight/internal/java"
 	"github.com/toshi-kuji/fasthighlight/internal/js"
 	"github.com/toshi-kuji/fasthighlight/internal/lexkit"
@@ -69,7 +70,7 @@ func FuzzHTMLMatchesChroma(f *testing.F) {
 // matches Chroma (chromaMode).
 var exactLanguages = []string{"Bash", "C", "C++", "C#", "CSS", "Diff", "Go", "HTML", "Java", "JavaScript", "JSON", "Kotlin", "markdown", "PHP", "Python", "R", "Ruby", "Rust", "SQL", "Swift", "TOML", "TypeScript", "XML", "YAML",
 	// Added after the first 24: new languages go at the end, so the saved fuzz inputs keep their language.
-	"react", "SCSS", "Bash Session", "Docker", "Makefile"}
+	"react", "SCSS", "Bash Session", "Docker", "Makefile", "HTTP", "INI"}
 
 // chromaMode returns the tokenizer of l with the switch that matches Chroma turned on (it does the same
 // preprocessing as Language.Tokenise). For a language without such a switch, it returns l.Tokenise as is.
@@ -124,6 +125,16 @@ func chromaMode(l *fh.Language) func(string) []fh.Token {
 		}
 	case "react":
 		lex = func(text string, end int) []fh.Token { return js.LexReact(text, end, true) }
+	case "HTTP":
+		l.Tokenise("") // preparation (CSS tables)
+		lex = func(text string, end int) []fh.Token {
+			return http.Lex(text, end, http.Options{JS: js.Options{ChromaBraces: true}, Lookup: func(name string) func(string) []fh.Token {
+				if sub := fh.LookupRegistered(name); sub != nil {
+					return chromaMode(sub)
+				}
+				return nil
+			}})
+		}
 	case "HTML":
 		l.Tokenise("") // preparation (CSS tables)
 		lex = func(text string, end int) []fh.Token { return html.Lex(text, end, js.Options{ChromaBraces: true}) }
@@ -188,6 +199,9 @@ func FuzzTokensMatchChroma(f *testing.F) {
 // (fasthighlight normalizes newlines first, as in the other cases; see the "What was changed"
 // section of website/compatibility.md).
 func incomparable(l *fh.Language, code string) string {
+	if l.Name == "HTTP" {
+		return httpIncomparable(code)
+	}
 	if l.Name != "markdown" {
 		return ""
 	}

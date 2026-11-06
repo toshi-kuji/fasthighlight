@@ -71,7 +71,7 @@ func chromaTokens(t *testing.T, l *fh.Language, code string) []fh.Token {
 	for _, c := range it.Tokens() {
 		toks = append(toks, fh.Token{Type: fh.TokenType(c.Type), Value: c.Value})
 	}
-	return toks
+	return dropHTTPBodyNewline(l, code, toks)
 }
 
 // chromaHTML turns tokens into HTML with Chroma's output.
@@ -387,7 +387,9 @@ func TestLanguagesMatchChroma(t *testing.T) {
 				}
 			}
 		}
-		keys = append(keys, "dir/file."+strings.TrimPrefix(l.Filenames[0], "*."), "file."+strings.TrimPrefix(l.Filenames[0], "*.")+".bak")
+		if len(l.Filenames) > 0 { // HTTP has no filename patterns
+			keys = append(keys, "dir/file."+strings.TrimPrefix(l.Filenames[0], "*."), "file."+strings.TrimPrefix(l.Filenames[0], "*.")+".bak")
+		}
 		for _, k := range keys {
 			cl := lexers.Get(k)
 			if cl == nil {

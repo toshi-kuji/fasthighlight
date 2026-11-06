@@ -1,8 +1,6 @@
 // Package json registers JSON.
 //
 //	import _ "github.com/toshi-kuji/fasthighlight/lang/json"
-//
-// Token types and boundaries reproduce the rules of Chroma 2.27.0's json.xml without regular expressions.
 package json
 
 import (
