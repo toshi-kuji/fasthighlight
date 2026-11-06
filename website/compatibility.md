@@ -20,7 +20,7 @@ Fuzz tests compare the two on large numbers of generated inputs. They are a chec
 
 ## What was changed
 
-Chroma is the reference, not something to copy exactly. Where Chroma has a bug, or behaves in a way that gets in the way of readers, fasthighlight differs. Changes are limited to places where the colors would clearly go wrong (an error color, or a string or tag color running on past where it should end).
+Chroma is the reference, not something to copy exactly. Where Chroma has a bug, or behaves in a way that gets in the way of readers, fasthighlight differs. Changes are limited to places where the colors would clearly go wrong (an error color, or a string or tag color running on past where it should end), and to places where Chroma leaves out a color in a way that is plainly inconsistent (the types of Go struct fields).
 
 <div class="changes">
 
@@ -34,6 +34,7 @@ Chroma is the reference, not something to copy exactly. Where Chroma has a bug, 
 | Ruby `defined?` | not a keyword in `defined? x` or `defined?(x)` | a keyword |
 | The start of an R name | `[`, `\`, `]`, `^` and `` ` `` can start a name (a typo for `[a-zA-Z]` in the rule), so `x[[1]]` and `n^2` are names | letters only |
 | The start of a Go name | digits other than ASCII, and numbers in templates (`{{ 1 }}`), can start a name | digits cannot start a name |
+| The types of Go struct fields (`Context` in `ctx context.Context`, embedded fields such as `io.Reader`) | only built-in types such as `string` get the type color; other names get the text color | the type color (the package name `context` too, as a namespace) |
 | Java numbers (`42`, `1.5`, `0x1F`) | name color | number color |
 | C++ raw strings (`R"(…)"`) | the rule almost never matches, so `R` is a name and the rest a normal string | raw strings |
 | Python docstrings (`"""…"""` at the start of a line) | the rule almost never matches, so they get the normal string color | docstring color |
