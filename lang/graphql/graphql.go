@@ -18,6 +18,7 @@ var Language = fh.Builtin("GraphQL")
 
 func init() {
 	Language.Lex = lex
+	Language.Prepare = prepare
 	fh.Register(Language)
 }
 
@@ -37,12 +38,21 @@ var declarations = [...]string{
 // keywords are the words of (on|extend|schema|directive|\.\.\.), also without \b.
 var keywords = [...]string{"on", "extend", "schema", "directive", "..."}
 
-// constants are the words of (QUERY|MUTATION|…)\b (directive locations).
-var constants = map[string]bool{
-	"QUERY": true, "MUTATION": true, "SUBSCRIPTION": true, "FIELD": true, "FRAGMENT_DEFINITION": true,
-	"FRAGMENT_SPREAD": true, "INLINE_FRAGMENT": true, "SCHEMA": true, "SCALAR": true, "OBJECT": true,
-	"FIELD_DEFINITION": true, "ARGUMENT_DEFINITION": true, "INTERFACE": true, "UNION": true, "ENUM": true,
-	"ENUM_VALUE": true, "INPUT_OBJECT": true, "INPUT_FIELD_DEFINITION": true,
+// constants are the words of (QUERY|MUTATION|…)\b (directive locations). prepare builds the set from
+// constantWords, on first use.
+var constants map[string]bool
+
+var constantWords = [...]string{
+	"QUERY", "MUTATION", "SUBSCRIPTION", "FIELD", "FRAGMENT_DEFINITION", "FRAGMENT_SPREAD", "INLINE_FRAGMENT",
+	"SCHEMA", "SCALAR", "OBJECT", "FIELD_DEFINITION", "ARGUMENT_DEFINITION", "INTERFACE", "UNION", "ENUM",
+	"ENUM_VALUE", "INPUT_OBJECT", "INPUT_FIELD_DEFINITION",
+}
+
+func prepare() {
+	constants = make(map[string]bool, len(constantWords))
+	for _, w := range constantWords {
+		constants[w] = true
+	}
 }
 
 func lex(src string, end int) []fh.Token {
