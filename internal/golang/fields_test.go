@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	fh "github.com/toshi-kuji/fasthighlight"
 )
@@ -41,6 +42,10 @@ func TestFieldTypes(t *testing.T) {
 		{"i interface{ M(a A) B }", []name{{"i", other}, {"a", other}, {"A", other}, {"B", other}}},
 		{"a A; b B", []name{{"a", other}, {"A", class}, {"b", other}, {"B", class}}},
 		{"t Tag `x:\"{{ .Name }}\"`\n\tu U", []name{{"t", other}, {"Tag", class}, {"u", other}, {"U", class}}},
+		{"a /* c */ Foo", []name{{"a", other}, {"Foo", class}}},
+		{"a func(\n\tb Foo\n\tc Bar", []name{{"a", other}, {"b", other}, {"Foo", class}, {"c", other}, {"Bar", class}}},
+		{"a [\n\tb Foo", []name{{"a", other}, {"b", other}, {"Foo", class}}},
+		{"x int `a:\"b\"`\n\ty Foo", []name{{"x", other}, {"y", other}, {"Foo", class}}},
 		// Outside struct bodies, nothing changes.
 		{"!var x Foo\nfunc f(a Bar) Baz { return Baz{A: b} }\n", []name{{"x", other}, {"Foo", other}, {"a", other},
 			{"Bar", other}, {"Baz", other}, {"Baz", other}, {"A", other}, {"b", other}}},
@@ -70,6 +75,20 @@ func TestFieldTypes(t *testing.T) {
 			if tk.Type == class || tk.Type == ns {
 				t.Errorf("%q with ChromaFieldTypes: %q is %v", src, tk.Value, tk.Type)
 			}
+		}
+	}
+}
+
+// TestFieldTypesDeepBrackets checks that a long run of unclosed brackets in a field type does not take
+// quadratic time.
+func TestFieldTypesDeepBrackets(t *testing.T) {
+	Prepare()
+	for _, open := range []string{"(", "[", "[["} {
+		src := "type T struct {\n\ta func" + strings.Repeat(open, 200000)
+		start := time.Now()
+		Lex(src, len(src), Options{})
+		if d := time.Since(start); d > 2*time.Second {
+			t.Errorf("%q repeated: %v", open, d)
 		}
 	}
 }

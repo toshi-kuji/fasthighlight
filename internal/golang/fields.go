@@ -57,23 +57,24 @@ func markFieldTypes(toks []fh.Token, raws [][2]int) {
 	}
 	atoms := fieldAtoms(toks, raws)
 	var stack []frame
+	var braces []int       // indexes in stack of the open braces, so the innermost one is found without a scan
 	pendingStruct := false // the last keyword was struct, so the next { opens a struct body
 	// cur returns the innermost struct body and the number of brackets opened inside its current field,
 	// or nil if the innermost brace is not a struct body.
 	cur := func() (*frame, int) {
-		for k := len(stack) - 1; k >= 0; k-- {
-			switch stack[k].kind {
-			case frameStruct:
-				return &stack[k], len(stack) - 1 - k
-			case frameBrace:
-				return nil, 0
-			}
+		if len(braces) == 0 {
+			return nil, 0
 		}
-		return nil, 0
+		b := braces[len(braces)-1]
+		if stack[b].kind != frameStruct {
+			return nil, 0
+		}
+		return &stack[b], len(stack) - 1 - b
 	}
-	// next returns the index of the atom after k that is not whitespace without a newline, or len(atoms).
+	// next returns the index of the atom after k that is not whitespace without a newline or a /* */ comment,
+	// or len(atoms).
 	next := func(k int) int {
-		for k++; k < len(atoms) && atoms[k].t == fh.TextWhitespace && !atoms[k].nl; k++ {
+		for k++; k < len(atoms) && (atoms[k].t == fh.TextWhitespace && !atoms[k].nl || atoms[k].t == fh.CommentMultiline); k++ {
 		}
 		return k
 	}
@@ -97,21 +98,21 @@ func markFieldTypes(toks []fh.Token, raws [][2]int) {
 		f, depth := cur()
 		switch {
 		case a.c == '{':
+			kind := frameBrace
 			if pendingStruct {
-				stack = append(stack, frame{kind: frameStruct, state: fieldStart})
-			} else {
-				stack = append(stack, frame{kind: frameBrace})
+				kind = frameStruct
 			}
+			braces = append(braces, len(stack))
+			stack = append(stack, frame{kind: kind, state: fieldStart})
 			pendingStruct = false
 			continue
 		case a.c == '}':
 			// Close up to and including the innermost brace (brackets left open by a mistake go with it).
-			for len(stack) > 0 {
-				kind := stack[len(stack)-1].kind
-				stack = stack[:len(stack)-1]
-				if kind == frameBrace || kind == frameStruct {
-					break
-				}
+			if len(braces) > 0 {
+				stack = stack[:braces[len(braces)-1]]
+				braces = braces[:len(braces)-1]
+			} else {
+				stack = stack[:0]
 			}
 			pendingStruct = false
 			continue
@@ -123,6 +124,12 @@ func markFieldTypes(toks []fh.Token, raws [][2]int) {
 			pendingStruct = false
 		}
 		if f == nil {
+			continue
+		}
+		if a.nl || a.c == ';' {
+			// A field ends at a newline or ;, even if a bracket in it was left open.
+			stack = stack[:len(stack)-depth]
+			f.state = fieldStart
 			continue
 		}
 		if depth > 0 {
@@ -143,10 +150,6 @@ func markFieldTypes(toks []fh.Token, raws [][2]int) {
 			case a.t == fh.NameOther && top.kind == frameTypes:
 				color(k)
 			}
-			continue
-		}
-		if a.nl || a.c == ';' {
-			f.state = fieldStart
 			continue
 		}
 		switch f.state {
