@@ -259,7 +259,16 @@ var intendedDiffs = []intendedDiff{
 	{"markdown", "-", fh.Text, fh.Keyword, mdMarkerNewline},
 	{"markdown", ">\n", fh.Text, fh.Keyword, mdMarkerNewline},
 	{"markdown", "not a quote\n", fh.Text, fh.GenericEmph, mdMarkerNewline},
+	// react is JavaScript with JSX, so it has JavaScript's template-literal difference, and its template
+	// literal has no rule for escapes such as \n (like TypeScript's).
+	{"react", "}", fh.Punctuation, fh.LiteralStringInterpol, templateBraces},
+	{"react", ")", fh.Punctuation, fh.LiteralStringBacktick, templateBraces},
+	{"react", "}", fh.LiteralStringInterpol, fh.LiteralStringBacktick, templateBraces},
+	{"react", "\\", fh.LiteralStringBacktick, fh.Error, reactTemplateEscape},
 }
+
+// reactTemplateEscape: Chroma's react template literal has no rule for escapes such as \n.
+const reactTemplateEscape = "\\n and so on in a react (JSX) template literal are part of the string (Chroma makes \\ an Error)"
 
 // diffRun is a contiguous part whose type differs.
 type diffRun struct {

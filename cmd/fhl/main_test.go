@@ -710,7 +710,7 @@ func TestListsAndVersion(t *testing.T) {
 	}
 	_, out, _ = fhlRun(t, "", "", false, "--list-langs", "--json")
 	var langs []map[string]any
-	if err := json.Unmarshal([]byte(out), &langs); err != nil || len(langs) != 24 {
+	if err := json.Unmarshal([]byte(out), &langs); err != nil || len(langs) != 25 {
 		t.Errorf("--list-langs --json: %d languages, %v", len(langs), err)
 	}
 	_, out, _ = fhlRun(t, "", "", false, "--list-themes", "--json")

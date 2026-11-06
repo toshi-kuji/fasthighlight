@@ -1,11 +1,17 @@
-// Package js is the JavaScript tokenizer. It is used by lang/javascript (JavaScript) and internal/html
-// (inside <script>).
+// Package js is the JavaScript tokenizer. It is used by lang/javascript (JavaScript), internal/html
+// (inside <script>), and lang/react (JavaScript with JSX, through LexReact).
 //
-// The token types and boundaries reproduce the rules of Chroma 2.27.0's javascript.xml without regular
-// expressions. There is only one intended difference (see the "What was changed" section of website/compatibility.md):
-// the { } inside the ${ … } of a template literal are closed by counting depth. Chroma closes the ${ at
-// the first }, so the text after ${f({ a: 1 })} is colored as a string. Setting Options.ChromaBraces to
-// true makes it behave like Chroma (used by the tests that compare with Chroma).
+// The token types and boundaries reproduce the rules of Chroma 2.27.0's javascript.xml (react.xml for
+// LexReact) without regular expressions. react.xml is javascript.xml with the JSX states (jsx, tag, attr,
+// expression) added, other number rules, no "using" keyword, and no rule for escapes such as \n in a
+// template literal.
+//
+// The intended differences (see the "What was changed" section of website/compatibility.md): the { } inside
+// the ${ … } of a template literal are closed by counting depth. Chroma closes the ${ at the first }, so
+// the text after ${f({ a: 1 })} is colored as a string. Setting Options.ChromaBraces to true makes it
+// behave like Chroma (used by the tests that compare with Chroma). In react, an escape such as \n in a
+// template literal is part of the string, as in JavaScript (Chroma's react.xml makes the \ an Error);
+// LexReact with chroma set to true behaves like Chroma in both points.
 package js
 
 import (
@@ -20,6 +26,20 @@ import (
 type Options struct {
 	// If ChromaBraces is true, ${ … } is closed at the first }, as in Chroma.
 	ChromaBraces bool
+
+	// react selects the rules of Chroma's react.xml (JavaScript with JSX) instead of javascript.xml. It is
+	// set only by LexReact.
+	react bool
+	// chromaEscape (only with react) makes the \ of an escape in a template literal other than \\ and \`
+	// an Error, as in Chroma's react.xml. It is set only by LexReact.
+	chromaEscape bool
+}
+
+// LexReact splits src into tokens with the rules of Chroma's react.xml (same contract as Lex in
+// fasthighlight.Language). If chroma is true, the intended differences from Chroma (template-literal
+// braces and escapes) are turned off; compat/ uses it to compare with Chroma.
+func LexReact(src string, end int, chroma bool) []fh.Token {
+	return Lex(src, end, Options{ChromaBraces: chroma, react: true, chromaEscape: chroma})
 }
 
 // The states of Chroma's javascript.xml.
@@ -31,6 +51,9 @@ const (
 	interpInside       // inside ${ … }
 	slashRegex         // slashstartsregex: the next / can be read as a regular expression
 	badRegex           // an unclosed regular expression; up to the end of the line
+	tag                // inside a JSX tag (react only)
+	attr               // a JSX attribute value (react only)
+	expression         // JSX { … } (react only)
 )
 
 // frame is one level of the stack. depth is used in interpInside: the number of { opened inside the ${.
@@ -98,7 +121,10 @@ func (l *lexer) step(top *frame, i int) (int, bool) {
 		case c == '`':
 			l.pop()
 			return l.emit(fh.LiteralStringBacktick, i, i+1)
-		case c == '\\': // \\\\, \\`, \\[^`\\]
+		case c == '\\': // \\\\, \\`, \\[^`\\] (react.xml has only the first two)
+			if l.o.chromaEscape && !strings.HasPrefix(src[i:], `\\`) && !strings.HasPrefix(src[i:], "\\`") {
+				return 0, false
+			}
 			if i+1 < len(src) {
 				_, n := lexkit.Rune(src, i+1)
 				return l.emit(fh.LiteralStringBacktick, i, i+1+n)
@@ -134,6 +160,120 @@ func (l *lexer) step(top *frame, i int) (int, bool) {
 			l.pop()
 			return l.emit(fh.Text, i, i+1)
 		}
+	case expression:
+		switch c {
+		case '{':
+			l.push(expression)
+			return l.emit(fh.Punctuation, i, i+1)
+		case '}':
+			l.pop()
+			return l.emit(fh.Punctuation, i, i+1)
+		}
+		return l.root(i, nil)
+	case tag:
+		return l.tag(i)
+	case attr:
+		switch c {
+		case '{':
+			l.push(expression)
+			return l.emit(fh.Punctuation, i, i+1)
+		case '"', '\'': // ".*?" and '.*?' (dot_all, so they include newlines)
+			if j := strings.IndexByte(src[i+1:], c); j >= 0 {
+				l.pop()
+				return l.emit(fh.LiteralString, i, i+1+j+1)
+			}
+		}
+		l.pop()
+		return 0, true
+	}
+	return 0, false
+}
+
+func isTagName(r rune) bool { return r == '.' || lexkit.IsWord(r) }
+
+// jsx tries the rules of react.xml's jsx state.
+func (l *lexer) jsx(i int) (int, bool) {
+	src := l.src
+	if src[i] != '<' {
+		return 0, false
+	}
+	// (<)(/?)(>)
+	if strings.HasPrefix(src[i:], "<>") {
+		l.x.Emit(fh.Punctuation, i, i+1)
+		l.x.Emit(fh.Punctuation, i+1, i+2)
+		return 2, true
+	}
+	if strings.HasPrefix(src[i:], "</>") {
+		l.x.Emit(fh.Punctuation, i, i+1)
+		l.x.Emit(fh.Punctuation, i+1, i+2)
+		l.x.Emit(fh.Punctuation, i+2, i+3)
+		return 3, true
+	}
+	// (<)([\w\.]+)
+	if n := lexkit.Span(src, i+1, isTagName); n > 0 {
+		l.x.Emit(fh.Punctuation, i, i+1)
+		l.x.Emit(fh.NameTag, i+1, i+1+n)
+		l.push(tag)
+		return 1 + n, true
+	}
+	// (<)(/)([\w\.]+)(>)
+	if strings.HasPrefix(src[i:], "</") {
+		if n := lexkit.Span(src, i+2, isTagName); n > 0 {
+			if e := i + 2 + n; e < len(src) && src[e] == '>' {
+				l.x.Emit(fh.Punctuation, i, i+1)
+				l.x.Emit(fh.Punctuation, i+1, i+2)
+				l.x.Emit(fh.NameTag, i+2, e)
+				l.x.Emit(fh.Punctuation, e, e+1)
+				return e + 1 - i, true
+			}
+		}
+	}
+	return 0, false
+}
+
+// tag tries the rules of react.xml's tag state.
+func (l *lexer) tag(i int) (int, bool) {
+	src := l.src
+	// \s+
+	if n := lexkit.Span(src, i, lexkit.IsSpace); n > 0 {
+		return l.emit(fh.Text, i, i+n)
+	}
+	// ([\w]+\s*)(=)(\s*)
+	if n := lexkit.Span(src, i, lexkit.IsWord); n > 0 {
+		e := i + n
+		e += lexkit.Span(src, e, lexkit.IsSpace)
+		if e < len(src) && src[e] == '=' {
+			w := lexkit.Span(src, e+1, lexkit.IsSpace)
+			l.x.Emit(fh.NameAttribute, i, e)
+			l.x.Emit(fh.Operator, e, e+1)
+			l.x.Emit(fh.Text, e+1, e+1+w)
+			l.push(attr)
+			return e + 1 + w - i, true
+		}
+	}
+	// [{}]+
+	if j := i; src[j] == '{' || src[j] == '}' {
+		for j < len(src) && (src[j] == '{' || src[j] == '}') {
+			j++
+		}
+		return l.emit(fh.Punctuation, i, j)
+	}
+	// [\w\.]+
+	if n := lexkit.Span(src, i, isTagName); n > 0 {
+		return l.emit(fh.NameAttribute, i, i+n)
+	}
+	// (/?)(\s*)(>)
+	j := i
+	if src[j] == '/' {
+		j++
+	}
+	w := lexkit.Span(src, j, lexkit.IsSpace)
+	if e := j + w; e < len(src) && src[e] == '>' {
+		l.x.Emit(fh.Punctuation, i, j)
+		l.x.Emit(fh.Text, j, e)
+		l.x.Emit(fh.Punctuation, e, e+1)
+		l.pop()
+		return e + 1 - i, true
 	}
 	return 0, false
 }
@@ -259,6 +399,11 @@ func word(src string, i int, words []string) int {
 func (l *lexer) root(i int, in *frame) (int, bool) {
 	src := l.src
 	c := src[i]
+	if l.o.react {
+		if n, ok := l.jsx(i); ok {
+			return n, ok
+		}
+	}
 	// \A#! ?/.*?\n
 	if i == 0 && strings.HasPrefix(src, "#!") {
 		j := 2
@@ -281,7 +426,11 @@ func (l *lexer) root(i int, in *frame) (int, bool) {
 	if n, ok := l.commentsAndWhitespace(i); ok {
 		return n, ok
 	}
-	if e := numberEnd(src, i); e > 0 {
+	if l.o.react {
+		if e, t := reactNumber(src, i); e > 0 {
+			return l.emit(t, i, e)
+		}
+	} else if e := numberEnd(src, i); e > 0 {
 		return l.emit(numberType(src, i, e), i, e)
 	}
 	if strings.HasPrefix(src[i:], "...") {
@@ -312,7 +461,7 @@ func (l *lexer) root(i int, in *frame) (int, bool) {
 		l.push(slashRegex)
 		return l.emit(fh.KeywordDeclaration, i, i+n)
 	}
-	if n := word(src, i, reserved[:]); n > 0 {
+	if n := word(src, i, reserved[:]); n > 0 && !(l.o.react && src[i:i+n] == "using") { // react.xml has no "using"
 		return l.emit(fh.KeywordReserved, i, i+n)
 	}
 	if n := word(src, i, constants[:]); n > 0 {
@@ -387,6 +536,66 @@ func numberEnd(src string, i int) int {
 		return j
 	}
 	return 0
+}
+
+// reactNumber returns the end and type of the part matched by react.xml's number rules
+// ((\.\d+|[0-9]+\.[0-9]*)([eE][-+]?[0-9]+)?, 0[bB][01]+, 0[oO][0-7]+, 0[xX][0-9a-fA-F]+, [0-9]+), or 0 if
+// none matches.
+func reactNumber(src string, i int) (int, fh.TokenType) {
+	e := 0
+	if src[i] == '.' { // \.\d+ (\d is Unicode)
+		if n := lexkit.Span(src, i+1, lexkit.IsDigit); n > 0 {
+			e = i + 1 + n
+		}
+	} else if d := i + asciiDigits(src, i); d > i && d < len(src) && src[d] == '.' { // [0-9]+\.[0-9]*
+		e = d + 1 + asciiDigits(src, d+1)
+	}
+	if e > 0 {
+		if e < len(src) && (src[e] == 'e' || src[e] == 'E') { // ([eE][-+]?[0-9]+)?
+			k := e + 1
+			if k < len(src) && (src[k] == '+' || src[k] == '-') {
+				k++
+			}
+			if n := asciiDigits(src, k); n > 0 {
+				e = k + n
+			}
+		}
+		return e, fh.LiteralNumberFloat
+	}
+	if src[i] == '0' && i+1 < len(src) {
+		var f func(byte) bool
+		var t fh.TokenType
+		switch src[i+1] {
+		case 'b', 'B':
+			f, t = func(c byte) bool { return c == '0' || c == '1' }, fh.LiteralNumberBin
+		case 'o', 'O':
+			f, t = func(c byte) bool { return c >= '0' && c <= '7' }, fh.LiteralNumberOct
+		case 'x', 'X':
+			f, t = func(c byte) bool { return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F' }, fh.LiteralNumberHex
+		}
+		if f != nil {
+			j := i + 2
+			for j < len(src) && f(src[j]) {
+				j++
+			}
+			if j > i+2 {
+				return j, t
+			}
+		}
+	}
+	if n := asciiDigits(src, i); n > 0 { // [0-9]+
+		return i + n, fh.LiteralNumberInteger
+	}
+	return 0, fh.Text
+}
+
+// asciiDigits returns the number of bytes of [0-9]* at src[i:].
+func asciiDigits(src string, i int) int {
+	n := 0
+	for i+n < len(src) && src[i+n] >= '0' && src[i+n] <= '9' {
+		n++
+	}
+	return n
 }
 
 // numberType re-decides the type of the src[i:e] matched by numberEnd, following the order of the rules.

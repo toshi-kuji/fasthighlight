@@ -196,6 +196,13 @@ var catalog = func() languageSet {
 			Filenames: []string{"*.md", "*.mkd", "*.markdown"},
 			Package:   langPackage + "markdown",
 		},
+		{
+			Name:         "react",
+			ParallelHint: HintHeavy,
+			Aliases:      []string{"jsx", "react"},
+			Filenames:    []string{"*.jsx", "*.react"},
+			Package:      langPackage + "react",
+		},
 	} {
 		if err := s.add(l); err != nil {
 			panic("fasthighlight: catalog: " + err.Error())

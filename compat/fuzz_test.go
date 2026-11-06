@@ -67,7 +67,7 @@ func FuzzHTMLMatchesChroma(f *testing.F) {
 // exactLanguages are the languages for which the fuzz test checks that any input gives the same token
 // sequence as Chroma. Languages that intentionally differ from Chroma are compared using the switch that
 // matches Chroma (chromaMode).
-var exactLanguages = []string{"Bash", "C", "C++", "C#", "CSS", "Diff", "Go", "HTML", "Java", "JavaScript", "JSON", "Kotlin", "markdown", "PHP", "Python", "R", "Ruby", "Rust", "SQL", "Swift", "TOML", "TypeScript", "XML", "YAML"}
+var exactLanguages = []string{"Bash", "C", "C++", "C#", "CSS", "Diff", "Go", "HTML", "Java", "JavaScript", "JSON", "Kotlin", "markdown", "PHP", "Python", "R", "react", "Ruby", "Rust", "SQL", "Swift", "TOML", "TypeScript", "XML", "YAML"}
 
 // chromaMode returns the tokenizer of l with the switch that matches Chroma turned on (it does the same
 // preprocessing as Language.Tokenise). For a language without such a switch, it returns l.Tokenise as is.
@@ -120,6 +120,8 @@ func chromaMode(l *fh.Language) func(string) []fh.Token {
 				return nil
 			}})
 		}
+	case "react":
+		lex = func(text string, end int) []fh.Token { return js.LexReact(text, end, true) }
 	case "HTML":
 		l.Tokenise("") // preparation (CSS tables)
 		lex = func(text string, end int) []fh.Token { return html.Lex(text, end, js.Options{ChromaBraces: true}) }
