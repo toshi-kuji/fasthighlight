@@ -14,6 +14,8 @@
 #     sitemap.xml, listing every page under SITE_URL (default: the GitHub Pages address).
 #  6. Copy the icon (website/favicon.png) and link it from every page, and add the site name to the
 #     title of every page but the top one (as search results and tabs show the title alone).
+#     Also copy the share image (website/og.png) and add Open Graph and Twitter card tags, so that a
+#     link to a page shows the image, the title and a description on social media.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -164,11 +166,13 @@ PY
 
 # 6. The icon and the page titles. fhl writes <title> from the first heading and a <link> to highlight.css
 #    (with a relative path); the icon link goes after it, with the same path.
-cp "$root/website/favicon.png" "$out/"
-python3 - "$out" <<'PY'
-import os, re, sys
+cp "$root/website/favicon.png" "$root/website/og.png" "$out/"
+python3 - "$out" "$site_url" <<'PY'
+import html as h, os, re, sys
 
-out, site = sys.argv[1], "fasthighlight"
+out, base, site = sys.argv[1], sys.argv[2].rstrip("/") + "/", "fasthighlight"
+description = ("Fast syntax highlighting written in Go, without regular expressions. A goldmark extension, "
+               "and the command fhl that turns Markdown into HTML or a basic static site.")
 for dirpath, _, files in os.walk(out):
     for name in files:
         if not name.endswith(".html") or (dirpath == out and name.startswith("google")):
@@ -178,9 +182,20 @@ for dirpath, _, files in os.walk(out):
         css = re.search(r'<link rel="stylesheet" href="([^"]*)highlight\.css">\n', html)
         if not css:
             sys.exit(f"build.sh: no highlight.css link in {path}")
-        html = html[:css.end()] + f'<link rel="icon" type="image/png" href="{css.group(1)}favicon.png">\n' + html[css.end():]
-        if os.path.relpath(path, out) != "index.html":
+        rel = os.path.relpath(path, out).replace(os.sep, "/")
+        if rel != "index.html":
             html = re.sub(r"<title>(.*?)</title>", lambda m: f"<title>{m.group(1)} – {site}</title>", html, count=1)
+        title = h.unescape(re.search(r"<title>(.*?)</title>", html).group(1))
+        url = base + (rel[: -len("index.html")] if rel.endswith("index.html") else rel)
+        meta = {
+            "og:type": "website", "og:site_name": site, "og:title": title, "og:description": description,
+            "og:url": url, "og:image": base + "og.png", "og:image:width": "1200", "og:image:height": "630",
+            "og:image:alt": "The fasthighlight logo",
+        }
+        tags = [f'<link rel="icon" type="image/png" href="{css.group(1)}favicon.png">']
+        tags += [f'<meta property="{k}" content="{h.escape(v)}">' for k, v in meta.items()]
+        tags.append('<meta name="twitter:card" content="summary_large_image">')
+        html = html[:css.end()] + "\n".join(tags) + "\n" + html[css.end():]
         open(path, "w", encoding="utf-8").write(html)
 PY
 
