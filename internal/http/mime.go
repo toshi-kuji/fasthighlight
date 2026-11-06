@@ -48,6 +48,7 @@ var mimeTypes = map[string]string{
 	"text/x-markdown":           "markdown",
 	"text/x-patch":              "Diff",
 	"text/x-php":                "PHP",
+	"text/x-powershell":         "PowerShell",
 	"text/x-python":             "Python",
 	"text/x-python3":            "Python",
 	"text/x-r":                  "R",
