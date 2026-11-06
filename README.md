@@ -11,7 +11,7 @@ fasthighlight is fast syntax highlighting written in Go, without regular express
 
 ## Supported languages
 
-fasthighlight supports 24 languages: Bash, C, C#, C++, CSS, Diff, Go, HTML, Java, JavaScript, JSON, Kotlin, Markdown, PHP, Python, R, Ruby, Rust, SQL, Swift, TOML, TypeScript, XML, YAML.
+fasthighlight supports 34 languages: Bash, Bash Session (`console`), C, C#, C++, CSS, Diff, Docker, Go, GraphQL, HTML, HTTP, INI, Java, JavaScript, JSON, Kotlin, Makefile, Markdown, PHP, PowerShell, Protocol Buffer, Python, R, React (JSX), Ruby, Rust, SCSS, SQL, Swift, TOML, TypeScript, XML, YAML.
 
 The names, aliases and file name patterns are the same as Chroma's (`fhl --list-langs` prints them). Code blocks in other languages, or without a language name, are escaped but not colored. Code blocks marked as plain text (`text`, `plaintext`, `plain` or `no-highlight`, the names of Chroma's plain text lexer) are escaped too, and are not reported as uncolored, since that is what they ask for. Write ` ```text ` for output, logs and anything else that should stay plain.
 
@@ -132,7 +132,7 @@ import (
 )
 ```
 
-In a small program on Linux amd64 built with `-ldflags "-s -w"`, calling only `Highlight` took about 1.61 MB; importing the Go language added about 0.07 MB, and importing all the languages (`lang/all`) about 0.60 MB. Using `markdown.Converter` (with goldmark) added about 1.04 MB more. Only what you import is compiled into your program; the `fhl` command is not.
+In a small program on Linux amd64 built with Go 1.25.0 and `-ldflags "-s -w"`, calling only `Highlight` took about 1.63 MB; importing the Go language added about 0.07 MB, and importing all the languages (`lang/all`) about 0.77 MB. Using `markdown.Converter` (with goldmark) added about 1.04 MB more. Only what you import is compiled into your program; the `fhl` command is not.
 
 To list the code blocks that will not be colored before converting (for example, to warn about a language you did not import), parse the documents with `markdown.Converter.Parse`, call `markdown.Scan`, and then `markdown.Converter.Render`. To check a single language name, `fasthighlight.LookupSupported` tells whether fasthighlight supports it and which package to import.
 

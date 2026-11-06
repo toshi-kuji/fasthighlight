@@ -40,8 +40,10 @@ type Language struct {
 	// HintLight, or HintDefault (not specified).
 	//
 	// A language you register yourself should be chosen by the same criterion as the languages
-	// fasthighlight provides. Among those, the heavy ones are Bash, C, C#, C++, CSS, Go, Java, JavaScript,
-	// Kotlin, PHP, Python, R, Ruby, Rust, Swift, and TypeScript; the others are not specified, which is
+	// fasthighlight provides. Among those, the heavy ones are the programming languages (Bash, C, C#, C++,
+	// CSS, Go, Java, JavaScript, Kotlin, PHP, PowerShell, Python, R, react, Ruby, Rust, SCSS, Swift and
+	// TypeScript) and the languages mostly read as Bash (Bash Session, Docker and Makefile); the others are
+	// not specified, which is
 	// treated like HintLight. When in doubt, leave it unspecified or use HintLight (going parallel is less
 	// likely to make things slower).
 	ParallelHint ParallelHint
