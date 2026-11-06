@@ -211,6 +211,21 @@ var pieces = map[string][]string{
 		"<!--", "-->", "#!", "#! /", "0", "1.", "1.5", ".5", ".٣", "1e3", "1.e3", "1.5e+3", "e-", "0x1F", "0b1",
 		"0o7", "1_000", "12", "/re/g", "/[/]/", "/a/gx", "\\u00e9", "日本", "٣", " ",
 	},
+	"Bash Session": {
+		"\n", " ", "\t", "$", "$ ", "#", "# ", "%", ">", "> ", "[", "]", "@", "[u@h]", "[u@h ~]", "[u@h]$ ",
+		"[@]", "[a@]", "echo", "x", "#!/bin/sh", "\"", "'", "\\", "$(", ")", "<<", "EOF", "1", "日本",
+	},
+	"Docker": {
+		"\n", " ", "\t", "\\", "\\\n", "#", "# c", "FROM", "from", "AS", "as", "MAINTAINER", "EXPOSE", "WORKDIR",
+		"USER", "STOPSIGNAL", "VOLUME", "ENTRYPOINT", "CMD", "SHELL", "LABEL", "ENV", "ARG", "RUN", "ADD", "COPY",
+		"ONBUILD", "HEALTHCHECK", "--", "--a=b", "a=b", "=", "a", "1", "/", ".", ":", "[", "]", "[\"a\"]", "\"",
+		"'", "$", "$(", ")", "{", "}", ",", "ſ", "K", "日本",
+	},
+	"Makefile": {
+		"\n", " ", "\t", "\\", "\\\n", "#", "# c", "$", "$@", "$<", "$$", "$(", "(", ")", "${", "}", "x", "CC",
+		"a.b", "-", "=", ":=", "?=", "+=", "!=", "::", ":", ",", "|", "export", "export ", "\"", "'", "\\'", ".PHONY",
+		"%", "*", "if", "1", "日本", " ",
+	},
 }
 
 // TestRandomPiecesMatchChroma checks that any arrangement of the fragments gives exactly the same token

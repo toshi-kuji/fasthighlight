@@ -131,6 +131,12 @@ var EdgeCases = []Block{
 	{"bash", "echo \"unterminated $x\necho 'unclosed\n\\\necho done 2>&1 ; echo 10 20x\n"},
 	{"bash", "echo $((16#ff + 2#)) \"a\\\"b\" \\\\ trailing\\"},
 	{"bash", "do   \nif(true)then\ntypeset -i n; times; type x"},
+	{"console", "$ ls -la /tmp\ntotal 0\ndrwxrwxrwt  2 root root 40 Jan  1 00:00 .\n\n# echo $HOME && cd ~\n/root\n[user@host ~]$ git status\nOn branch main\n> continued\n%   \n$"},
+	{"shell-session", "[u@h]\n$ x\n[a@b] # #!/bin/sh\n[@]$ no\n[a@]$ no\n[a\n@b] >  for i in 1 2; do echo $i; done\n$ cat <<EOF\nnot here\nEOF\n"},
+	{"docker", "# syntax=docker/dockerfile:1\nFROM golang:1.22 AS build\nWORKDIR /src\nCOPY . .\nRUN go build -o /app ./cmd/app && \\\n    strip /app\n\nFROM scratch\nCOPY --from=build /app /app\nEXPOSE 8080\nENV GOOS=linux GOARCH=amd64\nLABEL maintainer=me version=1\nARG VERSION\nHEALTHCHECK --interval=30s --timeout=3s CMD curl -f http://localhost/ || exit 1\nENTRYPOINT [\"/app\", \"--port\", \"8080\"]\nCMD [\"serve\"]\n"},
+	{"dockerfile", "from alpine as base\nvolume /data\nVOLUME [\"/a\", \"/b\"]\nonbuild run echo hi\nshell [\"/bin/sh\", \"-c\"]\nUSER nobody:nogroup\nSTOPSIGNAL SIGTERM\nMAINTAINER x <x@y>\nFROM foo/ AS\nFROM a As b/\nADD a.tar.gz /\nRUN echo a \\\n\nRUN echo \\\n  b \\\nCMD echo $HOME # c\nENV\tA=1 \\\n B=2\nhealthcheck \\\n --retries=3 --x"},
+	{"makefile", "# Build\nCC ?= gcc\nCFLAGS := -O2 -Wall \\\n  -g\nOBJS = $(SRCS:.c=.o)\nexport PATH := $(HOME)/bin:$(PATH)\nexport GOFLAGS\n\n.PHONY: all clean\nall: app\n\napp: $(OBJS) | dir # deps\n\t$(CC) $(CFLAGS) -o $@ $^\n\t@echo \"built $@\"\n\nclean:\n\trm -f *.o app\n"},
+	{"make", "include config.mk\nifeq ($(OS),Windows_NT)\n  EXE := .exe\nendif\n%.o: %.c\n\t$(CC) -c $< -o $@\nexport A B-$(C)\nexport  \n=x\nexportx = 1\n\"str\" 'it\\'s'\n$$ $* $? $(call f,$(x),(y))\nfoo bar baz\na::b,c\\\nd\nx+=1\ny != echo hi\n日本 = 1"},
 	// CSS
 	{"css", "/* reset */\nbody, h1 > p:hover::before {\n  margin: 0 auto;\n  color: #ff0;\n  font-family: \"Helvetica Neue\", sans-serif;\n}\n"},
 	{"css", ".card { width: calc(100% - 2rem); transform: rotate(45deg) translateX(-1.5em); background: url(\"a.png\") no-repeat, url(b.svg); }\n"},

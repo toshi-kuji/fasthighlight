@@ -24,6 +24,14 @@ var catalog = func() languageSet {
 			Package: langPackage + "bash",
 		},
 		{
+			Name:          "Bash Session",
+			ParallelHint:  HintHeavy,
+			Aliases:       []string{"bash-session", "console", "shell-session"},
+			Filenames:     []string{"*.sh-session"},
+			EnsureNewline: true,
+			Package:       langPackage + "bashsession",
+		},
+		{
 			Name:          "C",
 			ParallelHint:  HintHeavy,
 			Aliases:       []string{"c"},
@@ -62,6 +70,16 @@ var catalog = func() languageSet {
 			Filenames:     []string{"*.diff", "*.patch"},
 			EnsureNewline: true,
 			Package:       langPackage + "diff",
+		},
+		{
+			Name:         "Docker",
+			ParallelHint: HintHeavy,
+			Aliases:      []string{"docker", "dockerfile", "containerfile"},
+			Filenames: []string{
+				"Dockerfile", "Dockerfile.*", "*.Dockerfile", "*.docker", "Containerfile", "Containerfile.*",
+				"*.Containerfile",
+			},
+			Package: langPackage + "docker",
 		},
 		{
 			Name:         "Go",
@@ -103,6 +121,17 @@ var catalog = func() languageSet {
 			Aliases:      []string{"kotlin"},
 			Filenames:    []string{"*.kt", "*.kts"},
 			Package:      langPackage + "kotlin",
+		},
+		{
+			Name:         "Makefile",
+			ParallelHint: HintHeavy,
+			Aliases:      []string{"make", "makefile", "mf", "bsdmake"},
+			Filenames: []string{
+				"*.mak", "*.mk", "Makefile", "makefile", "Makefile.*", "GNUmakefile", "BSDmakefile", "Justfile",
+				"justfile", ".justfile",
+			},
+			EnsureNewline: true,
+			Package:       langPackage + "makefile",
 		},
 		{
 			Name:          "PHP",
