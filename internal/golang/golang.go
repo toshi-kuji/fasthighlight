@@ -38,6 +38,9 @@ type Options struct {
 	// the same as \w, so a name can also start with a digit). If false, it is a word character other than
 	// digits, as the rule intends.
 	ChromaIdent bool
+	// ChromaFieldTypes, if true, leaves the names in the types of struct fields as NameOther, as Chroma
+	// does. If false, they get the type color (fields.go).
+	ChromaFieldTypes bool
 }
 
 type lexer struct {
@@ -45,18 +48,23 @@ type lexer struct {
 	x     *lexkit.Tokens
 	src   string
 	words lexkit.WordCache
+	raws  [][2]int // the [start, end) of the raw strings read
 }
 
 // Lex splits src into tokens (with the same contract as the Lex of fasthighlight.Language). compat/ uses it
 // to compare with Chroma, switching o.
 func Lex(src string, end int, o Options) []fh.Token {
 	x := lexkit.NewTokens(src)
-	lexInto(x, src, end, o)
-	return x.Result()
+	raws := lexInto(x, src, end, o)
+	toks := x.Result()
+	if !o.ChromaFieldTypes {
+		markFieldTypes(toks, raws)
+	}
+	return toks
 }
 
-// lexInto reads with the Go root rules (the only state is root).
-func lexInto(x *lexkit.Tokens, src string, end int, o Options) {
+// lexInto reads with the Go root rules (the only state is root). It returns the ranges of the raw strings.
+func lexInto(x *lexkit.Tokens, src string, end int, o Options) [][2]int {
 	l := &lexer{o: o, x: x, src: src, words: lexkit.WordCache{Lists: lists}}
 	for i := 0; i < end; {
 		n, ok := l.root(i)
@@ -65,6 +73,7 @@ func lexInto(x *lexkit.Tokens, src string, end int, o Options) {
 		}
 		i += n
 	}
+	return l.raws
 }
 
 func (l *lexer) emit(t fh.TokenType, s, e int) (int, bool) { l.x.Emit(t, s, e); return e - s, true }
@@ -379,6 +388,7 @@ func (l *lexer) root(i int) (int, bool) {
 			l.x.Emit(fh.LiteralString, i, i+1)
 			lexTemplate(l.x.Sub(src[i+1:i+1+k], i+1), src[i+1:i+1+k], l.o)
 			l.x.Emit(fh.LiteralString, i+1+k, i+2+k)
+			l.raws = append(l.raws, [2]int{i, i + 2 + k})
 			return k + 2, true
 		}
 	case '"':

@@ -98,7 +98,9 @@ func chromaMode(l *fh.Language) func(string) []fh.Token {
 		lex = func(text string, end int) []fh.Token { return r.Lex(text, end, r.Options{ChromaNames: true}) }
 	case "Go":
 		l.Tokenise("")
-		lex = func(text string, end int) []fh.Token { return golang.Lex(text, end, golang.Options{ChromaIdent: true}) }
+		lex = func(text string, end int) []fh.Token {
+			return golang.Lex(text, end, golang.Options{ChromaIdent: true, ChromaFieldTypes: true})
+		}
 	case "Ruby":
 		l.Tokenise("")
 		lex = func(text string, end int) []fh.Token { return ruby.Lex(text, end, ruby.Options{Chroma: true}) }
