@@ -139,6 +139,14 @@ var EdgeCases = []Block{
 	{"css", "@font-face { font-family: X; src: local(\"X\") }\n#id.cls[data-x=\"y\"] { content: '\\'q' }\n"},
 	{"css", "} { @ # \"unterminated\n'x\n/* unclosed"},
 	{"css", "a { b: 1px; c: rgb(1, 2, 3) foo(bar(baz)) -webkit-box; }\nx { y:1"},
+	// SCSS
+	{"scss", "@use \"sass:math\";\n@use 'src/corners' as c;\n@forward \"src/list\" as list-* with ($a: 1);\n$primary: #336699 !default;\n$map: (key1: value1, 'key2': 10px, \"k3\": rgba($primary, .5));\n"},
+	{"scss", "// line comment\n/* block\n   comment */\n.nav {\n  ul { margin: 0; padding: 0; }\n  &:hover { color: darken($primary, 10%); }\n  &-item { display: inline-block; }\n  .a & { color: Red; }\n}\n"},
+	{"scss", "@mixin theme($theme: DarkGray) {\n  background: $theme;\n}\n.info {\n  @include theme;\n  @include theme($theme: DarkRed);\n}\n%message-shared {\n  border: 1px solid #ccc;\n}\n.message { @extend %message-shared; }\n"},
+	{"scss", "@function double($n) {\n  @return $n * 2;\n}\n@each $name, $glyph in $icons {\n  .icon-#{$name}:before { content: $glyph; }\n}\n@for $i from 1 through 3 { .item-#{$i} { width: 2em * $i; } }\n@if $a == 1 and not $b { x: y } @else if $c or true { z: w }\n@while $i > 0 { $i: $i - 1; }\n"},
+	{"scss", "#{$sel} > .b[data-x=\"#{$v}\"] { #{$prop}-top: 1px; width: calc(100% - #{$w}); url: url(\"a#{$b}.png\"); }\n/* c #{$x} */ @media screen and (min-width: $md) { a { b: c } }\n"},
+	{"scss", "a{color:red;COLOR:BLUE;Margin : 1PX -.5em 0.5% 1e3}\n@debug \"x: #{1 + 2}\";\n@warn 'w';\n@import 'a', 'b';\n@unknown foo { }\n"},
+	{"scss", "} { @ # \"unterminated\n'x\n/* unclosed #{\n$v\n@use a}b;\n.a:not(.b)::after{x:1}\n$x-: 1;\n$-y : 2;\nfoo\nbar: baz;\n"},
 	// HTML
 	{"html", "<!DOCTYPE html>\n<html lang=\"ja\">\n<head>\n  <meta charset=utf-8>\n  <title>Test &amp; demo</title>\n  <style>\n    body { color: #333; }\n  </style>\n</head>\n<body>\n  <!-- comment -->\n  <p class='x' hidden>Hello<br/></p>\n  <script>\n    const n = 1;\n    console.log(`n=${n}`);\n  </script>\n</body>\n</html>\n"},
 	{"html", "<SCRİPT>x</SCRİPT><ſtyle>a{}</ſtyle>\n"},

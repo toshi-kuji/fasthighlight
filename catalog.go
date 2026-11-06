@@ -149,6 +149,13 @@ var catalog = func() languageSet {
 			Package:       langPackage + "rust",
 		},
 		{
+			Name:         "SCSS",
+			ParallelHint: HintHeavy,
+			Aliases:      []string{"scss"},
+			Filenames:    []string{"*.scss"},
+			Package:      langPackage + "scss",
+		},
+		{
 			Name:      "SQL",
 			Aliases:   []string{"sql"},
 			Filenames: []string{"*.sql"},

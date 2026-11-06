@@ -160,6 +160,15 @@ var pieces = map[string][]string{
 		"calc(", "foo(", "1", "1.5", ".5", "-", "+", "px", "%", "em", "#fff", "#abcdefg", "!important", "\"", "'",
 		"\\", "/*", "*/", "*", "/", "red", "x-large", "repeat no-repeat", "sans-serif", "日本", "٣",
 	},
+	"SCSS": {
+		"\n", " ", "\t", "{", "}", "(", ")", ";", ":", " : ", "::", ",", ".", "#", "#{", "&", "%", "%x", "@", "@use ",
+		"@forward ", " as ", "*", " with", "@import", "@include ", "@mixin ", "@function ", "@return", "@if", "@else if",
+		"@each ", " in ", "@for ", "from", " to ", "through", "@media ", "@extend", "@debug", "@foo", "$", "$x", "$a-",
+		"!default", "!important", "!x", "url(", "url(a", "\"", "'", "\\", "\\#", "/*", "*/", "//", "// c\n", "a",
+		"div", "foo(", "color", "border-top", "Margin", "red", "Crimson", "auto", "auto;", "auto\u2011flow", "normal",
+		"and", "or", "not", "true", "false", "1", "-", "-1", ".5", "1.5", "px", "PX", "#fff", "#abcdefg", "+", "=",
+		"[", "]", "/", "日本", "٣", "\u00a0", "\u212a", "\u017f", "\u0130",
+	},
 	"XML": {
 		"\n", " ", "<", ">", "/", "/>", "</", "=", "\"", "'", "&", ";", "&amp;", "a", "b:c", "x.y", "-", "<!--",
 		"-->", "<!", "<?", "?>", "<![CDATA[", "]]>", "text", "日本",
