@@ -2,12 +2,13 @@ package fasthighlight
 
 import "testing"
 
-// In the built-in catalog, the 16 programming languages (including CSS) are HintHeavy and the rest are not
-// specified.
+// In the built-in catalog, the programming languages (including CSS, and the languages whose code is
+// mostly read as Bash) are HintHeavy and the rest are not specified.
 func TestBuiltinParallelHints(t *testing.T) {
 	program := map[string]bool{
 		"Bash": true, "C": true, "C#": true, "C++": true, "CSS": true, "Go": true, "Java": true, "JavaScript": true,
 		"Kotlin": true, "PHP": true, "Python": true, "R": true, "Ruby": true, "Rust": true, "Swift": true, "TypeScript": true,
+		"Bash Session": true, "Docker": true, "Makefile": true,
 	}
 	for _, l := range Builtins() {
 		hint := HintDefault
