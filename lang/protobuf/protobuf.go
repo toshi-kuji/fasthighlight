@@ -19,24 +19,38 @@ var Language = fh.Builtin("Protocol Buffer")
 
 func init() {
 	Language.Lex = lex
+	Language.Prepare = prepare
 	fh.Register(Language)
 }
 
-// The words of the keyword rules, each followed by \b.
+// The words of the keyword rules, each followed by \b. prepare builds them, on first use.
 var (
 	// keywords is \b(ctype|default|…|weak)\b (Keyword).
-	keywords = map[string]bool{
-		"ctype": true, "default": true, "edition": true, "export": true, "local": true, "max": true,
-		"option": true, "optional": true, "packed": true, "public": true, "repeated": true, "required": true,
-		"reserved": true, "returns": true, "stream": true, "syntax": true, "to": true, "weak": true,
-	}
+	keywords map[string]bool
 	// types is (sfixed32|…|bool)\b (KeywordType), with no \b before.
-	types = map[string]bool{
-		"sfixed32": true, "sfixed64": true, "fixed32": true, "fixed64": true, "sint32": true, "sint64": true,
-		"double": true, "string": true, "uint32": true, "uint64": true, "int32": true, "float": true,
-		"int64": true, "bytes": true, "bool": true,
-	}
+	types map[string]bool
 )
+
+func prepare() {
+	keywords = set("ctype", "default", "edition", "export", "local", "max", "option", "optional", "packed",
+		"public", "repeated", "required", "reserved", "returns", "stream", "syntax", "to", "weak")
+	types = set("sfixed32", "sfixed64", "fixed32", "fixed64", "sint32", "sint64", "double", "string",
+		"uint32", "uint64", "int32", "float", "int64", "bytes", "bool")
+}
+
+func set(words ...string) map[string]bool {
+	m := make(map[string]bool, len(words))
+	for _, w := range words {
+		m[w] = true
+	}
+	return m
+}
+
+// misses remembers where the comment rules found no end. A line comment needs a newline not after a \, and
+// a block comment a */ (or *\<newline>/); if there is none after a position, there is none after any later
+// position either, so a later comment that starts there fails without scanning the rest of the input
+// again (which would take time growing with the square of the input).
+type misses struct{ line, block int }
 
 // state is the state after a keyword that names something: package, message (and extend), or type (enum,
 // group, oneof, rpc, service). Each reads one name, or nothing, and goes back to root.
@@ -51,6 +65,7 @@ const (
 
 func lex(src string, end int) []fh.Token {
 	x := lexkit.NewTokens(src)
+	ms := &misses{line: len(src) + 1, block: len(src) + 1}
 	st := root
 	for i := 0; i < end; {
 		if st != root {
@@ -71,7 +86,7 @@ func lex(src string, end int) []fh.Token {
 			st = root
 			continue
 		}
-		n, next := match(x, src, i)
+		n, next := match(x, ms, src, i)
 		if n == 0 {
 			i += x.Error(i)
 			continue
@@ -95,7 +110,7 @@ func at(src string, i int) byte {
 
 // match tries the rules of root at i, emits the tokens, and returns the length (0 if no rule matches) and
 // the state to push.
-func match(x *lexkit.Tokens, src string, i int) (int, state) {
+func match(x *lexkit.Tokens, ms *misses, src string, i int) (int, state) {
 	emit := func(t fh.TokenType, n int) (int, state) { x.Emit(t, i, i+n); return n, root }
 	c := src[i]
 	if n := lexkit.Span(src, i, lexkit.IsSpace); n > 0 { // \s+
@@ -105,7 +120,7 @@ func match(x *lexkit.Tokens, src string, i int) (int, state) {
 		return emit(fh.Punctuation, 1)
 	}
 	if c == '/' {
-		if n, t := comment(src, i); n > 0 {
+		if n, t := comment(ms, src, i); n > 0 {
 			return emit(t, n)
 		}
 	}
@@ -192,7 +207,7 @@ func match(x *lexkit.Tokens, src string, i int) (int, state) {
 // comment returns the length and type of /(\\\n)?/(\n|(.|\n)*?[^\\]\n) (CommentSingle) or
 // /(\\\n)?\*(.|\n)*?\*(\\\n)?/ (CommentMultiline) at the / at i, or 0. If the optional \<newline> after the
 // first / leads to no match, giving it back does not help: the / or * would have to match the \.
-func comment(src string, i int) (int, fh.TokenType) {
+func comment(ms *misses, src string, i int) (int, fh.TokenType) {
 	j := i + 1
 	if strings.HasPrefix(src[j:], "\\\n") {
 		j += 2
@@ -205,12 +220,19 @@ func comment(src string, i int) (int, fh.TokenType) {
 		if at(src, s) == '\n' {
 			return s + 1 - i, fh.CommentSingle
 		}
+		if s+1 >= ms.line {
+			return 0, 0
+		}
 		for k := s + 1; k < len(src); k++ {
 			if src[k] == '\n' && src[k-1] != '\\' {
 				return k + 1 - i, fh.CommentSingle
 			}
 		}
+		ms.line = s + 1
 	case '*':
+		if j+1 >= ms.block {
+			return 0, 0
+		}
 		for p := j + 1; p < len(src); p++ {
 			if src[p] != '*' {
 				continue
@@ -222,6 +244,7 @@ func comment(src string, i int) (int, fh.TokenType) {
 				return p + 4 - i, fh.CommentMultiline
 			}
 		}
+		ms.block = j + 1
 	}
 	return 0, 0
 }

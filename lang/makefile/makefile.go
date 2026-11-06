@@ -47,10 +47,15 @@ type lexer struct {
 	exportFrom, exportEnd int // the same for the run of [\w${}\t -] (for the lookahead after export)
 	// unclosed records, for " and ', that a quote with no closing quote was found.
 	unclosed [2]bool
+	// lineEnd is the end of the line that holds the last position lineEndAt was asked about. Positions only
+	// move forward, so every later position up to it is on the same line, and a long line is scanned once,
+	// not once per target or comment on it.
+	lineEnd int
 }
 
 func lex(src string, end int) []fh.Token {
-	l := &lexer{x: lexkit.NewTokens(src), src: src, stack: []state{root}, nameFrom: -1, targetFrom: -1, exportFrom: -1}
+	l := &lexer{x: lexkit.NewTokens(src), src: src, stack: []state{root}, nameFrom: -1, targetFrom: -1, exportFrom: -1,
+		lineEnd: -1}
 	for i := 0; i < end; {
 		st := l.stack[len(l.stack)-1]
 		var n int
@@ -75,6 +80,14 @@ func lex(src string, end int) []fh.Token {
 		i += n
 	}
 	return l.x.Result()
+}
+
+// lineEndAt returns lexkit.LineEnd(l.src, i), reusing the end found for an earlier position on the same line.
+func (l *lexer) lineEndAt(i int) int {
+	if i > l.lineEnd {
+		l.lineEnd = lexkit.LineEnd(l.src, i)
+	}
+	return l.lineEnd
 }
 
 func (l *lexer) emit(t fh.TokenType, s, e int) int { l.x.Emit(t, s, e); return e - s }
@@ -124,7 +137,7 @@ func (l *lexer) root(i int) int {
 		return l.emit(fh.Text, i, i+n)
 	}
 	if c == '#' { // #.*?\n
-		if le := lexkit.LineEnd(src, i); le < len(src) {
+		if le := l.lineEndAt(i); le < len(src) {
 			return l.emit(fh.Comment, i, le+1)
 		}
 	}
@@ -165,7 +178,7 @@ func (l *lexer) root(i int) int {
 	}
 	// ([^\n:]+)(:+)([ \t]*)
 	if l.targetFrom < 0 || i < l.targetFrom || i >= l.targetEnd {
-		l.targetFrom, l.targetEnd = i, lexkit.LineEnd(src, i)
+		l.targetFrom, l.targetEnd = i, l.lineEndAt(i)
 		if k := strings.IndexByte(src[i:l.targetEnd], ':'); k >= 0 {
 			l.targetEnd = i + k
 		}

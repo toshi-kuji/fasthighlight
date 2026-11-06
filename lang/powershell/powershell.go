@@ -65,10 +65,17 @@ type lexer struct {
 	// other than @ and newline, and the position of the last "] in it (-1 if none). Every position before
 	// runEnd shares them, so the run is not scanned again for each character.
 	runEnd, lastQuote int
+	// typeEnd and typeClose do the same for the type rule (\[)([a-z_\[][\w. `,\[\]]*)(\]): the end of the run of
+	// type characters, and the position of the last ] in it (-1 if none).
+	typeEnd, typeClose int
+	// hereMiss is the position from which the here-string rule @'\n.*?\n'@ found no closing \n'@ (len(src)+1
+	// until one search fails). A later @'\n cannot find one either, so it does not search again.
+	hereMiss int
 }
 
 func lex(src string, end int) []fh.Token {
-	l := &lexer{x: lexkit.NewTokens(src), src: src, stack: []state{root}, words: lexkit.FoldWordCache{Lists: lists}}
+	l := &lexer{x: lexkit.NewTokens(src), src: src, stack: []state{root}, words: lexkit.FoldWordCache{Lists: lists},
+		hereMiss: len(src) + 1}
 	for i := 0; i < end; {
 		st := l.stack[len(l.stack)-1]
 		n, ok := l.step(st, i)
@@ -184,10 +191,11 @@ func (l *lexer) root(i int) (int, bool) {
 		case l.at(i+1) == '"' && l.at(i+2) == '\n': // @"\n
 			l.push(heredoc)
 			return l.emit(fh.LiteralStringHeredoc, i, i+3)
-		case l.at(i+1) == '\'' && l.at(i+2) == '\n': // @'\n.*?\n'@
+		case l.at(i+1) == '\'' && l.at(i+2) == '\n' && i+3 < l.hereMiss: // @'\n.*?\n'@
 			if k := strings.Index(src[i+3:], "\n'@"); k >= 0 {
 				return l.emit(fh.LiteralStringHeredoc, i, i+3+k+3)
 			}
+			l.hereMiss = i + 3
 		}
 		if d := l.at(i + 1); d == '(' || d == '{' { // @(?=\(|{)
 			return l.emit(fh.NameVariableMagic, i, i+1)
@@ -265,12 +273,18 @@ func (l *lexer) root(i int) (int, bool) {
 				n = 1
 			}
 			p := i + 1 + n
-			e := p + lexkit.Span(src, p, isTypeChar)
-			if k := strings.LastIndexByte(src[p:e], ']'); k >= 0 {
+			if p >= l.typeEnd { // a new run; positions inside the last run share its end and last ]
+				e := p + lexkit.Span(src, p, isTypeChar)
+				l.typeEnd, l.typeClose = e, strings.LastIndexByte(src[p:e], ']')
+				if l.typeClose >= 0 {
+					l.typeClose += p
+				}
+			}
+			if k := l.typeClose; k >= p {
 				l.x.Emit(fh.Punctuation, i, i+1)
-				l.x.Emit(fh.NameConstant, i+1, p+k)
-				l.x.Emit(fh.Punctuation, p+k, p+k+1)
-				return p + k + 1 - i, true
+				l.x.Emit(fh.NameConstant, i+1, k)
+				l.x.Emit(fh.Punctuation, k, k+1)
+				return k + 1 - i, true
 			}
 		}
 	}
