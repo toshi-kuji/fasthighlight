@@ -20,6 +20,7 @@ import (
 	_ "github.com/toshi-kuji/fasthighlight/lang/php"
 	_ "github.com/toshi-kuji/fasthighlight/lang/python"
 	_ "github.com/toshi-kuji/fasthighlight/lang/r"
+	_ "github.com/toshi-kuji/fasthighlight/lang/react"
 	_ "github.com/toshi-kuji/fasthighlight/lang/ruby"
 	_ "github.com/toshi-kuji/fasthighlight/lang/rust"
 	_ "github.com/toshi-kuji/fasthighlight/lang/sql"

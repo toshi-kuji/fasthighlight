@@ -156,4 +156,11 @@ var EdgeCases = []Block{
 	{"md", "---\ntitle: x\ntags: [a, b]\n---\n# Title\n\nSome *em* and **strong** and ~~del~~ text, `code`, [link](http://x), ![img](a.png), @user #tag.\n<!-- note -->\n\n## Sub\n\n- item one\n* item two\n  - [ ] task\n- [x] done\n1. first *a* b\n> quote\n\n```go\nfunc main() {}\n```\n\n```\nplain\n```\n\n```nolang\nx\n```\n\\* not em\n"},
 	{"markdown", "```md\n# inner\n```py\nprint(1)\n```\n```yaml\na: 1\n```\nunclosed ```sh\nls\n"},
 	{"md", "# Title\n**Note**: x\n- **a** b\n#\nnot a heading\n-\nnot a list\n>\nnot a quote\n"},
+	// react (JSX)
+	{"jsx", "import React, { useState } from 'react';\n\nexport default function Counter({ start = 0 }) {\n  const [n, setN] = useState(start);\n  return (\n    <div className=\"counter\" id='c1'>\n      <Button.Primary onClick={() => setN(n + 1)} disabled={n > 9}>\n        Count: {n} {/* comment */}\n      </Button.Primary>\n      <input type=\"text\" value={`v${n}`} readOnly />\n      <br/>\n    </div>\n  );\n}\n"},
+	{"jsx", "const list = (\n  <>\n    {items.map((item) => (\n      <li key={item.id} {...rest}>{item.name}</li>\n    ))}\n    <Nested a={{ b: { c: 1 } }} />\n  </>\n);\n"},
+	{"jsx", "if (a < b && c<d) { x = a <= b ? 1 : 2 }\nconst s = <p>Text with {braces} and } stray { and 'quote</p>\n"},
+	{"react", "const e = <a href=\"x\" data-x=\"y\" title='multi\nline'>link</a>\nconst n = [.5, 1., 1.5e3, 1e3, 0b1, 0o7, 0xF, 1_000, .٣]\nusing x\n"},
+	{"react", "#!/usr/bin/env node\nconst t = `a\\n${f({ k: 1 })}b`\n</ div> <x y=1> < z> <a.b.c/> </>\n"},
+	{"react", "<div attr=\"unterminated\n/re/g.test(s) // c"},
 }
