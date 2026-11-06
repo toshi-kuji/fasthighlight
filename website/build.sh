@@ -179,12 +179,13 @@ for dirpath, _, files in os.walk(out):
             continue
         path = os.path.join(dirpath, name)
         html = open(path, encoding="utf-8").read()
-        css = re.search(r'<link rel="stylesheet" href="([^"]*)highlight\.css">\n', html)
-        if not css:
-            sys.exit(f"build.sh: no highlight.css link in {path}")
         rel = os.path.relpath(path, out).replace(os.sep, "/")
         if rel != "index.html":
             html = re.sub(r"<title>(.*?)</title>", lambda m: f"<title>{m.group(1)} – {site}</title>", html, count=1)
+        # Find the style sheet link after the title is changed, so the position below is still right.
+        css = re.search(r'<link rel="stylesheet" href="([^"]*)highlight\.css">\n', html)
+        if not css:
+            sys.exit(f"build.sh: no highlight.css link in {path}")
         title = h.unescape(re.search(r"<title>(.*?)</title>", html).group(1))
         url = base + (rel[: -len("index.html")] if rel.endswith("index.html") else rel)
         meta = {
@@ -196,6 +197,8 @@ for dirpath, _, files in os.walk(out):
         tags += [f'<meta property="{k}" content="{h.escape(v)}">' for k, v in meta.items()]
         tags.append('<meta name="twitter:card" content="summary_large_image">')
         html = html[:css.end()] + "\n".join(tags) + "\n" + html[css.end():]
+        if not re.search(r'<link rel="stylesheet" href="[^"<>]*highlight\.css">\n<link rel="icon"', html):
+            sys.exit(f"build.sh: the head of {path} came out broken")
         open(path, "w", encoding="utf-8").write(html)
 PY
 
