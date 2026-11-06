@@ -71,6 +71,12 @@ var catalog = func() languageSet {
 			Package:      langPackage + "golang",
 		},
 		{
+			Name:      "GraphQL",
+			Aliases:   []string{"graphql", "graphqls", "gql"},
+			Filenames: []string{"*.graphql", "*.graphqls"},
+			Package:   langPackage + "graphql",
+		},
+		{
 			Name:      "HTML",
 			Aliases:   []string{"html"},
 			Filenames: []string{"*.html", "*.htm", "*.xhtml", "*.xslt"},
@@ -111,6 +117,19 @@ var catalog = func() languageSet {
 			Filenames:     []string{"*.php", "*.php[345]", "*.inc"},
 			EnsureNewline: true,
 			Package:       langPackage + "php",
+		},
+		{
+			Name:         "PowerShell",
+			ParallelHint: HintHeavy,
+			Aliases:      []string{"powershell", "posh", "ps1", "psm1", "psd1", "pwsh"},
+			Filenames:    []string{"*.ps1", "*.psm1", "*.psd1"},
+			Package:      langPackage + "powershell",
+		},
+		{
+			Name:      "Protocol Buffer",
+			Aliases:   []string{"protobuf", "proto"},
+			Filenames: []string{"*.proto"},
+			Package:   langPackage + "protobuf",
 		},
 		{
 			Name:         "Python",

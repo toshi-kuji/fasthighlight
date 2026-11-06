@@ -156,4 +156,17 @@ var EdgeCases = []Block{
 	{"md", "---\ntitle: x\ntags: [a, b]\n---\n# Title\n\nSome *em* and **strong** and ~~del~~ text, `code`, [link](http://x), ![img](a.png), @user #tag.\n<!-- note -->\n\n## Sub\n\n- item one\n* item two\n  - [ ] task\n- [x] done\n1. first *a* b\n> quote\n\n```go\nfunc main() {}\n```\n\n```\nplain\n```\n\n```nolang\nx\n```\n\\* not em\n"},
 	{"markdown", "```md\n# inner\n```py\nprint(1)\n```\n```yaml\na: 1\n```\nunclosed ```sh\nls\n"},
 	{"md", "# Title\n**Note**: x\n- **a** b\n#\nnot a heading\n-\nnot a list\n>\nnot a quote\n"},
+	// PowerShell
+	{"powershell", "#requires -Version 5.1 -Modules PSReadLine\n<#\n.SYNOPSIS\n  Greets.\n.Parameter Name\n#>\nfunction Get-Greeting {\n    [CmdletBinding()]\n    param(\n        [Parameter(Mandatory = $true, Position = 0)]\n        [ValidateNotNullOrEmpty()]\n        [string[]] $Name\n    )\n    foreach ($n in $Name) {\n        if ($n -eq $null -or $n -notlike '*x*') { continue }\n        Write-Output \"Hello, $n! `t$($n.Length) ${env:USER}\"\n    }\n}\n$x = @{ a = 1; b = 2.5e3; c = 10KB; d = -0x1F }\n$env:PATH.Split(';') | ForEach-Object { $_.Trim() }\n"},
+	{"powershell", "$s = @\"\nheredoc $var $(Get-Date) \"]\n\"@\n$t = @'\nliteral $x\n'@\nclass Point : Base {\n    [int]$X\n}\nfilter global:Clean { $_ }\nls -Recurse C:\\temp | sort Name\n## .notes trailing\n#.DESCRIPTION x\n"},
+	{"powershell", "'it''s' 'a'' \"q`\"q\"\" ` `$ $true1 $TRUE $false_x $global:v @@x @(1) $(2) :: : 1.5.Length x.y.z (a)\n&lt;# html #&gt; 3mb 4KB 1e5d -1.5 .5 1. kelvin-\u212a \u017fort x\n"},
+	{"powershell", "#requires\n#Requires -RunAsAdministrator -bad x-y  \n\"unterminated $x\n<# unclosed .link\n"},
+	// GraphQL
+	{"graphql", "# schema\ntype Query {\n  user(id: ID!): User @deprecated(reason: \"no\")\n  users(first: Int = 10, after: String): [User!]!\n}\n\ninterface Node { id: ID! }\nenum Role { ADMIN USER }\ninput NewUser { name: String!, role: Role = USER }\nscalar Date\nunion Item = User | Post\ndirective @auth(requires: Role) on FIELD_DEFINITION | OBJECT\nextend type User implements Node\nschema { query: Query }\n"},
+	{"graphql", "query Get($id: ID!, $f: Float = 1.5) {\n  user(id: $id) {\n    ...UserFields\n    ... on Admin { level }\n    friends(first: 10) { name }\n  }\n}\nfragment UserFields on User { id, name }\nmutation { add(x: \"a\\\"b\", c: \"\\u0041\", d: \"\"\"block\n\"\"\", e: .5, f: .5e+3i, g: true, h: null) }\n"},
+	{"graphql", "typeName enumerate onion \"x\" \"\\101\" \"\" \"\"\" open\n123 $ @ . : ] \"\\8\" \"日本\" é\n"},
+	// Protocol Buffer
+	{"protobuf", "syntax = \"proto3\";\npackage example.v1;\n\nimport \"google/protobuf/timestamp.proto\";\noption go_package = \"example.com/v1;v1\";\n\n// A user.\nmessage User {\n  string name = 1;\n  int32 id = 2 [deprecated = true];\n  repeated string emails = 3;\n  map<string, int64> counts = 4;\n  oneof contact { string phone = 5; }\n  enum Kind { KIND_UNSPECIFIED = 0; ADMIN = 1; }\n  reserved 9 to 11, 15;\n  /* block\n     comment */\n}\n\nservice Users {\n  rpc Get(GetRequest) returns (stream User) {}\n}\nextend Foo { optional int32 bar = 126; }\n"},
+	{"protobuf", "x = 0x1Fu + 017 + 1.5e-3 + .5f + 2f + -inf + nan + 1e5L + 'str' + 08;\n1default int32x 1int32 foo.bar=1 // no newline at end"},
+	{"protobuf", "package\nmessage 1\nenum {}\n/\\\n/ c\\\n still\n/* unclosed * / \"open\n日本 é\n"},
 }
