@@ -63,6 +63,6 @@ func ExampleExtension() {
 	fmt.Print(out.String())
 	// Output:
 	// <p>Hello</p>
-	// <pre class="highlight" data-lang="go"><code><span class="line"><span class="cl"><span class="nx">x</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="mi">1</span><span class="w">
+	// <pre class="highlight" data-lang="go"><code class="language-go"><span class="line"><span class="cl"><span class="nx">x</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="mi">1</span><span class="w">
 	// </span></span></span></code></pre>
 }

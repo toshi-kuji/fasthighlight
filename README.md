@@ -147,11 +147,11 @@ fmt.Println("hi")
 becomes
 
 ```html
-<pre class="highlight" data-lang="go"><code><span class="line"><span class="cl"><span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;hi&#34;</span><span class="p">)</span><span class="w">
+<pre class="highlight" data-lang="go"><code class="language-go"><span class="line"><span class="cl"><span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;hi&#34;</span><span class="p">)</span><span class="w">
 </span></span></span></code></pre>
 ```
 
-`data-lang` holds the language name written in the Markdown. The library writes no CSS; use the `highlight.css` that `fhl` writes, or your own. Apart from the outer class name (`highlight`, where Chroma uses `chroma`) and `data-lang`, the HTML for a given token sequence is the same as Chroma's HTML formatter with `WithClasses(true)`.
+`data-lang` and the `language-` class (the one CommonMark recommends, which other tools read) hold the language name as written in the Markdown. The library writes no CSS; use the `highlight.css` that `fhl` writes, or your own. Apart from the outer class name (`highlight`, where Chroma uses `chroma`), `data-lang` and the `language-` class, the HTML for a given token sequence is the same as Chroma's HTML formatter with `WithClasses(true)`.
 
 ### Parallel highlighting
 

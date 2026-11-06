@@ -12,9 +12,9 @@ Fuzz tests compare the two on large numbers of generated inputs. They are a chec
 
 - **Tokens:** the kinds of tokens and where they split follow the rules of Chroma 2.27.0's language definitions. Long word lists (keywords and the like) are generated from Chroma's rules, not copied by hand.
 - **Languages:** the names, aliases and file name patterns are the same as Chroma's, and names are looked up the same way.
-- **HTML:** for a given token sequence, the HTML is the same as Chroma's HTML formatter with `WithClasses(true)`, byte for byte, except for two things:
+- **HTML:** for a given token sequence, the HTML is the same as Chroma's HTML formatter with `WithClasses(true)`, byte for byte, except for these:
   - the outer class is `highlight` (Chroma uses `chroma`), so that no product name appears in your HTML;
-  - code blocks from Markdown carry the language name in `data-lang`.
+  - code blocks from Markdown carry the language name, as written, in `data-lang` on `<pre>` and in the `language-` class on `<code>` (`<code class="language-go">`, as CommonMark recommends and goldmark writes without highlighting).
 
   The token class names are the same short names (`k`, `s`, `nf`, …), so CSS written for Chroma's classes works.
 

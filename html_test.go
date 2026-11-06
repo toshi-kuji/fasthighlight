@@ -52,8 +52,8 @@ func TestWriteHTML(t *testing.T) {
 func TestHighlightDataLang(t *testing.T) {
 	for _, c := range []struct{ lang, want string }{
 		{"", `<pre class="highlight"><code>`},
-		{"no-such-lang", `<pre class="highlight" data-lang="no-such-lang"><code>`},
-		{`a"<&'>`, `<pre class="highlight" data-lang="a&#34;&lt;&amp;&#39;&gt;"><code>`},
+		{"no-such-lang", `<pre class="highlight" data-lang="no-such-lang"><code class="language-no-such-lang">`},
+		{`a"<&'>`, `<pre class="highlight" data-lang="a&#34;&lt;&amp;&#39;&gt;"><code class="language-a&#34;&lt;&amp;&#39;&gt;">`},
 	} {
 		var b strings.Builder
 		if err := Highlight(&b, c.lang, "x\n"); err != nil {

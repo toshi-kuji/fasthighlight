@@ -55,7 +55,7 @@ func exists(p string) bool {
 const readme = "# Usage\n\n```go\nfmt.Println(\"hi\")\n```\n"
 
 const readmeHTML = `<h1>Usage</h1>
-<pre class="highlight" data-lang="go"><code><span class="line"><span class="cl"><span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;hi&#34;</span><span class="p">)</span><span class="w">
+<pre class="highlight" data-lang="go"><code class="language-go"><span class="line"><span class="cl"><span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;hi&#34;</span><span class="p">)</span><span class="w">
 </span></span></span></code></pre>`
 
 func TestDefaultWritesNextToInput(t *testing.T) {
@@ -238,11 +238,11 @@ func TestCodeFile(t *testing.T) {
 	dir := t.TempDir()
 	writeFiles(t, dir, map[string]string{"main.go": "x := 1\n", "main.txt": "x := 1\n", "main.zig": "x"})
 	code, _, stderr := fhlRun(t, dir, "", false, "main.go")
-	if code != 0 || !strings.HasPrefix(readFile(t, "main.html"), `<pre class="highlight" data-lang="go"><code>`) {
+	if code != 0 || !strings.HasPrefix(readFile(t, "main.html"), `<pre class="highlight" data-lang="go"><code class="language-go">`) {
 		t.Fatalf("code %d: %s", code, stderr)
 	}
 	code, stdout, _ := fhlRun(t, "", "", false, "--lang", "Go", "-o", "-", "main.txt")
-	if code != 0 || !strings.HasPrefix(stdout, `<pre class="highlight" data-lang="Go"><code><span class="line"><span class="cl"><span class="nx">x`) {
+	if code != 0 || !strings.HasPrefix(stdout, `<pre class="highlight" data-lang="Go"><code class="language-Go"><span class="line"><span class="cl"><span class="nx">x`) {
 		t.Errorf("--lang Go: %q", stdout)
 	}
 	code, _, stderr = fhlRun(t, "", "", false, "main.zig")
@@ -518,13 +518,18 @@ func TestDataLang(t *testing.T) {
 	dir := t.TempDir()
 	writeFiles(t, dir, map[string]string{"d.md": "```hs\nx\n```\n\n```\ny\n```\n\n```a\"b\nz\n```\n"})
 	_, out, _ := fhlRun(t, dir, "", false, "-o", "-", "d.md")
-	for _, s := range []string{`<pre class="highlight" data-lang="hs">`, `<pre class="highlight"><code>`, `data-lang="a&#34;b"`} {
+	// The name as written goes into data-lang and the language- class (escaped); a block without a name has neither.
+	for _, s := range []string{
+		`<pre class="highlight" data-lang="hs"><code class="language-hs">`,
+		`<pre class="highlight"><code><span class="line"><span class="cl">y`,
+		`data-lang="a&#34;b"><code class="language-a&#34;b">`,
+	} {
 		if !strings.Contains(out, s) {
 			t.Errorf("no %s: %s", s, out)
 		}
 	}
-	if strings.Contains(out, "language-") {
-		t.Errorf("has a language- class: %s", out)
+	if n := strings.Count(out, "language-"); n != 2 {
+		t.Errorf("%d language- classes, want 2: %s", n, out)
 	}
 }
 
