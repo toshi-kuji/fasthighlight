@@ -71,7 +71,7 @@ func chromaTokens(t *testing.T, l *fh.Language, code string) []fh.Token {
 	for _, c := range it.Tokens() {
 		toks = append(toks, fh.Token{Type: fh.TokenType(c.Type), Value: c.Value})
 	}
-	return toks
+	return dropHTTPBodyNewline(l, code, toks)
 }
 
 // chromaHTML turns tokens into HTML with Chroma's output.
@@ -259,7 +259,16 @@ var intendedDiffs = []intendedDiff{
 	{"markdown", "-", fh.Text, fh.Keyword, mdMarkerNewline},
 	{"markdown", ">\n", fh.Text, fh.Keyword, mdMarkerNewline},
 	{"markdown", "not a quote\n", fh.Text, fh.GenericEmph, mdMarkerNewline},
+	// react is JavaScript with JSX, so it has JavaScript's template-literal difference, and its template
+	// literal has no rule for escapes such as \n (like TypeScript's).
+	{"react", "}", fh.Punctuation, fh.LiteralStringInterpol, templateBraces},
+	{"react", ")", fh.Punctuation, fh.LiteralStringBacktick, templateBraces},
+	{"react", "}", fh.LiteralStringInterpol, fh.LiteralStringBacktick, templateBraces},
+	{"react", "\\", fh.LiteralStringBacktick, fh.Error, reactTemplateEscape},
 }
+
+// reactTemplateEscape: Chroma's react template literal has no rule for escapes such as \n.
+const reactTemplateEscape = "\\n and so on in a react (JSX) template literal are part of the string (Chroma makes \\ an Error)"
 
 // diffRun is a contiguous part whose type differs.
 type diffRun struct {
@@ -378,7 +387,9 @@ func TestLanguagesMatchChroma(t *testing.T) {
 				}
 			}
 		}
-		keys = append(keys, "dir/file."+strings.TrimPrefix(l.Filenames[0], "*."), "file."+strings.TrimPrefix(l.Filenames[0], "*.")+".bak")
+		if len(l.Filenames) > 0 { // HTTP has no filename patterns
+			keys = append(keys, "dir/file."+strings.TrimPrefix(l.Filenames[0], "*."), "file."+strings.TrimPrefix(l.Filenames[0], "*.")+".bak")
+		}
 		for _, k := range keys {
 			cl := lexers.Get(k)
 			if cl == nil {

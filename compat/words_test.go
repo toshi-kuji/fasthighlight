@@ -55,6 +55,9 @@ func TestWordListsMatchChroma(t *testing.T) {
 		{"Rust", "", []string{"base", "base", "base", "base", "base"}, []int{10, 11, 12, 19, 21}, []string{"", "", "", "", ""},
 			[]string{`\b`, `\b`, `\b`, `\b`, `\b`},
 			[]string{"%s\n", "let x = %s;\n", "fn f() -> %s {}\n", "%sx\n", "%s_\n", "a.%s\n", "x: &%s\n", "1%s\n", "%s!(1)\n"}},
+		{"PowerShell", "", []string{"root", "root", "root", "root", "root", "root", "multline"}, []int{17, 19, 20, 21, 22, 23, 2},
+			[]string{"", "", "", "", "-", "", `(\s*\.)`}, []string{`\b`, `\b`, `\b`, `\b`, `\b`, `\s`, `(\s*$)`},
+			[]string{"%s\n", "%s x\n", "x -%s y\n", "[%s()]\n", "%sx\n", "%s-x\n", "%s:\n", "$a.%s(\n", "<#\n.%s\n#>\n", "#\n# .%s x\n"}},
 	} {
 		from := c.lang
 		if c.rules != "" {
@@ -86,7 +89,7 @@ func TestWordListsMatchChroma(t *testing.T) {
 				t.Fatal(err)
 			}
 			words := finiteWords(t, re)
-			if c.lang == "SQL" || c.lang == "PHP" { // matching is case-insensitive, so also try the lower-case and upper-case words
+			if c.lang == "SQL" || c.lang == "PHP" || c.lang == "PowerShell" { // matching is case-insensitive, so also try the lower-case and upper-case words
 				for _, w := range words {
 					words = append(words, strings.ToLower(w), strings.ToUpper(w))
 				}

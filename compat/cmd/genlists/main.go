@@ -12,6 +12,7 @@
 //	go run ./cmd/genlists php > ../internal/php/lists.go
 //	go run ./cmd/genlists ruby > ../internal/ruby/lists.go
 //	go run ./cmd/genlists typescript > ../internal/typescript/lists.go
+//	go run ./cmd/genlists powershell > ../lang/powershell/lists.go
 package main
 
 import (
@@ -112,11 +113,20 @@ var Configs = map[string]Config{
 		{"types", "root", "", 19, "", `\b\??`, "types (KeywordType). One ? may follow"},
 		{"constants", "root", "", 20, "", `\b`, "constants (KeywordConstant)"},
 	}},
+	"powershell": {"PowerShell", "powershell", "embedded/powershell.xml", []List{
+		{"builtins", "root", "", 17, "", `\b`, "attribute names and so on (NameBuiltin). Case-insensitive; some words appear twice"},
+		{"attributes", "root", "", 19, "", `\b`, "parameter attribute arguments (NameAttribute). Case-insensitive"},
+		{"attributes2", "root", "", 20, "", `\b`, "cmdlet binding arguments (NameAttribute). Case-insensitive"},
+		{"keywords", "root", "", 21, "", `\b`, "reserved words (Keyword). Case-insensitive; some words contain ?, %, # or :"},
+		{"operators", "root", "", 22, "-", `\b`, "operators after - (Operator). Case-insensitive"},
+		{"aliases", "root", "", 23, "", `\s`, "built-in aliases (NameBuiltin). Case-insensitive; followed by \\s, not \\b"},
+		{"docWords", "multline", "", 2, `(\s*\.)`, `(\s*$)`, "comment-based help keywords after . (LiteralStringDoc). Case-insensitive"},
+	}},
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fail("usage: genlists java|csharp|kotlin|swift|go|rust|sql|r|php|ruby|typescript")
+		fail("usage: genlists java|csharp|kotlin|swift|go|rust|sql|r|php|ruby|typescript|powershell")
 	}
 	cfg, ok := Configs[os.Args[1]]
 	if !ok {

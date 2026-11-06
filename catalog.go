@@ -24,6 +24,14 @@ var catalog = func() languageSet {
 			Package: langPackage + "bash",
 		},
 		{
+			Name:          "Bash Session",
+			ParallelHint:  HintHeavy,
+			Aliases:       []string{"bash-session", "console", "shell-session"},
+			Filenames:     []string{"*.sh-session"},
+			EnsureNewline: true,
+			Package:       langPackage + "bashsession",
+		},
+		{
 			Name:          "C",
 			ParallelHint:  HintHeavy,
 			Aliases:       []string{"c"},
@@ -64,6 +72,16 @@ var catalog = func() languageSet {
 			Package:       langPackage + "diff",
 		},
 		{
+			Name:         "Docker",
+			ParallelHint: HintHeavy,
+			Aliases:      []string{"docker", "dockerfile", "containerfile"},
+			Filenames: []string{
+				"Dockerfile", "Dockerfile.*", "*.Dockerfile", "*.docker", "Containerfile", "Containerfile.*",
+				"*.Containerfile",
+			},
+			Package: langPackage + "docker",
+		},
+		{
 			Name:         "Go",
 			ParallelHint: HintHeavy,
 			Aliases:      []string{"go", "golang"},
@@ -71,10 +89,30 @@ var catalog = func() languageSet {
 			Package:      langPackage + "golang",
 		},
 		{
+			Name:      "GraphQL",
+			Aliases:   []string{"graphql", "graphqls", "gql"},
+			Filenames: []string{"*.graphql", "*.graphqls"},
+			Package:   langPackage + "graphql",
+		},
+		{
 			Name:      "HTML",
 			Aliases:   []string{"html"},
 			Filenames: []string{"*.html", "*.htm", "*.xhtml", "*.xslt"},
 			Package:   langPackage + "html",
+		},
+		{
+			Name:    "HTTP",
+			Aliases: []string{"http"},
+			Package: langPackage + "http",
+		},
+		{
+			Name:    "INI",
+			Aliases: []string{"ini", "cfg", "dosini"},
+			Filenames: []string{
+				"*.ini", "*.cfg", "*.inf", "*.service", "*.socket", "*.container", "*.network", "*.build",
+				"*.pod", "*.kube", "*.volume", "*.image", ".gitconfig", ".editorconfig", "pylintrc", ".pylintrc",
+			},
+			Package: langPackage + "ini",
 		},
 		{
 			Name:      "JSON",
@@ -105,12 +143,36 @@ var catalog = func() languageSet {
 			Package:      langPackage + "kotlin",
 		},
 		{
+			Name:         "Makefile",
+			ParallelHint: HintHeavy,
+			Aliases:      []string{"make", "makefile", "mf", "bsdmake"},
+			Filenames: []string{
+				"*.mak", "*.mk", "Makefile", "makefile", "Makefile.*", "GNUmakefile", "BSDmakefile", "Justfile",
+				"justfile", ".justfile",
+			},
+			EnsureNewline: true,
+			Package:       langPackage + "makefile",
+		},
+		{
 			Name:          "PHP",
 			ParallelHint:  HintHeavy,
 			Aliases:       []string{"php", "php3", "php4", "php5"},
 			Filenames:     []string{"*.php", "*.php[345]", "*.inc"},
 			EnsureNewline: true,
 			Package:       langPackage + "php",
+		},
+		{
+			Name:         "PowerShell",
+			ParallelHint: HintHeavy,
+			Aliases:      []string{"powershell", "posh", "ps1", "psm1", "psd1", "pwsh"},
+			Filenames:    []string{"*.ps1", "*.psm1", "*.psd1"},
+			Package:      langPackage + "powershell",
+		},
+		{
+			Name:      "Protocol Buffer",
+			Aliases:   []string{"protobuf", "proto"},
+			Filenames: []string{"*.proto"},
+			Package:   langPackage + "protobuf",
 		},
 		{
 			Name:         "Python",
@@ -147,6 +209,13 @@ var catalog = func() languageSet {
 			Filenames:     []string{"*.rs", "*.rs.in"},
 			EnsureNewline: true,
 			Package:       langPackage + "rust",
+		},
+		{
+			Name:         "SCSS",
+			ParallelHint: HintHeavy,
+			Aliases:      []string{"scss"},
+			Filenames:    []string{"*.scss"},
+			Package:      langPackage + "scss",
 		},
 		{
 			Name:      "SQL",
@@ -195,6 +264,13 @@ var catalog = func() languageSet {
 			Aliases:   []string{"md", "mkd"},
 			Filenames: []string{"*.md", "*.mkd", "*.markdown"},
 			Package:   langPackage + "markdown",
+		},
+		{
+			Name:         "react",
+			ParallelHint: HintHeavy,
+			Aliases:      []string{"jsx", "react"},
+			Filenames:    []string{"*.jsx", "*.react"},
+			Package:      langPackage + "react",
 		},
 	} {
 		if err := s.add(l); err != nil {

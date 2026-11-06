@@ -26,9 +26,9 @@ Chroma is the reference, not something to copy exactly. Where Chroma has a bug, 
 
 | Where | Chroma | fasthighlight |
 | --- | --- | --- |
-| `{}` inside `${ … }` of a template literal (TypeScript, JavaScript, `<script>` in HTML) | the first `}` ends the `${ … }`, so what follows looks like a string | counts the braces |
+| `{}` inside `${ … }` of a template literal (TypeScript, JavaScript, react (JSX), `<script>` in HTML) | the first `}` ends the `${ … }`, so what follows looks like a string | counts the braces |
 | TypeScript JSX (`<div …>`) | `<` followed by a letter is a tag, so `Map<string, number>` and `a<b` become tags, sometimes followed by errors | not treated as tags (`<` is an operator) |
-| Escapes such as `\n` in TypeScript template literals | `\` is an error | string color, as in JavaScript |
+| Escapes such as `\n` in TypeScript and react (JSX) template literals | `\` is an error | string color, as in JavaScript |
 | Names starting with a non-ASCII letter in TypeScript, Swift and Ruby | error color | name color |
 | Ruby strings of the form `% abc ` | the delimiter is output twice | output once |
 | Ruby `defined?` | not a keyword in `defined? x` or `defined?(x)` | a keyword |
@@ -43,11 +43,16 @@ Chroma is the reference, not something to copy exactly. Where Chroma has a bug, 
 | Code blocks inside Markdown | colored with any of Chroma's languages | colored with the registered languages only |
 | Front matter in Markdown with `\r` alone as newlines | found before newlines are normalized | found after, like everything else |
 | Very long tokens of the same kind in Markdown code blocks and front matter (8,192 bytes or more) | split at one place | split at another place (looks the same) |
+| The body of an HTTP message in a language with a trailing-newline rule (JavaScript, C, PHP and others), when the message does not end with a newline | a newline is added to the body | nothing is added; the tokens join back into the input |
+| The body of an HTTP message whose content type is in a language fasthighlight does not support (`text/plain` is Nu in Chroma) | colored with that language | not colored |
+| Very long tokens of the same kind in HTTP message bodies read by a registered language (8,192 bytes or more) | split at one place | split at another place (looks the same) |
 | Rules whose regular expression takes more than 250 ms on an input | treated as not matching, so the result depends on how fast the machine is | always the same result |
 
 </div>
 
-Each change has a switch, used only in tests, that turns it back to Chroma's behavior; the fuzz tests compare that version with Chroma, so the changes are known to be the only differences.
+Each change has a switch, used only in tests, that turns it back to Chroma's behavior; the fuzz tests compare that version with Chroma, so the changes are known to be the only differences. (For the HTTP body rows, the tests instead remove Chroma's added newline, or skip the content types fasthighlight does not support, before comparing.)
+
+Some of Chroma's quirks are kept as they are, because they do not show: in Docker, the newline after an instruction is an error token, and so is an empty line in a Bash session (`console`); an error token on a newline has no visible color.
 
 ## Why it is fast
 
