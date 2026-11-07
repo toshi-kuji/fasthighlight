@@ -83,10 +83,6 @@ func run(args []string, e env) int {
 		fmt.Fprint(e.stdout, usage)
 		return 0
 	}
-	if errors.Is(err, errThemeValue) {
-		fmt.Fprintln(e.stderr, err)
-		return 1
-	}
 	if err != nil {
 		fmt.Fprintln(e.stderr, flagError(err))
 		return 1
@@ -323,10 +319,10 @@ func run(args []string, e env) int {
 }
 
 // checkOptions validates the flag values and their combinations. It returns the message if there is an error.
+// The values are checked before the inputs: when a value is missing, the flag takes the next input as its value
+// (fhl --theme docs/), and the message about that value tells more than "no input".
 func checkOptions(o *options) string {
 	switch {
-	case len(o.inputs) == 0:
-		return "fhl: no input; give files, folders or - (see fhl --help)"
 	case o.rawHTML != "escape" && o.rawHTML != "omit" && o.rawHTML != "unsafe":
 		return fmt.Sprintf("fhl: --raw-html must be escape, omit or unsafe, not %q", o.rawHTML)
 	case themeError(o.theme) != "":
@@ -337,6 +333,13 @@ func checkOptions(o *options) string {
 		return fmt.Sprintf("fhl: -j must be 1 or more, not %d", o.jobs)
 	case o.outSet && o.out == "":
 		return "fhl: -o needs a path; use -o FILE, -o DIR/ or -o -"
+	case o.htmlLangSet && !isLangTag(o.htmlLang):
+		return fmt.Sprintf("fhl: --html-lang must be a language tag such as en or ja, not %q", o.htmlLang)
+	case len(o.inputs) == 0:
+		if o.outSet && o.out != "-" {
+			return fmt.Sprintf("fhl: no input; give files, folders or - (-o took %q as the output; if it is an input, give -o a value first)", o.out)
+		}
+		return "fhl: no input; give files, folders or - (see fhl --help)"
 	case o.htmlLangSet && !o.staticSite:
 		return "fhl: --html-lang is only for --static-site, which writes <html>"
 	case o.staticSite:
@@ -364,8 +367,6 @@ func checkStaticSite(o *options) string {
 		return "fhl: --static-site writes a folder; use -o DIR/ (or no -o to write next to the Markdown files)"
 	case len(o.inputs) != 1:
 		return "fhl: --static-site needs exactly one folder"
-	case strings.TrimSpace(o.htmlLang) == "" || strings.ContainsAny(o.htmlLang, "\"<>& "):
-		return fmt.Sprintf("fhl: --html-lang must be a language tag such as en or ja, not %q", o.htmlLang)
 	}
 	if fi, err := os.Stat(o.inputs[0]); err != nil || !fi.IsDir() {
 		return fmt.Sprintf("fhl: --static-site needs a folder, not %s", o.inputs[0])
@@ -406,6 +407,23 @@ func listLangs(w io.Writer, asJSON bool) error {
 	return tw.Flush()
 }
 
+// isLangTag reports whether s looks like a language tag (BCP 47): letters, then parts of letters and digits
+// joined with -, such as en, ja or zh-Hant-TW.
+func isLangTag(s string) bool {
+	for i, part := range strings.Split(s, "-") {
+		if part == "" || len(part) > 8 {
+			return false
+		}
+		for _, c := range part {
+			letter := 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z'
+			if !letter && (i == 0 || c < '0' || c > '9') {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // themeError returns the error message for the value of --theme, or "" if it is valid.
 func themeError(v string) string {
 	_, _, msg := parseTheme(v)
@@ -427,7 +445,7 @@ func listThemes(w io.Writer, asJSON bool) error {
 	if asJSON {
 		return writeJSON(w, list)
 	}
-	fmt.Fprintln(w, "Use --theme=MODE:THEME, where MODE is light, dark or both (e.g. --theme=light:github).")
+	fmt.Fprintln(w, "Use --theme MODE:THEME, where MODE is light, dark or both (e.g. --theme light:github).")
 	fmt.Fprintln(w)
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "THEME\tNAME\tLIGHT\tDARK")

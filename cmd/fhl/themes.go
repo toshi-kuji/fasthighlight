@@ -337,8 +337,12 @@ func lookupTheme(name string) *theme {
 	return nil
 }
 
-// themeUsage tells how to write the value of --theme. It is part of the error messages about --theme.
-const themeUsage = "--theme=MODE or --theme=MODE:THEME (MODE is light, dark or both; THEME is one of fhl --list-themes, default if omitted), e.g. --theme=light:github"
+// themeForm and themeDetail tell how to write the value of --theme. They are part of the error messages about --theme.
+const (
+	themeForm   = "MODE or MODE:THEME"
+	themeDetail = "(MODE is light, dark or both; THEME is one of fhl --list-themes, default if omitted), e.g. --theme light:github"
+	themeUsage  = themeForm + " " + themeDetail
+)
 
 // parseTheme reads the value of --theme (MODE or MODE:THEME). It returns the error message if the value is wrong.
 func parseTheme(v string) (*theme, mode, string) {
@@ -351,16 +355,16 @@ func parseTheme(v string) (*theme, mode, string) {
 	}
 	if m < 0 {
 		if lookupTheme(ms) != nil {
-			return nil, 0, fmt.Sprintf("fhl: --theme=%s needs the mode first: %s", v, themeUsage)
+			return nil, 0, fmt.Sprintf("fhl: --theme %s needs the mode first, e.g. --theme light:%s (MODE is light, dark or both)", v, ms)
 		}
-		return nil, 0, fmt.Sprintf("fhl: --theme=%s: the mode must be light, dark or both; write %s", v, themeUsage)
+		return nil, 0, fmt.Sprintf("fhl: --theme must be %s, not %q %s", themeForm, v, themeDetail)
 	}
 	if ts == "" {
 		ts = "default"
 	}
 	t := lookupTheme(ts)
 	if t == nil {
-		return nil, 0, fmt.Sprintf("fhl: unknown theme %q in --theme=%s; see fhl --list-themes", ts, v)
+		return nil, 0, fmt.Sprintf("fhl: unknown theme %q in --theme %s; see fhl --list-themes", ts, v)
 	}
 	return t, mode(m), ""
 }
@@ -369,7 +373,7 @@ func parseTheme(v string) (*theme, mode, string) {
 func (t *theme) css(m mode) string {
 	var b strings.Builder
 	b.WriteString("/*\n")
-	b.WriteString(" * color theme of fhl code blocks: " + t.label + ", " + modeNames[m] + " (--theme=" + modeNames[m] + ":" + t.name + ")\n")
+	b.WriteString(" * color theme of fhl code blocks: " + t.label + ", " + modeNames[m] + " (--theme " + modeNames[m] + ":" + t.name + ")\n")
 	switch m {
 	case modeBoth:
 		b.WriteString(" * Light colors, switched to dark ones when the viewer's device prefers dark (prefers-color-scheme).\n")

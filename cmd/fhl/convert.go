@@ -89,7 +89,7 @@ func rewriteMDLink(dest string) string {
 	return strings.TrimSuffix(path, filepath.Ext(path)) + ".html" + rest
 }
 
-// rawHTMLEscaper turns raw HTML in Markdown into escaped, literal text (--raw-html=escape).
+// rawHTMLEscaper turns raw HTML in Markdown into escaped, literal text (--raw-html escape).
 // HTML blocks are wrapped in a <pre> without a class to keep the newlines. Inline tags are turned into text in place.
 type rawHTMLEscaper struct{}
 

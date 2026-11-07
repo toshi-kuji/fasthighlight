@@ -40,7 +40,7 @@ cp "$root/assets/logo.webp" "$src/assets/"
 # variables and classes), read from standalone pages of an empty document.
 : >"$work/empty.md"
 for name in $(python3 -c 'import json,sys; print(" ".join(t["name"] for t in json.load(open(sys.argv[1]))))' "$work/themes.json"); do
-	"$fhl" -q --single-html -o - --theme="light:$name" "$work/empty.md" >"$work/css-light-$name.html"
+	"$fhl" -q --single-html -o - --theme "light:$name" "$work/empty.md" >"$work/css-light-$name.html"
 done
 "$fhl" -q --single-html -o - "$work/empty.md" >"$work/css-default.html"
 
@@ -127,7 +127,7 @@ PY
 
 # 3. Convert. --force, because the output is rebuilt every time.
 rm -rf "$out"
-"$fhl" -q --static-site --raw-html=unsafe --theme=light --force -o "$out/" "$src"
+"$fhl" -q --static-site --raw-html unsafe --theme light --force -o "$out/" "$src"
 
 # 4. The site styles and the theme samples go after the code colors in the one highlight.css.
 if [ -f "$root/website/style.css" ]; then

@@ -7,13 +7,13 @@
 ## Choose a theme
 
 ```sh
-fhl --theme=dark:github docs/       # GitHub, dark colors only
-fhl --theme=light docs/             # default, light colors only
-fhl --theme=both:tokyo-night docs/  # Tokyo Night, light and dark
+fhl --theme dark:github docs/       # GitHub, dark colors only
+fhl --theme light docs/             # default, light colors only
+fhl --theme both:tokyo-night docs/  # Tokyo Night, light and dark
 fhl --list-themes
 ```
 
-Every theme has light and dark colors. `--theme=MODE:THEME` chooses which to write and the theme:
+Every theme has light and dark colors. `--theme MODE:THEME` chooses which to write and the theme:
 
 | `MODE` | Writes |
 | --- | --- |
@@ -21,7 +21,7 @@ Every theme has light and dark colors. `--theme=MODE:THEME` chooses which to wri
 | `dark` | the dark colors only |
 | `both` | the light colors, switched to the dark ones when the viewer's device prefers dark (`prefers-color-scheme`) |
 
-Join the value with `=`. `THEME` can be left out for `default`; without `--theme`, it is `both:default`. `both` follows the viewer's device setting only. If your site has its own light and dark switch, connecting the colors to it is up to you.
+`THEME` can be left out for `default`; without `--theme`, it is `both:default`. `both` follows the viewer's device setting only. If your site has its own light and dark switch, connecting the colors to it is up to you.
 
 The default theme, `default`, has fhl's own colors. Every color in it has a contrast ratio of at least 4.5 against its background (WCAG AA). The other themes copy the colors of the original themes as they are, so some of their colors have a lower contrast.
 
