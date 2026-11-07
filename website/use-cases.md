@@ -44,10 +44,10 @@ More: [Results and exit status](cli.html#results-and-exit-status), `fhl --help`
 Turn a folder of Markdown into a static site, and publish the output folder as it is (for example, on GitHub Pages).
 
 ```sh
-fhl --static-site --raw-html=unsafe --theme=light -o dist/ docs/
+fhl --static-site --raw-html unsafe --theme light -o dist/ docs/
 ```
 
-Pages get a minimal `<head>`, headings get ids, links to `.md` files point to the pages, and images are copied. Write an `index.md` and your own links between pages; `fhl` adds no navigation and no styles beyond the code colors. To style the site, add your CSS to `dist/highlight.css` after converting. Drop `--raw-html=unsafe` unless you write HTML in the Markdown yourself.
+Pages get a minimal `<head>`, headings get ids, links to `.md` files point to the pages, and images are copied. Write an `index.md` and your own links between pages; `fhl` adds no navigation and no styles beyond the code colors. To style the site, add your CSS to `dist/highlight.css` after converting. Drop `--raw-html unsafe` unless you write HTML in the Markdown yourself.
 
 More: [A static site](cli.html#a-static-site) (what to prepare and what to watch out for), `fhl --help`
 
@@ -56,9 +56,9 @@ More: [A static site](cli.html#a-static-site) (what to prepare and what to watch
 Pick the code colors for a site that is light only, dark only, or follows the viewer's device.
 
 ```sh
-fhl --theme=light docs/              # light colors only
-fhl --theme=dark:tokyo-night docs/   # Tokyo Night, dark colors only
-fhl --theme=both:github docs/        # GitHub, light or dark by the viewer's device
+fhl --theme light docs/              # light colors only
+fhl --theme dark:tokyo-night docs/   # Tokyo Night, dark colors only
+fhl --theme both:github docs/        # GitHub, light or dark by the viewer's device
 ```
 
 `both` follows the viewer's device setting only. If your site has its own light and dark switch, connect the colors to it yourself.

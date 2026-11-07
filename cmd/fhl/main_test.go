@@ -371,11 +371,14 @@ func TestParseArgs(t *testing.T) {
 	if o.theme != "both:default" || o.themeSet {
 		t.Errorf("default theme: %+v", o)
 	}
-	// The value of --theme must be joined with =, so that a bare --theme does not take the next input.
-	for _, args := range [][]string{{"--theme"}, {"--theme", "docs/"}, {"x", "-theme", "dark:github"}} {
-		if _, err := parseArgs(args); !errors.Is(err, errThemeValue) {
-			t.Errorf("%v: err %v", args, err)
+	// Values can be joined with = or given as the next argument, --theme included.
+	for _, args := range [][]string{{"--theme", "dark:github", "x"}, {"x", "--theme=dark:github"}, {"x", "-theme", "dark:github"}} {
+		if o, err := parseArgs(args); err != nil || o.theme != "dark:github" || fmt.Sprint(o.inputs) != "[x]" {
+			t.Errorf("%v: %+v, %v", args, o, err)
 		}
+	}
+	if o, err := parseArgs([]string{"--html-lang", "ja", "--html-lang=fr", "x"}); err != nil || o.htmlLang != "fr" {
+		t.Errorf("--html-lang: %+v, %v", o, err)
 	}
 	// --theme as the value of another flag, or after --, is not the flag.
 	if o, err := parseArgs([]string{"-o", "--theme", "x"}); err != nil || o.out != "--theme" {
@@ -693,7 +696,7 @@ func TestHelp(t *testing.T) {
 	for _, cmd := range []string{
 		"fhl README.md", "fhl docs/", "fhl -o dist/ docs/", "fhl -o dist/ docs/ --json", "fhl --single-html README.md",
 		"fhl -o - README.md", "fhl --single-html -o - README.md", "fhl --static-site -o dist/ docs/",
-		"cat note.md | fhl -o note.html -", "fhl --lang go main.txt", "fhl --theme=dark:github README.md",
+		"cat note.md | fhl -o note.html -", "fhl --lang go main.txt", "fhl --theme dark:github README.md",
 		"fhl --force docs/", "fhl --list-langs", "fhl --list-themes", "fhl --check docs/",
 	} {
 		if !strings.Contains(out, cmd) {
@@ -762,10 +765,23 @@ func TestThemeFlag(t *testing.T) {
 			t.Errorf("%s: code %d, %s", v, code, stderr)
 		}
 	}
+	// The value can also be the next argument.
+	if code, out, stderr := fhlRun(t, "", "", false, "--theme", "dark:github", "--single-html", "-o", "-", "a.md"); code != 0 ||
+		!strings.Contains(out, "--theme dark:github") {
+		t.Errorf("--theme dark:github: code %d, %s", code, stderr)
+	}
 	// Errors tell how to write the value.
-	for _, args := range [][]string{{"--theme", "a.md"}, {"--theme", "dark:github", "a.md"}, {"--theme=github", "a.md"}, {"--theme=nope", "a.md"}} {
-		if code, _, stderr := fhlRun(t, "", "", false, args...); code != 1 || !strings.Contains(stderr, "--theme=MODE:THEME") {
-			t.Errorf("%v: code %d, %q", args, code, stderr)
+	for _, tt := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"--theme", "a.md"}, `--theme must be MODE or MODE:THEME, not "a.md" (MODE is light, dark or both; THEME is one of fhl --list-themes, default if omitted), e.g. --theme light:github`},
+		{[]string{"a.md", "--theme"}, "--theme needs a value: MODE or MODE:THEME"},
+		{[]string{"--theme=nope", "a.md"}, `--theme must be MODE or MODE:THEME`},
+		{[]string{"--theme", "github", "a.md"}, "--theme github needs the mode first, e.g. --theme light:github"},
+	} {
+		if code, _, stderr := fhlRun(t, "", "", false, tt.args...); code != 1 || !strings.Contains(stderr, tt.want) {
+			t.Errorf("%v: code %d, %q", tt.args, code, stderr)
 		}
 	}
 	if code, _, stderr := fhlRun(t, "", "", false, "--theme=light:nope", "a.md"); code != 1 || !strings.Contains(stderr, "see fhl --list-themes") {
@@ -1091,5 +1107,53 @@ func TestUncoloredSummary(t *testing.T) {
 	_, _, stderr = fhlRun(t, "", "", false, "--check", "a.md")
 	if strings.Contains(stderr, "more code block") || strings.Count(stderr, "a.md:") != 9 {
 		t.Errorf("--check does not list all:\n%s", stderr)
+	}
+}
+
+// TestValueErrors checks the messages when a flag's value is missing or wrong. When the value is left out, the
+// flag takes the next input as its value, and the message must be about that value, not "no input".
+func TestValueErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeFiles(t, dir, map[string]string{"in/a.md": "# a\n"})
+	t.Chdir(dir)
+	for _, tt := range []struct {
+		args []string
+		want string
+	}{
+		// The value took the input.
+		{[]string{"--theme", "in/"}, `fhl: --theme must be MODE or MODE:THEME, not "in/" (MODE is light`},
+		{[]string{"--html-lang", "in/"}, `fhl: --html-lang must be a language tag such as en or ja, not "in/"`},
+		{[]string{"--static-site", "--html-lang", "in/"}, `fhl: --html-lang must be a language tag such as en or ja, not "in/"`},
+		{[]string{"--lang", "in/"}, `fhl: unknown language "in/" for --lang; see fhl --list-langs`},
+		{[]string{"--raw-html", "in/"}, `fhl: --raw-html must be escape, omit or unsafe, not "in/"`},
+		{[]string{"-j", "in/"}, `fhl: -j must be a number of 1 or more, not "in/"`},
+		{[]string{"-o", "in/"}, `fhl: no input; give files, folders or - (-o took "in/" as the output; if it is an input, give -o a value first)`},
+		// No value at all.
+		{[]string{"in/", "--theme"}, "fhl: --theme needs a value: MODE or MODE:THEME"},
+		{[]string{"in/", "--html-lang"}, "fhl: --html-lang needs a value: a language tag such as en or ja"},
+		{[]string{"in/", "--lang"}, "fhl: --lang needs a value: a language name such as go (see fhl --list-langs)"},
+		{[]string{"in/", "--raw-html"}, "fhl: --raw-html needs a value: escape, omit or unsafe"},
+		{[]string{"in/", "-j"}, "fhl: -j needs a value: a number of 1 or more"},
+		{[]string{"in/", "-o"}, "fhl: -o needs a value: a file, a folder (DIR/) or - for standard output"},
+		// Other flag errors name the flag as the help does.
+		{[]string{"--nope", "in/"}, "fhl: unknown flag --nope; see fhl --help"},
+		{[]string{}, "fhl: no input; give files, folders or - (see fhl --help)"},
+		{[]string{"-o", "-"}, "fhl: no input; give files, folders or - (see fhl --help)"},
+	} {
+		code, _, stderr := fhlRun(t, "", "", false, tt.args...)
+		if code != 1 || strings.TrimSpace(stderr) != tt.want && !strings.HasPrefix(stderr, tt.want) {
+			t.Errorf("%v: code %d\n got %q\nwant %q", tt.args, code, stderr, tt.want)
+		}
+	}
+	// Language tags that are accepted.
+	for _, v := range []string{"en", "ja", "zh-Hant-TW", "en-US", "es-419"} {
+		if !isLangTag(v) {
+			t.Errorf("isLangTag(%q) = false", v)
+		}
+	}
+	for _, v := range []string{"", "in/", "e n", "en-", "-en", "1en", `en"`, "toolongpart"} {
+		if isLangTag(v) {
+			t.Errorf("isLangTag(%q) = true", v)
+		}
 	}
 }

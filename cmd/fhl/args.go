@@ -37,9 +37,6 @@ type options struct {
 // errHelp reports that -h (not --help) was given.
 var errHelp = errors.New("help requested")
 
-// errThemeValue reports that --theme was given without a value joined with =. Its message is written as is.
-var errThemeValue = errors.New("fhl: --theme needs a value joined with =: " + themeUsage)
-
 // parseArgs reads the flags and inputs. Flags may appear before, after or between the inputs.
 // Everything after -- is read as an input. If the same flag is given more than once, the last value is used.
 func parseArgs(args []string) (*options, error) {
@@ -64,9 +61,6 @@ func parseArgs(args []string) (*options, error) {
 	fs.BoolVar(&o.version, "version", false, "")
 	fs.BoolVar(&o.help, "help", false, "")
 
-	if themeWithoutEquals(fs, args) {
-		return nil, errThemeValue
-	}
 	for {
 		if err := fs.Parse(args); err != nil {
 			if errors.Is(err, flag.ErrHelp) {
@@ -96,35 +90,6 @@ func parseArgs(args []string) (*options, error) {
 		}
 	})
 	return o, nil
-}
-
-// themeWithoutEquals reports whether --theme is given without =, as a flag (not as the value of another flag, and
-// not after --). The value of --theme must be joined with = (--theme=light:github), so that a bare --theme cannot take
-// the next input (fhl --theme docs/) as its value.
-func themeWithoutEquals(fs *flag.FlagSet, args []string) bool {
-	for i := 0; i < len(args); i++ {
-		a := args[i]
-		if a == "--" {
-			return false
-		}
-		if !strings.HasPrefix(a, "-") || a == "-" {
-			continue
-		}
-		name := strings.TrimLeft(a, "-")
-		if strings.Contains(name, "=") {
-			continue
-		}
-		if name == "theme" {
-			return true
-		}
-		if f := fs.Lookup(name); f != nil {
-			if b, ok := f.Value.(interface{ IsBoolFlag() bool }); ok && b.IsBoolFlag() {
-				continue
-			}
-			i++ // the next argument is the value of this flag
-		}
-	}
-	return false
 }
 
 // endedByDashes reports whether the last of the arguments consumed by Parse was --, which marks the end of the flags.
@@ -157,7 +122,8 @@ Usage:
   fhl [flags] [input...]
 
 An input is a file, a folder, or - (standard input). Flags can be written before,
-after or between inputs. Everything after -- is an input.
+after or between inputs. Everything after -- is an input. A value follows its flag
+after a space or = (--theme light or --theme=light).
 
 Examples:
   fhl README.md                           # README.html and highlight.css next to README.md
@@ -170,7 +136,7 @@ Examples:
   fhl --static-site -o dist/ docs/        # a static site: full pages, heading ids, other files copied
   cat note.md | fhl -o note.html -        # read standard input
   fhl --lang go main.txt                  # read a code file as code of that language
-  fhl --theme=dark:github README.md       # choose the colors: light, dark or both, and a theme
+  fhl --theme dark:github README.md       # choose the colors: light, dark or both, and a theme
   fhl --force docs/                       # overwrite without asking
   fhl --list-langs                        # supported languages
   fhl --list-themes                       # available color themes
@@ -190,10 +156,10 @@ Flags:
   --static-site      turn one folder into a static site: full pages linking one highlight.css at the
                      top, ids on headings, links to .md rewritten to .html, other files copied
   --html-lang LANG   the lang of <html> with --static-site (default "en")
-  --theme=MODE[:THEME]
+  --theme MODE[:THEME]
                      code colors. MODE is light, dark or both (both switches with the
                      viewer's light or dark preference); THEME is one of --list-themes.
-                     Default: both:default. Join the value with =
+                     Default: both:default
   --raw-html MODE    raw HTML in Markdown: escape (default; shown as text), omit (dropped),
                      unsafe (written as is; do not use for untrusted Markdown)
   --force            overwrite existing files without asking
@@ -216,5 +182,43 @@ Exit status: 0 success, 1 error, 2 uncolored code blocks with --strict.
 
 // flagError writes a flag error together with what to do next.
 func flagError(err error) string {
+	msg := err.Error()
+	if name, ok := strings.CutPrefix(msg, "flag needs an argument: -"); ok {
+		if hint, ok := valueHints[name]; ok {
+			return "fhl: " + flagName(name) + " needs a value: " + hint
+		}
+		return "fhl: " + flagName(name) + " needs a value; see fhl --help"
+	}
+	if name, ok := strings.CutPrefix(msg, "flag provided but not defined: -"); ok {
+		return "fhl: unknown flag " + flagName(name) + "; see fhl --help"
+	}
+	if rest, ok := strings.CutPrefix(msg, "invalid value "); ok {
+		// invalid value "x" for flag -j: parse error
+		if v, name, ok := strings.Cut(rest, " for flag -"); ok {
+			name, _, _ = strings.Cut(name, ":")
+			if hint, ok := valueHints[name]; ok {
+				return "fhl: " + flagName(name) + " must be " + hint + ", not " + v
+			}
+		}
+	}
 	return fmt.Sprintf("fhl: %v; see fhl --help", err)
+}
+
+// valueHints tells what each flag with a value takes. It completes the messages about a missing or wrong value.
+var valueHints = map[string]string{
+	"o":         "a file, a folder (DIR/) or - for standard output",
+	"lang":      "a language name such as go (see fhl --list-langs)",
+	"html-lang": "a language tag such as en or ja",
+	"theme":     themeUsage,
+	"raw-html":  "escape, omit or unsafe",
+	"j":         "a number of 1 or more",
+}
+
+// flagName writes a flag as the help does: -o and -j with one dash, the others with two.
+func flagName(name string) string {
+	name = strings.TrimLeft(name, "-")
+	if len(name) == 1 {
+		return "-" + name
+	}
+	return "--" + name
 }

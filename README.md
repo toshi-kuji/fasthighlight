@@ -33,7 +33,7 @@ fhl --static-site -o dist/ docs/   # a static site: full pages, heading ids, oth
 fhl -o - README.md                 # body-only HTML to standard output
 cat note.md | fhl -o note.html -   # read standard input
 fhl main.go                        # a code file becomes one highlighted code block
-fhl --theme=dark:github docs/      # choose the colors (light, dark or both, and a theme)
+fhl --theme dark:github docs/      # choose the colors (light, dark or both, and a theme)
 fhl --check --strict docs/         # fail (exit status 2) if a code block is not colored
 fhl -o dist/ docs/ --json          # machine-readable result, for scripts and AI agents
 fhl --help                         # all flags, with examples
@@ -44,14 +44,14 @@ By default `fhl` writes the HTML of the document body only (no `<html>` or `<hea
 Other behavior worth knowing:
 
 - Existing files are overwritten only after asking `[y/N/a]` on a terminal. Without a terminal (CI, scripts, AI agents), `fhl` stops with an error unless `--force` is given. Files whose content would not change are left alone.
-- Raw HTML in Markdown is escaped by default, so it shows up as text. `--raw-html=omit` drops it, and `--raw-html=unsafe` passes it through (only for Markdown you trust).
+- Raw HTML in Markdown is escaped by default, so it shows up as text. `--raw-html omit` drops it, and `--raw-html unsafe` passes it through (only for Markdown you trust).
 - Front matter (`---` … `---` at the top) is skipped.
 - Code blocks that are not colored are listed on standard error as `file:line:`, up to three for each reason (no language name, unsupported language), followed by a count of the rest. `--check` lists them all.
 - Exit status: 0 for success, 1 for errors, 2 for uncolored code blocks with `--strict`.
 
 ### Themes
 
-`--theme=MODE:THEME` chooses the colors of `highlight.css` (and of the CSS in `--single-html`). Every theme has light and dark colors, and `MODE` chooses which to write:
+`--theme MODE:THEME` chooses the colors of `highlight.css` (and of the CSS in `--single-html`). Every theme has light and dark colors, and `MODE` chooses which to write:
 
 | `MODE` | Writes |
 | --- | --- |
@@ -69,7 +69,7 @@ Other behavior worth knowing:
 | `catppuccin` | Catppuccin Latte | Catppuccin Mocha |
 | `tokyo-night` | Tokyo Night Light | Tokyo Night |
 
-Join the value with `=`. `THEME` can be left out for `default` (`--theme=light`); without `--theme`, it is `both:default`. Every color of `default` has a contrast ratio of at least 4.5 against its background (WCAG AA).
+`THEME` can be left out for `default` (`--theme light`); without `--theme`, it is `both:default`. Every color of `default` has a contrast ratio of at least 4.5 against its background (WCAG AA).
 
 The colors are CSS variables (`--highlight-keyword`, `--highlight-string`, …) on `:root`, and every token class has a comment that says what it is. Change a variable to change a color. The themes other than `default` copy the colors of the original themes as they are, so some colors in them have a lower contrast.
 

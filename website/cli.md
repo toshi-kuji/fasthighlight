@@ -84,7 +84,7 @@ Code blocks look like this:
 
 ```sh
 fhl --static-site -o dist/ docs/
-fhl --static-site --theme=light --html-lang ja -o dist/ docs/
+fhl --static-site --theme light --html-lang ja -o dist/ docs/
 ```
 
 ### What it does
@@ -106,8 +106,8 @@ fhl --static-site --theme=light --html-lang ja -o dist/ docs/
 - **Put everything for the site in one folder.** `--static-site` takes exactly one folder. Files outside it are not copied; a link or image that points outside it will not work on the server.
 - **Write an index or contents page.** With no navigation, readers find pages through your links. Name the top page `index.md`, so that it becomes `index.html`.
 - **Link to `.md` files, or to `.html` files.** Both work: links to `.md` files are rewritten.
-- **Write raw HTML only if you need it, and turn it on.** By default, HTML tags in Markdown are shown as text. For your own trusted pages, add `--raw-html=unsafe`.
-- **Choose the code colors for your site.** Without `--theme`, code blocks switch to dark colors when the viewer's device prefers dark (`both:default`). For a light-only site, add `--theme=light`. See [Themes and CSS](themes.html).
+- **Write raw HTML only if you need it, and turn it on.** By default, HTML tags in Markdown are shown as text. For your own trusted pages, add `--raw-html unsafe`.
+- **Choose the code colors for your site.** Without `--theme`, code blocks switch to dark colors when the viewer's device prefers dark (`both:default`). For a light-only site, add `--theme light`. See [Themes and CSS](themes.html).
 - **Keep names apart.** A file that would be copied onto a page or onto `highlight.css` is not copied, and `fhl` reports an error: for example `guide.html` next to `guide.md`, or your own `highlight.css` at the top of the folder.
 - **Link to sections by the English heading text.** For headings in other scripts, the ids are `heading`, `heading-1` and so on, which change when you add headings.
 - **Use `-o DIR/`.** Without `-o`, pages are written next to the Markdown files, `highlight.css` at the top of the folder, and nothing is copied. Converting again overwrites only after asking (or with `--force`); files whose content did not change are left alone.
@@ -144,7 +144,7 @@ Before converting, `fhl` compares every input and every file it would write.
 | `--single-html` | a standalone HTML with the CSS in `<head>`, and ids on headings |
 | `--static-site` | turn one folder into a static site ([A static site](#a-static-site)) |
 | `--html-lang LANG` | the `lang` of `<html>` with `--static-site` (default `en`) |
-| `--theme=MODE:THEME` | code colors: `MODE` is `light`, `dark` or `both`, and `THEME` is one of `fhl --list-themes` (default `both:default`; see [Themes and CSS](themes.html)) |
+| `--theme MODE:THEME` | code colors: `MODE` is `light`, `dark` or `both`, and `THEME` is one of `fhl --list-themes` (default `both:default`; see [Themes and CSS](themes.html)) |
 | `--raw-html MODE` | `escape` (default), `omit` or `unsafe` |
 | `--lang NAME` | read code files and standard input as this language |
 | `--force` | overwrite without asking |
@@ -153,7 +153,7 @@ Before converting, `fhl` compares every input and every file it would write.
 | `--json` | print the result as JSON on standard output |
 | `--list-langs`, `--list-themes` | print the languages or themes (JSON with `--json`) |
 
-All flags and examples: `fhl --help`.
+A value follows its flag after a space or `=` (`--theme light` and `--theme=light` are the same). All flags and examples: `fhl --help`.
 
 ## Results and exit status
 
