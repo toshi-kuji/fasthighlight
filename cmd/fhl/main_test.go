@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -1383,6 +1384,47 @@ func TestCodeBlocks(t *testing.T) {
 	} {
 		if code, _, stderr := fhlRun(t, "", "", false, tt.args...); code != 1 || !strings.Contains(stderr, tt.want) {
 			t.Errorf("%v: code %d, %q", tt.args, code, stderr)
+		}
+	}
+}
+
+// TestDefaultContrast checks that every color of the default theme has a contrast ratio of at least 6 against its
+// background (WCAG), in light and dark, and that only the default theme makes keywords bold.
+func TestDefaultContrast(t *testing.T) {
+	lum := func(hex string) float64 {
+		var rgb [3]float64
+		for i := range rgb {
+			var v int
+			if _, err := fmt.Sscanf(hex[1+2*i:3+2*i], "%02x", &v); err != nil {
+				t.Fatalf("bad color %q", hex)
+			}
+			c := float64(v) / 255
+			if c <= 0.03928 {
+				rgb[i] = c / 12.92
+			} else {
+				rgb[i] = math.Pow((c+0.055)/1.055, 2.4)
+			}
+		}
+		return 0.2126*rgb[0] + 0.7152*rgb[1] + 0.0722*rgb[2]
+	}
+	def := lookupTheme("default")
+	for name, p := range map[string]palette{"light": def.light, "dark": def.dark} {
+		bg := lum(p["background"])
+		for _, r := range roles {
+			if r.name == "background" {
+				continue
+			}
+			l := lum(p[r.name])
+			ratio := (max(l, bg) + 0.05) / (min(l, bg) + 0.05)
+			if ratio < 6 {
+				t.Errorf("%s %s %s: contrast %.2f, want 6 or more", name, r.name, p[r.name], ratio)
+			}
+		}
+	}
+	for _, th := range themes {
+		css := th.css(modeBoth, cssOptions{})
+		if bold := strings.Contains(css, "pre.highlight .kd { color: var(--highlight-keyword); font-weight: bold; }"); bold != (th.name == "default") {
+			t.Errorf("%s: bold keywords %v", th.name, bold)
 		}
 	}
 }
