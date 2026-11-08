@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	fh "github.com/toshi-kuji/fasthighlight"
+	"github.com/yuin/goldmark/ast"
 )
 
 // HighlightedBlock is one code block of a document, highlighted. Open + Code + Close is the same HTML that
@@ -34,14 +35,21 @@ type HighlightedBlock struct {
 // CodeBlocks returns the code blocks of a parsed document (those fenced with ``` or ~~~), highlighted, in
 // order. It writes no other HTML. Use it when you convert the Markdown yourself and need only the colored
 // code. The blocks are highlighted in parallel as Parallelism decides (see Parse); calling Render afterwards
-// still works.
+// still works. For a document from NewDocument, the blocks are highlighted here, also as Parallelism
+// decides (unless your goldmark has Extension, which already did it while parsing).
 func (c *Converter) CodeBlocks(d *Document) []HighlightedBlock {
+	var pre [][]byte // for a document from NewDocument: the HTML highlighted here in parallel
+	if !d.parsed && !carriesHTML(d.blocks) {
+		pre = highlightAll(c.Parallelism, d.blocks, d.src)
+	}
 	out := make([]HighlightedBlock, 0, len(d.blocks))
-	for _, b := range d.blocks {
+	for k, b := range d.blocks {
 		name := string(b.Language(d.src))
 		var html []byte
 		if v, ok := b.Attribute(highlightedAttr); ok {
 			html, _ = v.([]byte)
+		} else if pre != nil {
+			html = pre[k]
 		}
 		if html == nil {
 			var buf bytes.Buffer
@@ -69,4 +77,15 @@ func (c *Converter) CodeBlocks(d *Document) []HighlightedBlock {
 		out = append(out, hb)
 	}
 	return out
+}
+
+// carriesHTML reports whether any of the blocks carries HTML highlighted in advance (by Extension in the
+// goldmark that parsed them).
+func carriesHTML(blocks []*ast.FencedCodeBlock) bool {
+	for _, b := range blocks {
+		if _, ok := b.Attribute(highlightedAttr); ok {
+			return true
+		}
+	}
+	return false
 }

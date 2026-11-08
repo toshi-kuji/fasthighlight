@@ -50,20 +50,40 @@ func NewConverter() *Converter {
 	return &Converter{md: md, ext: ext}
 }
 
-// Document is parsed Markdown. It is created by Parse.
+// Document is parsed Markdown. It is created by Parse, or by NewDocument from a document parsed with your
+// own goldmark.
 type Document struct {
 	// Name is the name of the document (a file name, for example). It appears as is in the result of Scan.
 	Name   string
 	src    []byte
 	root   ast.Node
 	blocks []*ast.FencedCodeBlock
+	// parsed is true for a document from Parse, whose blocks were already highlighted in parallel when
+	// Parallelism said so.
+	parsed bool
 }
 
 // Parse parses src. name is used to identify the document in the result of Scan (it may be empty).
 // When highlighting in parallel, the highlighting is also finished here.
 func (c *Converter) Parse(name string, src []byte) *Document {
 	c.ext.Parallelism = c.Parallelism
-	root := c.md.Parser().Parse(text.NewReader(src))
+	d := newDocument(name, src, c.md.Parser().Parse(text.NewReader(src)))
+	d.parsed = true
+	return d
+}
+
+// NewDocument wraps a document you parsed with your own goldmark, so that CodeBlocks and Scan can be used
+// on it without parsing it again. src is the Markdown that was parsed, and root is the node the parser
+// returned. Code blocks are the *ast.FencedCodeBlock nodes under root, in order; a block that your AST
+// transformers turned into another kind of node is not one.
+//
+// Render also works on it, with this package's settings (GFM and fasthighlight), not yours; to write the
+// document with your own renderer, use your goldmark.
+func NewDocument(name string, src []byte, root ast.Node) *Document {
+	return newDocument(name, src, root)
+}
+
+func newDocument(name string, src []byte, root ast.Node) *Document {
 	var blocks []*ast.FencedCodeBlock
 	_ = ast.Walk(root, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if b, ok := n.(*ast.FencedCodeBlock); ok && entering {

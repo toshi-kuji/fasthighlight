@@ -22,7 +22,8 @@
 // packages are not imported, with the package to import.
 //
 // If you convert the Markdown yourself and need only the colored code, call CodeBlocks on a parsed
-// document: it returns each code block, highlighted, without the rest of the HTML.
+// document: it returns each code block, highlighted, without the rest of the HTML. If you parse with your
+// own goldmark, wrap its result with NewDocument instead of parsing again with Parse.
 //
 // A code block of a language that is not registered is only escaped, without highlighting. For the shape
 // of the HTML, see the fasthighlight package.

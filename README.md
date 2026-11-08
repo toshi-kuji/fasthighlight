@@ -110,7 +110,7 @@ err := md.Convert(src, w)
 
 A `goldmark.Markdown` with the extension can be used from several goroutines at the same time.
 
-If you convert the Markdown yourself and need only the colored code blocks, `Converter.CodeBlocks` returns them, in order, from a parsed document (the library side of `fhl --code-blocks`).
+If you convert the Markdown yourself and need only the colored code blocks, `Converter.CodeBlocks` returns them, in order, from a parsed document (the library side of `fhl --code-blocks`). With your own goldmark, wrap its result with `markdown.NewDocument` so the document is parsed once.
 
 ### Highlight one piece of code
 

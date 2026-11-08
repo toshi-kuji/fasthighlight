@@ -139,6 +139,20 @@ for _, b := range c.CodeBlocks(doc) {
 
 The blocks are highlighted in parallel as `Parallelism` decides, as in `Render`.
 
+### With your own goldmark
+
+If you parse with your own goldmark (your own extensions, AST transformers or renderers), wrap its result with [`NewDocument`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight/markdown#NewDocument) instead of parsing the document again with `Parse`. `CodeBlocks` and `Scan` work on it as on a document from `Parse`, and each document is parsed once.
+
+```go
+root := md.Parser().Parse(text.NewReader(src)) // md: your goldmark
+c := markdown.NewConverter()
+for _, b := range c.CodeBlocks(markdown.NewDocument("page.md", src, root)) {
+	// the same blocks as above
+}
+```
+
+The code blocks are the fenced code block nodes (`*ast.FencedCodeBlock`) under the root, in order. A block that your AST transformers turned into another kind of node is not one.
+
 ## Parallel highlighting
 
 By default ([`markdown.ParallelAuto`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight/markdown#Parallelism)), the code blocks of one document are highlighted in parallel only when it pays off:

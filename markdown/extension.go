@@ -44,9 +44,6 @@ var highlightedAttr = []byte("fasthighlight-html")
 type parallelTransformer struct{ e *Extension }
 
 func (t *parallelTransformer) Transform(doc *ast.Document, reader text.Reader, _ parser.Context) {
-	if t.e.Parallelism == ParallelNever {
-		return
-	}
 	src := reader.Source()
 	var blocks []*ast.FencedCodeBlock
 	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
@@ -55,8 +52,19 @@ func (t *parallelTransformer) Transform(doc *ast.Document, reader text.Reader, _
 		}
 		return ast.WalkContinue, nil
 	})
-	if len(blocks) < 2 {
-		return
+	for k, out := range highlightAll(t.e.Parallelism, blocks, src) {
+		if out != nil {
+			blocks[k].SetAttribute(highlightedAttr, out)
+		}
+	}
+}
+
+// highlightAll highlights the code blocks in parallel when p says so, and returns the HTML of each block
+// (nil for blocks of languages that are not registered, which are light and are written in place). It
+// returns nil when it does not go parallel.
+func highlightAll(p Parallelism, blocks []*ast.FencedCodeBlock, src []byte) [][]byte {
+	if p == ParallelNever || len(blocks) < 2 {
+		return nil
 	}
 	codes := make([]string, len(blocks))
 	names := make([]string, len(blocks))
@@ -71,11 +79,11 @@ func (t *parallelTransformer) Transform(doc *ast.Document, reader text.Reader, _
 			size += len(codes[k])
 		}
 	}
-	if !parallel(t.e.Parallelism, colored, need, size) {
-		return
+	if !parallel(p, colored, need, size) {
+		return nil
 	}
 	// The blocks to highlight are shared among as many goroutines as there are CPUs (including the calling
-	// goroutine). Blocks that are not highlighted are light, so they are written in place at render time.
+	// goroutine).
 	outs := make([][]byte, len(blocks))
 	var next atomic.Int32
 	work := func() {
@@ -103,11 +111,7 @@ func (t *parallelTransformer) Transform(doc *ast.Document, reader text.Reader, _
 	}
 	work()
 	wg.Wait()
-	for k, b := range blocks {
-		if outs[k] != nil {
-			b.SetAttribute(highlightedAttr, outs[k])
-		}
-	}
+	return outs
 }
 
 // parallel returns true if highlighting should be parallel, when there are n code blocks to highlight, the
