@@ -54,10 +54,10 @@
 .logo-dark { display: none; }
 
 /* page */
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 4.5rem; } /* keep the target of a #link below the sticky header */
 body {
   margin: 0 auto;
-  padding: 1.5rem 1rem 4rem;
+  padding: 0.75rem 1rem 4rem; /* the header adds 0.75rem above its links */
   max-width: var(--site-width);
   background: var(--site-background);
   color: var(--site-text);
@@ -67,15 +67,20 @@ body {
 }
 img { max-width: 100%; height: auto; }
 
-/* the header of every page (written by build.sh): the links on the left, the light/dark button on the right */
+/* the header of every page (written by build.sh): the links on the left, the light/dark button on the right.
+   It stays at the top of the window while the page scrolls. */
 .site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   margin: 0 0 2rem;
-  padding-bottom: 0.75rem;
+  padding: 0.75rem 0;
   border-bottom: 1px solid var(--site-line);
+  background: var(--site-background);
   font-size: 0.9rem;
   color: var(--site-muted);
 }
@@ -206,7 +211,9 @@ th { background: var(--site-tint); font-weight: 600; white-space: nowrap; }
 .theme-sample { margin-bottom: 1.5rem; }
 
 @media (max-width: 40rem) {
-  body { padding-top: 1rem; font-size: 0.975rem; }
+  html { scroll-padding-top: 3.75rem; }
+  body { padding-top: 0; font-size: 0.975rem; }
+  .site-header { margin-bottom: 1.5rem; padding: 0.5rem 0; }
   h1 { font-size: 1.7rem; }
   h2 { font-size: 1.3rem; }
   .hero h1 + p { font-size: 1.05rem; }
