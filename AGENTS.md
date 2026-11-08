@@ -13,7 +13,7 @@ go vet ./...                   # checks
 gofmt -l .                     # should print nothing
 
 # Comparison with Chroma (compat/ is a separate module)
-(cd compat && go vet ./... && go test -race -count=1 ./...)
+(cd compat && go vet ./... && go test -count=1 ./...)   # without -race: no goroutines of its own; -race makes it 15x slower
 
 # Fuzz tests (one at a time; inputs they find go to testdata/fuzz/ and run with the normal go test too)
 go test -run='^$' -fuzz=FuzzTokenise -fuzztime=1m .

@@ -41,9 +41,12 @@ jobs:
         run: go test -race -count=1 ./...
       - name: vet and test (comparison with Chroma)
         working-directory: compat
+        # Without -race: these tests run one at a time and start no goroutines of their own, and the parallel
+        # code they reach (markdown's parallel highlighting) is already tested with -race in the main module.
+        # With -race this step took over 3 minutes, without it about 15 seconds.
         run: |
           go vet ./...
-          go test -race -count=1 ./...
+          go test -count=1 ./...
       - name: fuzz (short)
         run: |
           go test -run='^$' -fuzz=FuzzTokenise -fuzztime=20s .
