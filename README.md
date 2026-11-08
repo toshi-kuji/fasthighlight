@@ -70,7 +70,7 @@ Other behavior worth knowing:
 | `catppuccin` | Catppuccin Latte | Catppuccin Mocha |
 | `tokyo-night` | Tokyo Night Light | Tokyo Night |
 
-`THEME` can be left out for `default` (`--theme light`); without `--theme`, it is `both:default`. For a site with its own light and dark switch, `--theme-selector dark:':root[data-theme="dark"]'` switches to the dark colors under that selector instead of with `prefers-color-scheme` (`light:…` for a site that starts dark), and `--no-frame` leaves out the background and text color of `pre.highlight`. Every color of `default` has a contrast ratio of at least 4.5 against its background (WCAG AA).
+`THEME` can be left out for `default` (`--theme light`); without `--theme`, it is `both:default`. For a site with its own light and dark switch, `--theme-selector dark:':root[data-theme="dark"]'` (and `light:…`) adds the colors under that selector, which wins over the device setting (to ignore the device setting, see [Themes and CSS](https://toshi-kuji.github.io/fasthighlight/themes.html)), and `--no-frame` leaves out the background and text color of `pre.highlight`. Every color of `default` has a contrast ratio of at least 4.5 against its background (WCAG AA).
 
 The colors are CSS variables (`--highlight-keyword`, `--highlight-string`, …) on `:root`, and every token class has a comment that says what it is. Change a variable to change a color. The themes other than `default` copy the colors of the original themes as they are, so some colors in them have a lower contrast.
 

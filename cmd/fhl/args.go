@@ -21,8 +21,7 @@ type options struct {
 	theme       string
 	themeSet    bool
 	printCSS    bool
-	themeSel    string
-	themeSelSet bool
+	themeSels   stringList
 	noFrame     bool
 	rawHTML     string
 	force       bool
@@ -54,7 +53,7 @@ func parseArgs(args []string) (*options, error) {
 	fs.StringVar(&o.htmlLang, "html-lang", "en", "")
 	fs.StringVar(&o.theme, "theme", "both:default", "")
 	fs.BoolVar(&o.printCSS, "print-css", false, "")
-	fs.StringVar(&o.themeSel, "theme-selector", "", "")
+	fs.Var(&o.themeSels, "theme-selector", "")
 	fs.BoolVar(&o.noFrame, "no-frame", false, "")
 	fs.StringVar(&o.rawHTML, "raw-html", "escape", "")
 	fs.BoolVar(&o.force, "force", false, "")
@@ -94,8 +93,6 @@ func parseArgs(args []string) (*options, error) {
 			o.themeSet = true
 		case "html-lang":
 			o.htmlLangSet = true
-		case "theme-selector":
-			o.themeSelSet = true
 		}
 	})
 	return o, nil
@@ -171,9 +168,9 @@ Flags:
                      viewer's light or dark preference); THEME is one of --list-themes.
                      Default: both:default
   --theme-selector MODE:SELECTOR
-                     with --theme both, switch to the MODE colors (light or dark) under
-                     the CSS selector instead of with prefers-color-scheme; the other
-                     colors are the base (e.g. dark:':root[data-theme="dark"]')
+                     with --theme both, also use the MODE colors (light or dark) under the
+                     CSS selector, over the device setting; can be given more than once
+                     (e.g. dark:':root[data-theme="dark"]')
   --no-frame         leave out the rule that sets the background and text color of
                      pre.highlight, so that your own styles for code blocks apply
   --print-css        write only the CSS (as for highlight.css, with --theme) to standard
@@ -221,6 +218,12 @@ func flagError(err error) string {
 	}
 	return fmt.Sprintf("fhl: %v; see fhl --help", err)
 }
+
+// stringList is a flag that can be given more than once; it keeps every value in order.
+type stringList []string
+
+func (l *stringList) String() string     { return strings.Join(*l, " ") }
+func (l *stringList) Set(v string) error { *l = append(*l, v); return nil }
 
 // valueHints tells what each flag with a value takes. It completes the messages about a missing or wrong value.
 var valueHints = map[string]string{

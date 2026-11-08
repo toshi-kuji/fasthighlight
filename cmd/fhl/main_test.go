@@ -1208,44 +1208,56 @@ func TestThemeSelector(t *testing.T) {
 	writeFiles(t, dir, map[string]string{"a.md": "# a\n"})
 	t.Chdir(dir)
 	def := lookupTheme("default")
-	light, dark := def.css(modeLight, cssOptions{}), def.css(modeDark, cssOptions{})
-	// rootVars returns the variables in the :root block of a CSS of one mode.
-	rootVars := func(css string) string {
+	plain := def.css(modeBoth, cssOptions{})
+	// block returns the variables of a CSS of one mode as a block under sel.
+	block := func(m mode, sel string) string {
+		css := def.css(m, cssOptions{})
 		i := strings.Index(css, ":root {\n")
-		return css[i+len(":root {\n") : i+strings.Index(css[i:], "}\n")]
+		return sel + " {\n" + css[i+len(":root {\n"):i+strings.Index(css[i:], "}\n")] + "}\n"
 	}
+	media := "@media (prefers-color-scheme: dark) {"
 	for _, tt := range []struct {
-		value, sel  string
-		base, other string // the CSS whose variables go first, and under the selector
+		args   []string
+		blocks string // the blocks after the @media switch, in order
 	}{
-		{`dark::root[data-theme="dark"]`, `:root[data-theme="dark"]`, light, dark},
-		{`light::root[data-theme="light"]`, `:root[data-theme="light"]`, dark, light},
-		{"dark:.dark", ".dark", light, dark},
+		// The site's switch on top of the device setting.
+		{[]string{"dark::root[data-theme=\"dark\"]", "light::root[data-theme=\"light\"]"},
+			block(modeDark, `:root[data-theme="dark"]`) + block(modeLight, `:root[data-theme="light"]`)},
+		// Only the site's switch: light whenever the attribute is not dark.
+		{[]string{"dark::root[data-theme=\"dark\"]", "light::root:not([data-theme=\"dark\"])"},
+			block(modeDark, `:root[data-theme="dark"]`) + block(modeLight, `:root:not([data-theme="dark"])`)},
+		{[]string{"dark:.dark"}, block(modeDark, ".dark")},
 	} {
-		code, out, stderr := fhlRun(t, "", "", false, "--print-css", "--theme-selector", tt.value)
-		if code != 0 {
-			t.Fatalf("%s: code %d, %s", tt.value, code, stderr)
+		args := []string{"--print-css"}
+		for _, v := range tt.args {
+			args = append(args, "--theme-selector", v)
 		}
-		want := ":root {\n" + rootVars(tt.base) + "}\n" + tt.sel + " {\n" + rootVars(tt.other) + "}\n"
-		if !strings.Contains(out, want) || strings.Contains(out, "@media") || !strings.Contains(out, "pre.highlight { background-color") {
-			t.Errorf("%s:\n%s", tt.value, out)
+		code, out, stderr := fhlRun(t, "", "", false, args...)
+		if code != 0 {
+			t.Fatalf("%v: code %d, %s", tt.args, code, stderr)
+		}
+		// The CSS without selectors, with the blocks right after the @media switch (which stays).
+		end := strings.Index(plain, "  }\n}\n") + len("  }\n}\n")
+		head := plain[:strings.Index(plain, "(prefers-color-scheme).\n")+len("(prefers-color-scheme).\n")]
+		if !strings.Contains(out, media) || !strings.HasSuffix(out, tt.blocks+plain[end:]) ||
+			!strings.HasPrefix(out, head) || !strings.Contains(out, " * Under ") {
+			t.Errorf("%v:\n%s", tt.args, out)
 		}
 	}
 	_, out, _ := fhlRun(t, "", "", false, "--print-css", "--no-frame")
-	if strings.Contains(out, "pre.highlight {") || !strings.Contains(out, "@media (prefers-color-scheme: dark)") ||
-		!strings.Contains(out, "pre.highlight .kd {") {
+	if strings.Contains(out, "pre.highlight {") || !strings.Contains(out, media) || !strings.Contains(out, "pre.highlight .kd {") {
 		t.Errorf("--no-frame CSS:\n%s", out)
 	}
 	// The default CSS does not change.
-	_, out, _ = fhlRun(t, "", "", false, "--print-css")
-	if out != def.css(modeBoth, cssOptions{}) || !strings.Contains(out, "@media (prefers-color-scheme: dark)") {
+	if _, out, _ = fhlRun(t, "", "", false, "--print-css"); out != plain || !strings.Contains(out, media) {
 		t.Errorf("default CSS changed")
 	}
 	// highlight.css and --single-html get the same CSS.
 	if code, _, stderr := fhlRun(t, "", "", false, "-q", "--force", "--theme-selector", "dark:.dark", "--no-frame", "a.md"); code != 0 {
 		t.Fatalf("code %d, %s", code, stderr)
 	}
-	if b, _ := os.ReadFile("highlight.css"); string(b) != def.css(modeBoth, cssOptions{modeDark, ".dark", true}) {
+	want := def.css(modeBoth, cssOptions{[]themeSelector{{modeDark, ".dark"}}, true})
+	if b, _ := os.ReadFile("highlight.css"); string(b) != want {
 		t.Errorf("highlight.css:\n%s", b)
 	}
 	if _, out, _ := fhlRun(t, "", "", false, "--single-html", "-o", "-", "--theme-selector", "dark:.dark", "a.md"); !strings.Contains(out, "\n.dark {\n") {
@@ -1256,7 +1268,7 @@ func TestThemeSelector(t *testing.T) {
 		want string
 	}{
 		{[]string{"--print-css", "--theme-selector", ".dark"}, `fhl: --theme-selector must start with dark: or light:, then a CSS selector`},
-		{[]string{"--print-css", "--theme-selector", "both:.x"}, `fhl: --theme-selector must start with dark: or light:`},
+		{[]string{"--print-css", "--theme-selector", "dark:.d", "--theme-selector", "both:.x"}, `fhl: --theme-selector must start with dark: or light:, then a CSS selector, such as dark:':root[data-theme="dark"]', not "both:.x"`},
 		{[]string{"--print-css", "--theme-selector", "dark:"}, `fhl: --theme-selector needs a CSS selector after the mode`},
 		{[]string{"--print-css", "--theme-selector", "dark:a{b"}, `fhl: --theme-selector needs a CSS selector after the mode, such as dark:':root[data-theme="dark"]', not "dark:a{b"`},
 		{[]string{"--print-css", "--theme-selector", "dark:x</style>"}, "fhl: --theme-selector needs a CSS selector"},

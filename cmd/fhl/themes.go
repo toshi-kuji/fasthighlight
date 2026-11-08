@@ -369,30 +369,30 @@ func parseTheme(v string) (*theme, mode, string) {
 	return t, mode(m), ""
 }
 
-// css builds the CSS of the color theme in mode m. The same theme and mode always give the same CSS.
-// cssOptions changes the shape of the CSS: with a selector (--theme-selector), mode both writes the colors of
-// switchTo under it, and the other colors as the base, instead of switching to dark with prefers-color-scheme.
-// noFrame leaves out the rule for the background and
-// text color of pre.highlight (--no-frame).
-type cssOptions struct {
-	switchTo mode   // modeLight or modeDark, with selector
-	selector string // the CSS selector of --theme-selector, or ""
-	noFrame  bool
+// themeSelector is one --theme-selector: the colors of mode (modeLight or modeDark) apply under selector.
+type themeSelector struct {
+	mode     mode
+	selector string
 }
 
+// cssOptions changes the shape of the CSS. In mode both, each of selectors adds a block with the colors of its
+// mode, after the switch with prefers-color-scheme (which stays), so that a site's own switch wins over the
+// device setting. noFrame leaves out the rule for the background and text color of pre.highlight (--no-frame).
+type cssOptions struct {
+	selectors []themeSelector
+	noFrame   bool
+}
+
+// css builds the CSS of the color theme in mode m. The same theme, mode and options always give the same CSS.
 func (t *theme) css(m mode, o cssOptions) string {
 	var b strings.Builder
 	b.WriteString("/*\n")
 	b.WriteString(" * color theme of fhl code blocks: " + t.label + ", " + modeNames[m] + " (--theme " + modeNames[m] + ":" + t.name + ")\n")
 	switch m {
 	case modeBoth:
-		switch {
-		case o.selector != "" && o.switchTo == modeLight:
-			b.WriteString(" * Dark colors, switched to light ones under " + o.selector + ".\n")
-		case o.selector != "":
-			b.WriteString(" * Light colors, switched to dark ones under " + o.selector + ".\n")
-		default:
-			b.WriteString(" * Light colors, switched to dark ones when the viewer's device prefers dark (prefers-color-scheme).\n")
+		b.WriteString(" * Light colors, switched to dark ones when the viewer's device prefers dark (prefers-color-scheme).\n")
+		for _, s := range o.selectors {
+			b.WriteString(" * Under " + s.selector + ", the " + modeNames[s.mode] + " colors (this wins over the device setting).\n")
 		}
 	case modeLight:
 		b.WriteString(" * Light colors only.\n")
@@ -407,22 +407,26 @@ func (t *theme) css(m mode, o cssOptions) string {
 			b.WriteString(indent + "--highlight-" + r.name + ": " + p[r.name] + "; /* " + r.comment + " */\n")
 		}
 	}
-	first, second := t.light, t.dark
-	if m == modeDark || m == modeBoth && o.selector != "" && o.switchTo == modeLight {
-		first, second = t.dark, t.light
+	first := t.light
+	if m == modeDark {
+		first = t.dark
 	}
 	b.WriteString(":root {\n")
 	vars("  ", first)
 	b.WriteString("}\n")
-	switch {
-	case m == modeBoth && o.selector != "":
-		b.WriteString(o.selector + " {\n")
-		vars("  ", second)
-		b.WriteString("}\n")
-	case m == modeBoth:
+	if m == modeBoth {
 		b.WriteString("@media (prefers-color-scheme: dark) {\n  :root {\n")
 		vars("    ", t.dark)
 		b.WriteString("  }\n}\n")
+		for _, s := range o.selectors {
+			p := t.light
+			if s.mode == modeDark {
+				p = t.dark
+			}
+			b.WriteString(s.selector + " {\n")
+			vars("  ", p)
+			b.WriteString("}\n")
+		}
 	}
 	b.WriteString("\n")
 	if !o.noFrame {

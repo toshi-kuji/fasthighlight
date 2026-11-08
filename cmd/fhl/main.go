@@ -434,7 +434,7 @@ func cssFlag(o *options) string {
 	switch {
 	case o.themeSet:
 		return "--theme"
-	case o.themeSelSet:
+	case len(o.themeSels) > 0:
 		return "--theme-selector"
 	case o.noFrame:
 		return "--no-frame"
@@ -459,31 +459,33 @@ func parseThemeSelector(v string) (mode, string, bool) {
 	return 0, "", false
 }
 
-// cssOptionsOf returns the shape of the CSS that the flags ask for.
+// cssOptionsOf returns the shape of the CSS that the flags ask for (the values are checked before).
 func cssOptionsOf(o *options) cssOptions {
 	c := cssOptions{noFrame: o.noFrame}
-	if o.themeSelSet {
-		c.switchTo, c.selector, _ = parseThemeSelector(o.themeSel)
+	for _, v := range o.themeSels {
+		m, sel, _ := parseThemeSelector(v)
+		c.selectors = append(c.selectors, themeSelector{m, sel})
 	}
 	return c
 }
 
-// themeSelectorError returns the error message for --theme-selector, or "" if it is valid or not given. The
-// selector is written into the CSS as is (also inside <style> with --single-html), so braces, ; and < are
-// refused.
+// themeSelectorError returns the error message for the first wrong --theme-selector, or "" if they are valid or
+// none is given. The selector is written into the CSS as is (also inside <style> with --single-html), so braces,
+// ; and < are refused.
 func themeSelectorError(o *options) string {
-	if !o.themeSelSet {
-		return ""
+	for _, v := range o.themeSels {
+		_, sel, ok := parseThemeSelector(v)
+		if !ok {
+			return fmt.Sprintf("fhl: --theme-selector must start with dark: or light:, then a CSS selector, such as dark:':root[data-theme=\"dark\"]', not %q", v)
+		}
+		if strings.TrimSpace(sel) == "" || strings.ContainsAny(sel, "{};<\n") {
+			return fmt.Sprintf("fhl: --theme-selector needs a CSS selector after the mode, such as dark:':root[data-theme=\"dark\"]', not %q", v)
+		}
 	}
-	_, sel, ok := parseThemeSelector(o.themeSel)
-	if !ok {
-		return fmt.Sprintf("fhl: --theme-selector must start with dark: or light:, then a CSS selector, such as dark:':root[data-theme=\"dark\"]', not %q", o.themeSel)
-	}
-	if strings.TrimSpace(sel) == "" || strings.ContainsAny(sel, "{};<\n") {
-		return fmt.Sprintf("fhl: --theme-selector needs a CSS selector after the mode, such as dark:':root[data-theme=\"dark\"]', not %q", o.themeSel)
-	}
-	if _, m, _ := parseTheme(o.theme); m != modeBoth {
-		return "fhl: --theme-selector is only for --theme both (the default), which writes light and dark colors"
+	if len(o.themeSels) > 0 {
+		if _, m, _ := parseTheme(o.theme); m != modeBoth {
+			return "fhl: --theme-selector is only for --theme both (the default), which writes light and dark colors"
+		}
 	}
 	return ""
 }
