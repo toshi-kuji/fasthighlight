@@ -75,6 +75,18 @@ Run it once for the whole folder rather than once per file: each start takes a f
 
 More: [The HTML](cli.html#the-html), `fhl --help`
 
+### Only the code colors
+
+Keep your build's own Markdown converter (markdown-it, a Python library, your own code), and take only the colored code blocks from `fhl`: one line of JSON (JSON Lines) per block, in order.
+
+```sh
+fhl --code-blocks page.md
+```
+
+Each line has the block's line number and language, and its HTML in three parts (`open`, `code`, `close`), so you can put the colored code into the code block your converter wrote. Load `highlight.css` (`fhl --print-css > highlight.css`) for the colors.
+
+More: [Code blocks only](cli.html#code-blocks-only), `fhl --help`
+
 ### Single HTML
 
 Make one Markdown file into one HTML file that opens as it is, to send to someone.
