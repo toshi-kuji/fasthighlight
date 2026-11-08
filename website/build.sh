@@ -32,7 +32,7 @@ fhl="$work/bin/fhl"
 src="$work/src"
 mkdir -p "$src/assets"
 cp "$root"/website/*.md "$src/"
-cp "$root/assets/logo.webp" "$src/assets/"
+cp "$root/assets/logo-light.webp" "$root/assets/logo-dark.webp" "$src/assets/"
 
 "$fhl" --list-langs --json >"$work/langs.json"
 "$fhl" --list-themes --json >"$work/themes.json"
