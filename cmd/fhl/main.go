@@ -99,6 +99,9 @@ func run(args []string, e env) int {
 	case o.listThemes:
 		return outputStatus(e, listThemes(e.stdout, o.json))
 	}
+	if o.printCSS {
+		return printCSS(o, e)
+	}
 	if msg := checkOptions(o); msg != "" {
 		fmt.Fprintln(e.stderr, msg)
 		return 1
@@ -351,7 +354,7 @@ func checkOptions(o *options) string {
 	case o.json && o.outSet && o.out == "-":
 		return "fhl: --json cannot be used with -o -"
 	case o.themeSet && o.outSet && o.out == "-" && !o.single:
-		return "fhl: --theme has no effect with -o - unless --single-html is also given, because no CSS is written"
+		return "fhl: --theme has no effect with -o - unless --single-html is also given, because no CSS is written; for only the CSS, use --print-css"
 	}
 	return ""
 }
@@ -422,6 +425,30 @@ func isLangTag(s string) bool {
 		}
 	}
 	return true
+}
+
+// printCSS writes only the CSS of --theme to standard output (--print-css) and returns the exit code.
+func printCSS(o *options, e env) int {
+	msg := themeError(o.theme)
+	switch {
+	case msg != "":
+	case len(o.inputs) > 0:
+		msg = "fhl: --print-css writes only the CSS to standard output; give no inputs"
+	case o.outSet:
+		msg = "fhl: --print-css writes to standard output; redirect it instead of -o (fhl --print-css > highlight.css)"
+	case o.json:
+		msg = "fhl: --json cannot be used with --print-css"
+	}
+	if msg != "" {
+		fmt.Fprintln(e.stderr, msg)
+		return 1
+	}
+	th, m, _ := parseTheme(o.theme)
+	if _, err := io.WriteString(e.stdout, th.css(m)); err != nil {
+		fmt.Fprintf(e.stderr, "fhl: cannot write the CSS: %v\n", err)
+		return 1
+	}
+	return 0
 }
 
 // themeError returns the error message for the value of --theme, or "" if it is valid.

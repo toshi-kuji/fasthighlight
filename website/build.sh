@@ -37,12 +37,11 @@ cp "$root/assets/logo.webp" "$src/assets/"
 "$fhl" --list-langs --json >"$work/langs.json"
 "$fhl" --list-themes --json >"$work/themes.json"
 # The light CSS of each theme (the site is light only), and the default CSS (for the lists of
-# variables and classes), read from standalone pages of an empty document.
-: >"$work/empty.md"
+# variables and classes).
 for name in $(python3 -c 'import json,sys; print(" ".join(t["name"] for t in json.load(open(sys.argv[1]))))' "$work/themes.json"); do
-	"$fhl" -q --single-html -o - --theme "light:$name" "$work/empty.md" >"$work/css-light-$name.html"
+	"$fhl" --print-css --theme "light:$name" >"$work/css-light-$name.css"
 done
-"$fhl" -q --single-html -o - "$work/empty.md" >"$work/css-default.html"
+"$fhl" --print-css >"$work/css-default.css"
 
 python3 - "$work" "$src" <<'PY'
 import json, re, sys
@@ -50,8 +49,7 @@ import json, re, sys
 work, src = sys.argv[1], sys.argv[2]
 
 def style(path):
-    html = open(path, encoding="utf-8").read()
-    return html[html.index("<style>\n") + len("<style>\n"):html.index("</style>")]
+    return open(path, encoding="utf-8").read()
 
 def cell(s):
     return s.replace("|", "\\|")
@@ -93,7 +91,7 @@ for t in themes:
 markers["THEME-SAMPLES"] = "\n\n".join(parts)
 
 # <!-- CSS-VARS --> and <!-- TOKEN-CLASSES -->: from the comments of the default highlight.css.
-css = style(f"{work}/css-default.html")
+css = style(f"{work}/css-default.css")
 root = css[css.index(":root {"):css.index("\n}\n")]
 rows = ["| Variable | What it colors |", "| --- | --- |"]
 for name, comment in re.findall(r"(--highlight-[a-z]+): [^;]+; /\* (.*?) \*/", root):
@@ -114,7 +112,7 @@ for page in ("index.md", "themes.md"):
 # themes.css: the light variables of each theme, under .theme-NAME instead of :root.
 out = ["", "/* theme samples (website/build.sh): each theme's light variables under .theme-NAME */"]
 for t in themes:
-    c = style(f"{work}/css-light-{t['name']}.html")
+    c = style(f"{work}/css-light-{t['name']}.css")
     start = c.index(":root {")
     block = c[start:c.index("\n}\n", start) + 2]
     out.append(block.replace(":root {", f".theme-{t['name']} {{", 1))
