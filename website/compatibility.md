@@ -1,5 +1,3 @@
-[fasthighlight](index.html) · [Contents](contents.html)
-
 # Chroma compatibility
 
 fasthighlight follows [Chroma](https://github.com/alecthomas/chroma), the syntax highlighter widely used in Go, as its reference.

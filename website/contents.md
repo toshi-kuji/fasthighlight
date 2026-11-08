@@ -1,5 +1,3 @@
-[fasthighlight](index.html)
-
 # Contents
 
 ## Pages
@@ -22,4 +20,4 @@
 - [GitHub](https://github.com/toshi-kuji/fasthighlight)
 - [License (MIT)](https://github.com/toshi-kuji/fasthighlight/blob/main/LICENSE) and [third-party notices](https://github.com/toshi-kuji/fasthighlight/blob/main/THIRD_PARTY_NOTICES.md)
 
-This site is built from Markdown with `fhl` in CI: on every push to `main`, [a GitHub Actions workflow](https://github.com/toshi-kuji/fasthighlight/blob/main/.github/workflows/pages.yml) runs [the build script](https://github.com/toshi-kuji/fasthighlight/blob/main/website/build.sh) and publishes the result on GitHub Pages. Its code blocks are highlighted by fasthighlight. See [the source](https://github.com/toshi-kuji/fasthighlight/tree/main/website) on GitHub.
+This site is built from Markdown with `fhl` in CI: when `website/`, the Go code or the workflow changes on `main`, [a GitHub Actions workflow](https://github.com/toshi-kuji/fasthighlight/blob/main/.github/workflows/pages.yml) runs [the build script](https://github.com/toshi-kuji/fasthighlight/blob/main/website/build.sh) and publishes the result on GitHub Pages. Its code blocks are highlighted by fasthighlight. See [the source](https://github.com/toshi-kuji/fasthighlight/tree/main/website) on GitHub.

@@ -1,5 +1,3 @@
-[fasthighlight](index.html) · [Contents](contents.html)
-
 # Use cases
 
 When the speed matters, and what to run for common jobs. What each flag and function does is on [The command `fhl`](cli.html) and [The library](library.html).
