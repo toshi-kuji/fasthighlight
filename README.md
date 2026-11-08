@@ -110,6 +110,8 @@ err := md.Convert(src, w)
 
 A `goldmark.Markdown` with the extension can be used from several goroutines at the same time.
 
+If you convert the Markdown yourself and need only the colored code blocks, `Converter.CodeBlocks` returns them, in order, from a parsed document (the library side of `fhl --code-blocks`).
+
 ### Highlight one piece of code
 
 ```go
@@ -121,7 +123,7 @@ import (
 err := fasthighlight.Highlight(w, "go", code)
 ```
 
-A program that only highlights code does not import the `markdown` package, so goldmark is not compiled into it.
+A program that only highlights code does not import the `markdown` package, so goldmark is not compiled into it. `Highlight` may be called from several goroutines at the same time. To work with the tokens yourself, use `Language.Tokenise` (each token has a type and its text) and `WriteHTML`.
 
 ### Choose the languages
 

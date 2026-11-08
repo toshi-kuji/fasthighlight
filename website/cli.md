@@ -209,6 +209,8 @@ fhl --code-blocks page.md
 - Inputs are Markdown files, folders (their Markdown files, as in a conversion) and `-` for standard input. Only fenced code blocks are written; indented code blocks are not.
 - The summary goes to standard error (`-q` leaves it out), so standard output is only JSON. The exit status is as above: `--strict` exits with 2 if a block is not colored (`plain` blocks do not count).
 - It writes no files and no CSS; get the CSS with `--print-css`.
+- From Go, use the library instead: [`Converter.CodeBlocks`](library.html#only-the-code-blocks) returns the same blocks without starting a program.
+- `reason` can also be `not-built-in` (a supported language whose package is not imported) with the library; `fhl` includes every language, so it does not occur there.
 
 ## AI agents
 
