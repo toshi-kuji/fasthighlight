@@ -4,7 +4,7 @@
 
 fasthighlight is fast syntax highlighting written in Go, without regular expressions: each supported language has its own hand-written tokenizer. The highlighting follows the language definitions of [Chroma](https://github.com/alecthomas/chroma) 2.27.0, with a few deliberate fixes. Add it to [goldmark](https://github.com/yuin/goldmark) to highlight the code blocks in Markdown, or use the command `fhl` from a terminal, a script or a program in another language to turn Markdown into HTML, up to a basic static site.
 
-- **Fast.** In our measurements, converting a Markdown document was about 4.4 to 4.6 times as fast as Node with markdown-it and highlight.js, and about 7 to 20 times as fast as Chroma with all its languages ([numbers](#speed)).
+- **Fast.** In our measurements (before v0.1.0), converting a Markdown document was about 4.4 to 4.6 times as fast as Node with markdown-it and highlight.js, and about 7 to 20 times as fast as Chroma with all its languages ([numbers](#speed)).
 - **Two ways in.** Go packages for Go programs (`markdown` adds highlighting to goldmark; `fasthighlight` highlights code on its own), and the `fhl` command for everything else (static site builds in other languages, CI, AI agents).
 - **Small dependency footprint.** The highlighting package has no dependencies outside the standard library. The `markdown` package depends only on goldmark.
 - **Plain HTML and CSS.** Code blocks become `<pre class="highlight">` with short, widely used token classes (`k`, `s`, `nf`, … as in Pygments, Chroma and Rouge). The output is the same for the same input, byte for byte.
@@ -167,9 +167,9 @@ The changes fix Chroma bugs and behavior that gets in the way of readers, such a
 
 ## Speed
 
-Warm conversion of a whole Markdown document (median time per conversion, after initialization), measured on Nov 1, 2026 on a 4-core cloud machine with Go 1.25.0 and Node 22.23.4:
+Warm conversion of a whole Markdown document (median time per conversion, after initialization), measured on Nov 1, 2026, before v0.1.0, on a 4-core cloud machine with Go 1.25.0 and Node 22.23.4:
 
-| Implementation | `input.md` (30 KB, 6 code blocks) | `multilang.md` (25 KB, 25 code blocks: one in each supported language, and one plain text) |
+| Implementation | `input.md` (30 KB, 6 code blocks) | `multilang.md` (25 KB, 25 code blocks: one in each of the 24 languages supported then, and one plain text) |
 | --- | --- | --- |
 | fasthighlight | 0.61–0.72 ms | 2.1–2.2 ms |
 | Chroma (all languages) | 4.8–4.9 ms | 41.6–44.5 ms |

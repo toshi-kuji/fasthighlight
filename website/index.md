@@ -127,7 +127,7 @@ The numbers below come from our own measurements. Where the difference shows, an
 
 ### Converting a whole Markdown document
 
-| Implementation | `input.md` (30 KB, 6 code blocks) | `multilang.md` (25 KB, 25 code blocks: one in each supported language, and one plain text) |
+| Implementation | `input.md` (30 KB, 6 code blocks) | `multilang.md` (25 KB, 25 code blocks: one in each of the 24 languages supported then, and one plain text) |
 | --- | --- | --- |
 | fasthighlight | 0.61–0.72 ms | 2.1–2.2 ms |
 | Chroma (all languages) | 4.8–4.9 ms | 41.6–44.5 ms |
@@ -136,7 +136,7 @@ The numbers below come from our own measurements. Where the difference shows, an
 
 - **What:** the time to turn a Markdown document into HTML with highlighted code blocks, warm (after initialization), median time per conversion.
 - **Input:** [`input.md`](https://github.com/toshi-kuji/fasthighlight/blob/main/testdata/input.md) and [`multilang.md`](https://github.com/toshi-kuji/fasthighlight/blob/main/testdata/multilang.md).
-- **Environment:** Nov 1, 2026, a 4-core cloud machine, Go 1.25.0, Node 22.23.4.
+- **Environment:** Nov 1, 2026, before v0.1.0, a 4-core cloud machine, Go 1.25.0, Node 22.23.4.
 - **Note:** the implementations color code at different levels of detail, so this compares whole conversions, not identical output. How to measure it yourself: [docs/benchmark.md](https://github.com/toshi-kuji/fasthighlight/blob/main/docs/benchmark.md).
 
 ### Highlighting code only
@@ -151,7 +151,7 @@ The numbers below come from our own measurements. Where the difference shows, an
 - **What:** one code snippet to HTML with classes (highlighting and writing HTML), without Markdown parsing, on one thread. syntect and giallo are highlighting libraries written in Rust.
 - **Input:** the 27 code blocks of `multilang.md` and `input.md` (except `text`), about 350 to 1,350 bytes each.
 - **Output:** fasthighlight `Highlight`; syntect `ClassedHTMLGenerator` (`ClassStyle::Spaced`); giallo `HtmlRenderer` with `css_class_prefix`. All three write classes.
-- **Environment:** Nov 3, 2026, a 4-core cloud machine, Go 1.25.0, Rust 1.97.0 (release build), syntect 5.3.0, giallo 0.5.2. Median of 9 rounds of 200 runs per snippet; the three were run in turn, three times each, in the same session.
+- **Environment:** Nov 3, 2026, before v0.1.0, a 4-core cloud machine, Go 1.25.0, Rust 1.97.0 (release build), syntect 5.3.0, giallo 0.5.2. Median of 9 rounds of 200 runs per snippet; the three were run in turn, three times each, in the same session.
 - **Note:** the output differs in detail (the number of `<span>`s goes either way depending on the language, and the three color differently). syntect's default grammars have no TypeScript, TOML, Kotlin or Swift. giallo supports more than 220 languages, many more than fasthighlight. Only small snippets were measured. We wrote the measurement ourselves and have not checked that it uses each library the way its authors recommend.
 
 </div>
