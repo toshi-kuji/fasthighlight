@@ -2,6 +2,7 @@ package markdown_test
 
 import (
 	"bytes"
+	"flag"
 	"os"
 	"strings"
 	"testing"
@@ -54,9 +55,9 @@ func TestParallelEqualsSequential(t *testing.T) {
 	}
 }
 
-// 4. The conversion result of the sample document matches the output produced with Chroma's writer
-// (testdata/input.html). testdata/input.html was made with Chroma 2.27.0's formatters/html
-// (WithClasses(true)). The tests that compare directly with Chroma are in compat/.
+// 4. The conversion result of the sample document matches testdata/input.html, the expected output. When the
+// HTML changes on purpose, write the new output there (go test -run TestConvertMatchesGolden -update) and
+// review the difference. The tokens are compared with Chroma in compat/.
 func TestConvertMatchesGolden(t *testing.T) {
 	src, err := os.ReadFile("../testdata/input.md")
 	if err != nil {
@@ -70,6 +71,12 @@ func TestConvertMatchesGolden(t *testing.T) {
 	if err := newSequential().Convert(src, &got); err != nil {
 		t.Fatal(err)
 	}
+	if *update {
+		if err := os.WriteFile("../testdata/input.html", got.Bytes(), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
 	if !bytes.Equal(got.Bytes(), want) {
 		g, w := got.Bytes(), want
 		k := 0
@@ -80,6 +87,9 @@ func TestConvertMatchesGolden(t *testing.T) {
 			k, g[k:min(len(g), k+80)], w[k:min(len(w), k+80)])
 	}
 }
+
+// update makes TestConvertMatchesGolden write testdata/input.html instead of comparing with it.
+var update = flag.Bool("update", false, "write testdata/input.html")
 
 // newSequential returns a Converter that always highlights sequentially.
 func newSequential() *Converter {

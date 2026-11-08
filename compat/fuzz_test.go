@@ -28,8 +28,8 @@ import (
 	"github.com/alecthomas/chroma/v2/lexers"
 )
 
-// FuzzHTMLMatchesChroma checks that any token sequence returned by a tokenizer produces HTML that is
-// byte-for-byte the same as Chroma's output. It covers all registered languages and the case of an
+// FuzzHTMLMatchesChroma checks that any token sequence returned by a tokenizer produces the HTML that
+// chromaHTML builds from Chroma's output (Chroma's class names and escaping, in fasthighlight's shape). It covers all registered languages and the case of an
 // unsupported language (not highlighted).
 //
 //	go test -run='^$' -fuzz=FuzzHTMLMatchesChroma -fuzztime=1m .

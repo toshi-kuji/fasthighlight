@@ -95,50 +95,50 @@
 </tbody>
 </table>
 <h3>構成図</h3>
-<pre class="highlight" data-lang="text"><code class="language-text"><span class="line"><span class="cl">AIのクラウド環境 / GitHub Actions
-</span></span><span class="line"><span class="cl">  pnpm 12 → プロジェクト固定のNode.js → Vite / Vitest / 型・Lint・Format
-</span></span><span class="line"><span class="cl">                              │
-</span></span><span class="line"><span class="cl">                    Cloudflare Vite Plugin
-</span></span><span class="line"><span class="cl">                              │
-</span></span><span class="line"><span class="cl">                           workerd
-</span></span><span class="line"><span class="cl">                              │
-</span></span><span class="line"><span class="cl">              Hono Router + Hono Middleware
-</span></span><span class="line"><span class="cl">               ├─ static  → ビルド時に生成したHTML → Static Assets
-</span></span><span class="line"><span class="cl">               ├─ cache   → 完成HTML → Cached EntryPoint → Workers Cache
-</span></span><span class="line"><span class="cl">               └─ dynamic → Hono htmlによる初期HTML（Cache OFF）
-</span></span><span class="line"><span class="cl">                                └─ 必要なページだけ /fragments SSE（Cache OFF）
-</span></span><span class="line"><span class="cl">                                          │
-</span></span><span class="line"><span class="cl">ブラウザ                                  │
-</span></span><span class="line"><span class="cl">  ├─ 初期HTMLをそのまま表示               │
-</span></span><span class="line"><span class="cl">  ├─ Server Islands用の小さな外部JS ←────┘
-</span></span><span class="line"><span class="cl">  │      └─ 完成したHTML断片を指定位置に挿入
-</span></span><span class="line"><span class="cl">  └─ DSD + Custom Elementsが挿入済みDOMに動作を追加
-</span></span></code></pre><h2>4. Hono JSXを採用しない理由</h2>
+<pre class="highlight" data-lang="text"><code class="language-text">AIのクラウド環境 / GitHub Actions
+  pnpm 12 → プロジェクト固定のNode.js → Vite / Vitest / 型・Lint・Format
+                              │
+                    Cloudflare Vite Plugin
+                              │
+                           workerd
+                              │
+              Hono Router + Hono Middleware
+               ├─ static  → ビルド時に生成したHTML → Static Assets
+               ├─ cache   → 完成HTML → Cached EntryPoint → Workers Cache
+               └─ dynamic → Hono htmlによる初期HTML（Cache OFF）
+                                └─ 必要なページだけ /fragments SSE（Cache OFF）
+                                          │
+ブラウザ                                  │
+  ├─ 初期HTMLをそのまま表示               │
+  ├─ Server Islands用の小さな外部JS ←────┘
+  │      └─ 完成したHTML断片を指定位置に挿入
+  └─ DSD + Custom Elementsが挿入済みDOMに動作を追加
+</code></pre><h2>4. Hono JSXを採用しない理由</h2>
 <p>Honoの<code>hono/jsx</code>もSSRに使え、<code>hono/jsx/streaming</code>には実験的なSuspenseがある。ただしサーバー側のHono JSXは<code>JSXNode</code>という中間ノードを生成し、その構造をHTMLへ直列化する。これはPreactより簡潔な実装であり得るが、今回の「SSR用VNode相当の中間表現を避ける」という目的を直接は満たさない。</p>
 <p>一方、<code>hono/html</code>はHTML断片を直接構成し、DSDの記述や関数合成とも相性がよい。したがって<strong>HonoのHTTP機能は採用するが、Hono JSXとJSX Suspenseは採用しない</strong>。<code>hono/jsx/dom</code>もClient Islandsの設計と重複するため使わない。</p>
 <p>代償も明記する。Tagged Template LiteralはJSXと異なり、HTML属性・構造の型チェックや補完をTSXコンポーネントの型検査に全面的には任せられない。テンプレートのHTML検証、URLポリシー、DSDの構造テスト、型付きPropsは別の検査で補う。コンポーネントの条件分岐や繰り返しもTS関数として明示的に組み立てる。</p>
-<pre class="highlight" data-lang="ts"><code class="language-ts"><span class="line"><span class="cl"><span class="kr">import</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono/html&#39;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kr">type</span> <span class="nx">SearchProps</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">placeholder</span>: <span class="kt">string</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kr">export</span> <span class="kr">const</span> <span class="nx">Search</span> <span class="o">=</span> <span class="p">({</span> <span class="nx">placeholder</span> <span class="p">}</span><span class="o">:</span> <span class="nx">SearchProps</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">html</span><span class="sb">`
-</span></span></span><span class="line"><span class="cl"><span class="sb">  &lt;site-search&gt;
-</span></span></span><span class="line"><span class="cl"><span class="sb">    &lt;template shadowrootmode=&#34;open&#34;&gt;
-</span></span></span><span class="line"><span class="cl"><span class="sb">      &lt;form action=&#34;/search&#34; method=&#34;get&#34;&gt;
-</span></span></span><span class="line"><span class="cl"><span class="sb">        &lt;input type=&#34;search&#34; name=&#34;q&#34; placeholder=&#34;</span><span class="si">${</span><span class="nx">placeholder</span><span class="si">}</span><span class="sb">&#34;&gt;
-</span></span></span><span class="line"><span class="cl"><span class="sb">        &lt;button type=&#34;submit&#34;&gt;検索&lt;/button&gt;
-</span></span></span><span class="line"><span class="cl"><span class="sb">      &lt;/form&gt;
-</span></span></span><span class="line"><span class="cl"><span class="sb">    &lt;/template&gt;
-</span></span></span><span class="line"><span class="cl"><span class="sb">  &lt;/site-search&gt;
-</span></span></span><span class="line"><span class="cl"><span class="sb">`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kr">export</span> <span class="kr">const</span> <span class="nx">Page</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">html</span><span class="sb">`
-</span></span></span><span class="line"><span class="cl"><span class="sb">  &lt;!doctype html&gt;
-</span></span></span><span class="line"><span class="cl"><span class="sb">  &lt;html lang=&#34;ja&#34;&gt;
-</span></span></span><span class="line"><span class="cl"><span class="sb">    &lt;body&gt;&lt;main&gt;</span><span class="si">${</span><span class="nx">Search</span><span class="p">({</span> <span class="nx">placeholder</span><span class="o">:</span> <span class="s1">&#39;キーワード&#39;</span> <span class="p">})</span><span class="si">}</span><span class="sb">&lt;/main&gt;&lt;/body&gt;
-</span></span></span><span class="line"><span class="cl"><span class="sb">  &lt;/html&gt;
-</span></span></span><span class="line"><span class="cl"><span class="sb">`</span>
-</span></span></code></pre><p>この例の通常の補間文字列はHonoによってエスケープされる。<code>raw()</code>や<code>&lt;script&gt;</code>等の直接記述については第8章の制約を適用する。</p>
+<pre class="highlight" data-lang="ts"><code class="language-ts"><span class="kr">import</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono/html&#39;</span>
+
+<span class="kr">type</span> <span class="nx">SearchProps</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">placeholder</span>: <span class="kt">string</span> <span class="p">}</span>
+
+<span class="kr">export</span> <span class="kr">const</span> <span class="nx">Search</span> <span class="o">=</span> <span class="p">({</span> <span class="nx">placeholder</span> <span class="p">}</span><span class="o">:</span> <span class="nx">SearchProps</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">html</span><span class="sb">`
+  &lt;site-search&gt;
+    &lt;template shadowrootmode=&#34;open&#34;&gt;
+      &lt;form action=&#34;/search&#34; method=&#34;get&#34;&gt;
+        &lt;input type=&#34;search&#34; name=&#34;q&#34; placeholder=&#34;</span><span class="si">${</span><span class="nx">placeholder</span><span class="si">}</span><span class="sb">&#34;&gt;
+        &lt;button type=&#34;submit&#34;&gt;検索&lt;/button&gt;
+      &lt;/form&gt;
+    &lt;/template&gt;
+  &lt;/site-search&gt;
+`</span>
+
+<span class="kr">export</span> <span class="kr">const</span> <span class="nx">Page</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">html</span><span class="sb">`
+  &lt;!doctype html&gt;
+  &lt;html lang=&#34;ja&#34;&gt;
+    &lt;body&gt;&lt;main&gt;</span><span class="si">${</span><span class="nx">Search</span><span class="p">({</span> <span class="nx">placeholder</span><span class="o">:</span> <span class="s1">&#39;キーワード&#39;</span> <span class="p">})</span><span class="si">}</span><span class="sb">&lt;/main&gt;&lt;/body&gt;
+  &lt;/html&gt;
+`</span>
+</code></pre><p>この例の通常の補間文字列はHonoによってエスケープされる。<code>raw()</code>や<code>&lt;script&gt;</code>等の直接記述については第8章の制約を適用する。</p>
 <h2>5. Server IslandsをHono html + SSEへ置き換える</h2>
 <h3>5.1. 非同期処理と表示順序の関係</h3>
 <p>ページの上部にA（800ms）、その下にB（100ms）がある場合、両方のデータ取得を同時に開始しても、<strong>完成HTMLを文書上のA→Bの順にストリームへ追加するだけ</strong>なら、Bの表示はAの完了を待つ。HTMLは上から順に解析され、後から送ったバイト列で既に送信したDOM位置を直接書き換えられないからである。</p>
@@ -156,21 +156,21 @@
 <li>Aが800msで完成すれば、Aを挿入する。全件処理後に<code>done</code>を送信し、EventSourceを閉じる。</li>
 <li>部品単位の失敗は<code>fragment-error</code>で通知し、失敗箇所だけ既定の表示へ切り替える。</li>
 </ol>
-<pre class="highlight" data-lang="text"><code class="language-text"><span class="line"><span class="cl">初期HTML :  [Header] [A: 読み込み中] [B: 読み込み中] [Footer]
-</span></span><span class="line"><span class="cl">100ms    :  SSE fragment(B) → Bだけ完成表示
-</span></span><span class="line"><span class="cl">800ms    :  SSE fragment(A) → Aも完成表示
-</span></span><span class="line"><span class="cl">完了     :  SSE done → 接続を閉じる
-</span></span></code></pre><p>イベント形式の概念例は次のとおり。</p>
-<pre class="highlight" data-lang="text"><code class="language-text"><span class="line"><span class="cl">event: fragment
-</span></span><span class="line"><span class="cl">data: {&#34;id&#34;:&#34;popular&#34;,&#34;html&#34;:&#34;&lt;section&gt;人気記事&lt;/section&gt;&#34;}
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">event: fragment
-</span></span><span class="line"><span class="cl">data: {&#34;id&#34;:&#34;recommended&#34;,&#34;html&#34;:&#34;&lt;section&gt;おすすめ記事&lt;/section&gt;&#34;}
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">event: done
-</span></span><span class="line"><span class="cl">data: {}
-</span></span><span class="line"><span class="cl">
-</span></span></code></pre><p>Honoの<code>streamSSE()</code>を利用して送信する。複数のPromiseが同時に完了しても、SSEへの書き込みは<strong>完了イベントをキューで直列化</strong>してフレームの混線を防ぐ。クライアントは既知のIDのみ受け付け、同じIDへの重複適用、古いページからのイベント、接続切断後の書き込みを防ぐ。</p>
+<pre class="highlight" data-lang="text"><code class="language-text">初期HTML :  [Header] [A: 読み込み中] [B: 読み込み中] [Footer]
+100ms    :  SSE fragment(B) → Bだけ完成表示
+800ms    :  SSE fragment(A) → Aも完成表示
+完了     :  SSE done → 接続を閉じる
+</code></pre><p>イベント形式の概念例は次のとおり。</p>
+<pre class="highlight" data-lang="text"><code class="language-text">event: fragment
+data: {&#34;id&#34;:&#34;popular&#34;,&#34;html&#34;:&#34;&lt;section&gt;人気記事&lt;/section&gt;&#34;}
+
+event: fragment
+data: {&#34;id&#34;:&#34;recommended&#34;,&#34;html&#34;:&#34;&lt;section&gt;おすすめ記事&lt;/section&gt;&#34;}
+
+event: done
+data: {}
+
+</code></pre><p>Honoの<code>streamSSE()</code>を利用して送信する。複数のPromiseが同時に完了しても、SSEへの書き込みは<strong>完了イベントをキューで直列化</strong>してフレームの混線を防ぐ。クライアントは既知のIDのみ受け付け、同じIDへの重複適用、古いページからのイベント、接続切断後の書き込みを防ぐ。</p>
 <h3>5.4. 通信・運用上の代償</h3>
 <ul>
 <li>HTMLとSSEは<strong>別々のHTTPリクエスト</strong>になる。EventSource開始には初期HTMLと外部JSの読み込みが必要で、Suspenseの1レスポンス内Streamingより更新開始が遅れる可能性がある。</li>
@@ -191,39 +191,39 @@
 <p>ページの<code>mode</code>、EntryPointのCache ON/OFF、実際の課金は別レイヤーとして扱う、という現行要綱の原則を維持する。Static AssetsとGatewayの照合、ルート衝突のビルド検査も引き継ぐ。</p>
 <h2>7. Hono Router・Middlewareへ移行する意義</h2>
 <p>Native <code>fetch()</code>は残るが、その中のルーティングと共通処理をHonoへ委譲する。主な利点は、メソッド別・パス別の宣言、パラメータの取得、<code>app.route()</code>による機能単位の分割、<code>app.use()</code>のスコープ指定、リクエスト前後の処理、エラー応答、Bindingsの型付け、テスト用の<code>app.request()</code>である。</p>
-<pre class="highlight" data-lang="ts"><code class="language-ts"><span class="line"><span class="cl"><span class="kr">import</span> <span class="p">{</span> <span class="nx">Hono</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono&#39;</span>
-</span></span><span class="line"><span class="cl"><span class="kr">import</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono/html&#39;</span>
-</span></span><span class="line"><span class="cl"><span class="kr">import</span> <span class="p">{</span> <span class="nx">streamSSE</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono/streaming&#39;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kr">type</span> <span class="nx">Bindings</span> <span class="o">=</span> <span class="p">{</span> <span class="cm">/* D1・KV・R2等、プロジェクトで定義 */</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">app</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Hono</span><span class="o">&lt;</span><span class="p">{</span> <span class="nx">Bindings</span>: <span class="kt">Bindings</span> <span class="p">}</span><span class="o">&gt;</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nx">app</span><span class="p">.</span><span class="nx">use</span><span class="p">(</span><span class="s1">&#39;*&#39;</span><span class="p">,</span> <span class="kr">async</span> <span class="p">(</span><span class="nx">c</span><span class="p">,</span> <span class="nx">next</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="c1">// ここにはリクエストIDや共通ヘッダーなどを置く
-</span></span></span><span class="line"><span class="cl">  <span class="k">await</span> <span class="nx">next</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="p">})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nx">app</span><span class="p">.</span><span class="kr">get</span><span class="p">(</span><span class="s1">&#39;/articles&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">c</span><span class="p">)</span> <span class="o">=&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">c</span><span class="p">.</span><span class="nx">html</span><span class="p">(</span><span class="nx">html</span><span class="sb">`&lt;h1&gt;記事一覧&lt;/h1&gt;`</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="s1">&#39;Cache-Control&#39;</span><span class="o">:</span> <span class="s1">&#39;private, no-store&#39;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}),</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nx">app</span><span class="p">.</span><span class="kr">get</span><span class="p">(</span><span class="s1">&#39;/articles/fragments&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">c</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">c</span><span class="p">.</span><span class="nx">header</span><span class="p">(</span><span class="s1">&#39;Cache-Control&#39;</span><span class="p">,</span> <span class="s1">&#39;private, no-store&#39;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="nx">streamSSE</span><span class="p">(</span><span class="nx">c</span><span class="p">,</span> <span class="kr">async</span> <span class="p">(</span><span class="nx">stream</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// ここで独立した断片の生成を開始し、完了順にwriteSSEする
-</span></span></span><span class="line"><span class="cl">    <span class="k">await</span> <span class="nx">stream</span><span class="p">.</span><span class="nx">writeSSE</span><span class="p">({</span> <span class="nx">event</span><span class="o">:</span> <span class="s1">&#39;done&#39;</span><span class="p">,</span> <span class="nx">data</span><span class="o">:</span> <span class="s1">&#39;{}&#39;</span> <span class="p">})</span>
-</span></span><span class="line"><span class="cl">  <span class="p">})</span>
-</span></span><span class="line"><span class="cl"><span class="p">})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nx">app</span><span class="p">.</span><span class="nx">onError</span><span class="p">((</span><span class="nx">error</span><span class="p">,</span> <span class="nx">c</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="nx">error</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="nx">c</span><span class="p">.</span><span class="nx">text</span><span class="p">(</span><span class="s1">&#39;Internal Server Error&#39;</span><span class="p">,</span> <span class="mi">500</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kr">export</span> <span class="k">default</span> <span class="nx">app</span>
-</span></span></code></pre><p>上は<strong>HTTP入口とSSEのAPI形状を示す概念例</strong>であり、正規化、認証、エラー通知、断片生成は未実装。現行の型付きルートmanifestを廃止する必要はなく、<code>mode</code>・<code>ttl</code>・<code>auth</code>等の宣言からHonoのルート登録と検査を生成する設計も可能である。ただし単なるHonoルートとmanifestの<strong>二重管理</strong>は避け、どちらを正とするかを決める。</p>
+<pre class="highlight" data-lang="ts"><code class="language-ts"><span class="kr">import</span> <span class="p">{</span> <span class="nx">Hono</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono&#39;</span>
+<span class="kr">import</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono/html&#39;</span>
+<span class="kr">import</span> <span class="p">{</span> <span class="nx">streamSSE</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;hono/streaming&#39;</span>
+
+<span class="kr">type</span> <span class="nx">Bindings</span> <span class="o">=</span> <span class="p">{</span> <span class="cm">/* D1・KV・R2等、プロジェクトで定義 */</span> <span class="p">}</span>
+<span class="kr">const</span> <span class="nx">app</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Hono</span><span class="o">&lt;</span><span class="p">{</span> <span class="nx">Bindings</span>: <span class="kt">Bindings</span> <span class="p">}</span><span class="o">&gt;</span><span class="p">()</span>
+
+<span class="nx">app</span><span class="p">.</span><span class="nx">use</span><span class="p">(</span><span class="s1">&#39;*&#39;</span><span class="p">,</span> <span class="kr">async</span> <span class="p">(</span><span class="nx">c</span><span class="p">,</span> <span class="nx">next</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="c1">// ここにはリクエストIDや共通ヘッダーなどを置く
+</span>  <span class="k">await</span> <span class="nx">next</span><span class="p">()</span>
+<span class="p">})</span>
+
+<span class="nx">app</span><span class="p">.</span><span class="kr">get</span><span class="p">(</span><span class="s1">&#39;/articles&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">c</span><span class="p">)</span> <span class="o">=&gt;</span>
+  <span class="nx">c</span><span class="p">.</span><span class="nx">html</span><span class="p">(</span><span class="nx">html</span><span class="sb">`&lt;h1&gt;記事一覧&lt;/h1&gt;`</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="p">{</span>
+    <span class="s1">&#39;Cache-Control&#39;</span><span class="o">:</span> <span class="s1">&#39;private, no-store&#39;</span><span class="p">,</span>
+  <span class="p">}),</span>
+<span class="p">)</span>
+
+<span class="nx">app</span><span class="p">.</span><span class="kr">get</span><span class="p">(</span><span class="s1">&#39;/articles/fragments&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">c</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="nx">c</span><span class="p">.</span><span class="nx">header</span><span class="p">(</span><span class="s1">&#39;Cache-Control&#39;</span><span class="p">,</span> <span class="s1">&#39;private, no-store&#39;</span><span class="p">)</span>
+  <span class="k">return</span> <span class="nx">streamSSE</span><span class="p">(</span><span class="nx">c</span><span class="p">,</span> <span class="kr">async</span> <span class="p">(</span><span class="nx">stream</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="c1">// ここで独立した断片の生成を開始し、完了順にwriteSSEする
+</span>    <span class="k">await</span> <span class="nx">stream</span><span class="p">.</span><span class="nx">writeSSE</span><span class="p">({</span> <span class="nx">event</span><span class="o">:</span> <span class="s1">&#39;done&#39;</span><span class="p">,</span> <span class="nx">data</span><span class="o">:</span> <span class="s1">&#39;{}&#39;</span> <span class="p">})</span>
+  <span class="p">})</span>
+<span class="p">})</span>
+
+<span class="nx">app</span><span class="p">.</span><span class="nx">onError</span><span class="p">((</span><span class="nx">error</span><span class="p">,</span> <span class="nx">c</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="nx">error</span><span class="p">)</span>
+  <span class="k">return</span> <span class="nx">c</span><span class="p">.</span><span class="nx">text</span><span class="p">(</span><span class="s1">&#39;Internal Server Error&#39;</span><span class="p">,</span> <span class="mi">500</span><span class="p">)</span>
+<span class="p">})</span>
+
+<span class="kr">export</span> <span class="k">default</span> <span class="nx">app</span>
+</code></pre><p>上は<strong>HTTP入口とSSEのAPI形状を示す概念例</strong>であり、正規化、認証、エラー通知、断片生成は未実装。現行の型付きルートmanifestを廃止する必要はなく、<code>mode</code>・<code>ttl</code>・<code>auth</code>等の宣言からHonoのルート登録と検査を生成する設計も可能である。ただし単なるHonoルートとmanifestの<strong>二重管理</strong>は避け、どちらを正とするかを決める。</p>
 <p>Cache OFFのGatewayとCache ONのNamed EntryPointはCloudflare固有の境界として保持する。<code>export default app</code>は通常のHTTP入口には使えるが、Named EntryPointと<code>ctx.exports</code>を要する構成では<strong>Honoアプリを各EntryPointの<code>fetch()</code>から呼ぶ薄いAdapter</strong>を作る。これはRouterを再実装することではない。<code>ctx.exports</code>利用時の互換性フラグ、EntryPoint別キャッシュ、実際のルーティングはPoCで確認する。</p>
 <p>Honoの<code>app.onError()</code>は応答開始前の例外処理に有効だが、<strong>SSEストリーム開始後の失敗をHTTP 500へ巻き戻すことはできない</strong>。断片単位のエラーイベント、ログ、タイムアウトを別途実装する。</p>
 <p><strong>比較上の注意</strong>。HTTPのルート数がごく少なければNative <code>fetch()</code>のままでも十分に明快である。Honoへの移行メリットは単に「速い」ことではなく、今後のページ・API・認証・SSEエンドポイント増加に対して規約化されたルートとMiddlewareの管理ができる点にある。Middlewareを無差別に積み重ねると、逆に処理の見通しが悪くなる。</p>
@@ -239,25 +239,25 @@
 <li><strong>認証・キャッシュ</strong>。SSE URLへ秘密情報を載せず、同一オリジン・Cookie認証を基本にする。接続ごとにユーザー権限を検査し、レスポンスを<code>no-store</code>にする。SSEは読み取り専用GETとし、状態変更は別の適切なAPIで扱う。</li>
 </ol>
 <p>最小の受信処理は次のような形になる。ただし、ここでは<strong>断片がすべて信頼できるサーバーテンプレートから生成され、IDが許可されている</strong>ことを前提とし、製品コードではポリシー・Sanitizer・認証・接続管理を補う。</p>
-<pre class="highlight" data-lang="js"><code class="language-js"><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">allowedIds</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Set</span><span class="p">([</span><span class="s1">&#39;popular&#39;</span><span class="p">,</span> <span class="s1">&#39;recommended&#39;</span><span class="p">])</span>
-</span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">source</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">EventSource</span><span class="p">(</span><span class="s1">&#39;/articles/fragments&#39;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nx">source</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;fragment&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">event</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="kr">const</span> <span class="nx">payload</span> <span class="o">=</span> <span class="nx">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">data</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">allowedIds</span><span class="p">.</span><span class="nx">has</span><span class="p">(</span><span class="nx">payload</span><span class="p">.</span><span class="nx">id</span><span class="p">)</span> <span class="o">||</span> <span class="k">typeof</span> <span class="nx">payload</span><span class="p">.</span><span class="nx">html</span> <span class="o">!==</span> <span class="s1">&#39;string&#39;</span><span class="p">)</span> <span class="k">return</span>
-</span></span><span class="line"><span class="cl">  <span class="kr">const</span> <span class="nx">target</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="nx">payload</span><span class="p">.</span><span class="nx">id</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">target</span> <span class="o">||</span> <span class="nx">target</span><span class="p">.</span><span class="nx">dataset</span><span class="p">.</span><span class="nx">completed</span> <span class="o">===</span> <span class="s1">&#39;true&#39;</span><span class="p">)</span> <span class="k">return</span>
-</span></span><span class="line"><span class="cl">  <span class="c1">// DSDを含む可能性があるためinnerHTMLは使わない。
-</span></span></span><span class="line"><span class="cl">  <span class="c1">// payload.htmlは信頼できるサーバーテンプレートからの生成に限定する。
-</span></span></span><span class="line"><span class="cl">  <span class="nx">target</span><span class="p">.</span><span class="nx">setHTMLUnsafe</span><span class="p">(</span><span class="nx">payload</span><span class="p">.</span><span class="nx">html</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">target</span><span class="p">.</span><span class="nx">dataset</span><span class="p">.</span><span class="nx">completed</span> <span class="o">=</span> <span class="s1">&#39;true&#39;</span>
-</span></span><span class="line"><span class="cl"><span class="p">})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nx">source</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;fragment-error&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">event</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="c1">// 必要に応じて失敗した部分だけエラー状態へ変更する。
-</span></span></span><span class="line"><span class="cl"><span class="p">})</span>
-</span></span><span class="line"><span class="cl"><span class="nx">source</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;done&#39;</span><span class="p">,</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="nx">source</span><span class="p">.</span><span class="nx">close</span><span class="p">())</span>
-</span></span></code></pre><h2>9. Client Islandsをどうするか</h2>
+<pre class="highlight" data-lang="js"><code class="language-js"><span class="kr">const</span> <span class="nx">allowedIds</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Set</span><span class="p">([</span><span class="s1">&#39;popular&#39;</span><span class="p">,</span> <span class="s1">&#39;recommended&#39;</span><span class="p">])</span>
+<span class="kr">const</span> <span class="nx">source</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">EventSource</span><span class="p">(</span><span class="s1">&#39;/articles/fragments&#39;</span><span class="p">)</span>
+
+<span class="nx">source</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;fragment&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">event</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="nx">payload</span> <span class="o">=</span> <span class="nx">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">data</span><span class="p">)</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">allowedIds</span><span class="p">.</span><span class="nx">has</span><span class="p">(</span><span class="nx">payload</span><span class="p">.</span><span class="nx">id</span><span class="p">)</span> <span class="o">||</span> <span class="k">typeof</span> <span class="nx">payload</span><span class="p">.</span><span class="nx">html</span> <span class="o">!==</span> <span class="s1">&#39;string&#39;</span><span class="p">)</span> <span class="k">return</span>
+  <span class="kr">const</span> <span class="nx">target</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="nx">payload</span><span class="p">.</span><span class="nx">id</span><span class="p">)</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">target</span> <span class="o">||</span> <span class="nx">target</span><span class="p">.</span><span class="nx">dataset</span><span class="p">.</span><span class="nx">completed</span> <span class="o">===</span> <span class="s1">&#39;true&#39;</span><span class="p">)</span> <span class="k">return</span>
+  <span class="c1">// DSDを含む可能性があるためinnerHTMLは使わない。
+</span>  <span class="c1">// payload.htmlは信頼できるサーバーテンプレートからの生成に限定する。
+</span>  <span class="nx">target</span><span class="p">.</span><span class="nx">setHTMLUnsafe</span><span class="p">(</span><span class="nx">payload</span><span class="p">.</span><span class="nx">html</span><span class="p">)</span>
+  <span class="nx">target</span><span class="p">.</span><span class="nx">dataset</span><span class="p">.</span><span class="nx">completed</span> <span class="o">=</span> <span class="s1">&#39;true&#39;</span>
+<span class="p">})</span>
+
+<span class="nx">source</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;fragment-error&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">event</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+  <span class="c1">// 必要に応じて失敗した部分だけエラー状態へ変更する。
+</span><span class="p">})</span>
+<span class="nx">source</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;done&#39;</span><span class="p">,</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="nx">source</span><span class="p">.</span><span class="nx">close</span><span class="p">())</span>
+</code></pre><h2>9. Client Islandsをどうするか</h2>
 <p>Client Islandsの基本構造は<strong>変更しない</strong>。SSR用のHono <code>html</code>関数と、ブラウザ用Custom Elementを一組として配置する。</p>
 <ul>
 <li>SSR部品は<code>*.ts</code>の<code>html</code>関数に変更する。<code>&lt;site-search&gt;&lt;template shadowrootmode=&quot;open&quot;&gt;...&lt;/template&gt;&lt;/site-search&gt;</code>を返し、JSがなくてもフォームが機能するHTMLを作る。</li>

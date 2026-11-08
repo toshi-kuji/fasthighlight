@@ -63,7 +63,7 @@ With `--single-html`, the file opens as it is. It has `<!DOCTYPE html>`, `<meta 
 Code blocks look like this:
 
 ```html
-<pre class="highlight" data-lang="go"><code class="language-go"><span class="line"><span class="cl"><span class="nx">fmt</span>…
+<pre class="highlight" data-lang="go"><code class="language-go"><span class="nx">fmt</span>…
 ```
 
 `data-lang` on `<pre>` and the `language-` class on `<code>` (the class CommonMark recommends, which tools that turn HTML back into Markdown read) hold the language name as written in the Markdown: ` ```golang ` gives `language-golang`. They are there for unsupported languages too, and missing when there is no language name. Elements get no `style` attributes, except the column alignment of GFM tables. Token classes are explained in [Themes and CSS](themes.html).
@@ -193,7 +193,7 @@ fhl --code-blocks page.md
 ```
 
 ```json
-{"file":"page.md","line":6,"lang":"go","open":"<pre class=\"highlight\" data-lang=\"go\"><code class=\"language-go\">","code":"<span class=\"line\">…</span>","close":"</code></pre>","colored":true}
+{"file":"page.md","line":6,"lang":"go","open":"<pre class=\"highlight\" data-lang=\"go\"><code class=\"language-go\">","code":"<span class=\"nx\">x</span> <span class=\"o\">:=</span> …","close":"</code></pre>","colored":true}
 {"file":"page.md","line":24,"lang":"cobol","open":"…","code":"…","close":"</code></pre>","colored":false,"reason":"unsupported"}
 ```
 

@@ -57,8 +57,8 @@ func exists(p string) bool {
 const readme = "# Usage\n\n```go\nfmt.Println(\"hi\")\n```\n"
 
 const readmeHTML = `<h1>Usage</h1>
-<pre class="highlight" data-lang="go"><code class="language-go"><span class="line"><span class="cl"><span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;hi&#34;</span><span class="p">)</span><span class="w">
-</span></span></span></code></pre>`
+<pre class="highlight" data-lang="go"><code class="language-go"><span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;hi&#34;</span><span class="p">)</span>
+</code></pre>`
 
 func TestDefaultWritesNextToInput(t *testing.T) {
 	dir := t.TempDir()
@@ -244,7 +244,7 @@ func TestCodeFile(t *testing.T) {
 		t.Fatalf("code %d: %s", code, stderr)
 	}
 	code, stdout, _ := fhlRun(t, "", "", false, "--lang", "Go", "-o", "-", "main.txt")
-	if code != 0 || !strings.HasPrefix(stdout, `<pre class="highlight" data-lang="Go"><code class="language-Go"><span class="line"><span class="cl"><span class="nx">x`) {
+	if code != 0 || !strings.HasPrefix(stdout, `<pre class="highlight" data-lang="Go"><code class="language-Go"><span class="nx">x`) {
 		t.Errorf("--lang Go: %q", stdout)
 	}
 	code, _, stderr = fhlRun(t, "", "", false, "main.zig")
@@ -526,7 +526,7 @@ func TestDataLang(t *testing.T) {
 	// The name as written goes into data-lang and the language- class (escaped); a block without a name has neither.
 	for _, s := range []string{
 		`<pre class="highlight" data-lang="hs"><code class="language-hs">`,
-		`<pre class="highlight"><code><span class="line"><span class="cl">y`,
+		`<pre class="highlight"><code>y`,
 		`data-lang="a&#34;b"><code class="language-a&#34;b">`,
 	} {
 		if !strings.Contains(out, s) {
