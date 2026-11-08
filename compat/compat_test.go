@@ -74,8 +74,8 @@ func chromaTokens(t *testing.T, l *fh.Language, code string) []fh.Token {
 	return dropHTTPBodyNewline(l, code, toks)
 }
 
-// chromaHTML turns tokens into HTML with Chroma's output.
-func chromaHTML(t *testing.T, toks []fh.Token) string {
+// rawChromaHTML turns tokens into HTML with Chroma's formatters/html (WithClasses(true)), as it is.
+func rawChromaHTML(t *testing.T, toks []fh.Token) string {
 	t.Helper()
 	cts := make([]chroma.Token, len(toks))
 	for i, tk := range toks {
@@ -85,9 +85,72 @@ func chromaHTML(t *testing.T, toks []fh.Token) string {
 	if err := formatter.Format(&b, style, chroma.Literator(cts...)); err != nil {
 		t.Fatal(err)
 	}
-	// Only the class name of the outer wrapper (PreWrapper) is changed on purpose (Chroma uses chroma, we use
-	// highlight). A " in a token value is escaped, so class="chroma" appears only inside a tag.
-	return strings.ReplaceAll(b.String(), `class="chroma"`, `class="highlight"`)
+	return b.String()
+}
+
+// chromaHTML returns the HTML that fasthighlight should write for toks, taking each token's class name and
+// escaping from Chroma's output. fasthighlight's shape differs from Chroma's on purpose: it does not wrap
+// lines in <span class="line"><span class="cl">, writes whitespace without <span class="w">, writes nothing
+// for empty tokens, and keeps a token across lines in one <span>. So each token is formatted by Chroma on its
+// own (where every piece is that token, without ambiguity), and the pieces are put back in this shape.
+func chromaHTML(t *testing.T, toks []fh.Token) string {
+	t.Helper()
+	var b strings.Builder
+	b.WriteString(`<pre class="highlight"><code>`)
+	for _, tk := range toks {
+		b.WriteString(chromaToken(t, tk))
+	}
+	b.WriteString(`</code></pre>`)
+	return b.String()
+}
+
+// chromaToken returns one token in fasthighlight's shape, from Chroma's output for that token alone.
+func chromaToken(t *testing.T, tk fh.Token) string {
+	t.Helper()
+	out := rawChromaHTML(t, []fh.Token{tk})
+	const pre, end = `<pre class="chroma"><code>`, `</code></pre>`
+	if !strings.HasPrefix(out, pre) || !strings.HasSuffix(out, end) {
+		t.Fatalf("unexpected Chroma output %q", out)
+	}
+	out = out[len(pre) : len(out)-len(end)]
+	// Walk the tags. Chroma wraps each line in two spans (line and cl), so the token's own <span>, if any, is
+	// the third one; its class names are matched by position, since some token types have the class names
+	// line, cl or chroma themselves.
+	var text strings.Builder
+	class, stack := "", []string{}
+	for out != "" {
+		switch {
+		case strings.HasPrefix(out, `<span class="`):
+			i := strings.Index(out, `">`)
+			stack = append(stack, out[len(`<span class="`):i])
+			if len(stack) == 3 {
+				class = stack[2]
+			}
+			out = out[i+2:]
+		case strings.HasPrefix(out, `</span>`):
+			stack = stack[:len(stack)-1]
+			out = out[len(`</span>`):]
+		default:
+			i := strings.IndexByte(out, '<')
+			if i < 0 {
+				i = len(out)
+			}
+			text.WriteString(out[:i])
+			out = out[i:]
+		}
+	}
+	if len(stack) != 0 {
+		t.Fatalf("unbalanced Chroma output for %q", tk)
+	}
+	switch {
+	case text.Len() == 0:
+		return ""
+	case class == "" || class == "w":
+		return text.String()
+	case class == "chroma":
+		class = "highlight" // the class of the outer wrapper, renamed on purpose (Chroma uses chroma)
+	}
+	return `<span class="` + class + `">` + text.String() + `</span>`
 }
 
 func ourHTML(t *testing.T, toks []fh.Token) string {
@@ -443,9 +506,22 @@ func expandClasses(pat string) []string {
 	return out
 }
 
-// TestHTMLMatchesChroma (check 4) checks that the same token sequence produces HTML that is byte-for-byte
-// the same as Chroma's output.
+// TestHTMLMatchesChroma (check 4) checks that the same token sequence produces the HTML that chromaHTML
+// builds from Chroma's output: Chroma's class names and escaping, in fasthighlight's smaller shape.
 func TestHTMLMatchesChroma(t *testing.T) {
+	// Chroma's own output has the shape fasthighlight leaves out, so the conversion above is not empty work.
+	raw := rawChromaHTML(t, []fh.Token{{Type: fh.Keyword, Value: "if"}, {Type: fh.TextWhitespace, Value: " "},
+		{Type: fh.CommentMultiline, Value: "/* a\nb */"}})
+	for _, s := range []string{`<span class="line"><span class="cl">`, `<span class="w"> </span>`, "/* a\n</span>"} {
+		if !strings.Contains(raw, s) {
+			t.Errorf("Chroma's output has no %q any more: %q", s, raw)
+		}
+	}
+	if got, want := chromaHTML(t, []fh.Token{{Type: fh.Keyword, Value: "if"}, {Type: fh.TextWhitespace, Value: " "},
+		{Type: fh.CommentMultiline, Value: "/* a\nb */"}, {Type: fh.Keyword, Value: ""}, {Type: fh.Text, Value: "<\n"}}),
+		`<pre class="highlight"><code><span class="k">if</span> <span class="cm">/* a`+"\n"+`b */</span>&lt;`+"\n"+`</code></pre>`; got != want {
+		t.Errorf("chromaHTML:\n got %q\nwant %q", got, want)
+	}
 	check := func(name string, toks []fh.Token) {
 		t.Helper()
 		if got, want := ourHTML(t, toks), chromaHTML(t, toks); got != want {
@@ -506,7 +582,7 @@ func TestConvertMatchesChroma(t *testing.T) {
 			t.Errorf("parallelism %d: output differs from the Chroma-based conversion", parallel)
 		}
 	}
-	// testdata/input.html (used by the tests of the main module) must also be the same as the one made with Chroma.
+	// testdata/input.html (used by the tests of the main module) must also be the same as the one made from Chroma.
 	golden, err := os.ReadFile("../testdata/input.html")
 	if err != nil {
 		t.Fatal(err)

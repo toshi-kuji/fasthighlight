@@ -97,8 +97,8 @@ func TestScanPlainText(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The HTML stays as before: escaped, like any language that is not highlighted.
-	if want := `<pre class="highlight" data-lang="text"><code class="language-text"><span class="line"><span class="cl">x
-</span></span></code></pre>`; !strings.Contains(out.String(), want) {
+	if want := `<pre class="highlight" data-lang="text"><code class="language-text">x
+</code></pre>`; !strings.Contains(out.String(), want) {
 		t.Errorf("HTML changed:\n%s", out.String())
 	}
 }

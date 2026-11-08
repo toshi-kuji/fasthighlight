@@ -136,11 +136,11 @@ fmt.Println("hi")
 becomes
 
 ```html
-<pre class="highlight" data-lang="go"><code class="language-go"><span class="line"><span class="cl"><span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;hi&#34;</span><span class="p">)</span><span class="w">
-</span></span></span></code></pre>
+<pre class="highlight" data-lang="go"><code class="language-go"><span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;hi&#34;</span><span class="p">)</span>
+</code></pre>
 ```
 
 - `data-lang` and the `language-` class of `<code>` hold the language name as written in the Markdown (the class is the one CommonMark recommends). Both are missing when there is no language name.
 - The output is the same for the same input, byte for byte.
 - The library writes no CSS. Use the `highlight.css` that `fhl` writes, or your own; the classes are listed in [Themes and CSS](themes.html).
-- Apart from the outer class name (`highlight`, where Chroma uses `chroma`), `data-lang` and the `language-` class, the HTML for a given token sequence is the same as Chroma's HTML formatter with `WithClasses(true)`. See [Chroma compatibility](compatibility.html).
+- The token classes are the same as those of Chroma's HTML formatter with `WithClasses(true)`, but the HTML is smaller: lines are not wrapped in `<span class="line"><span class="cl">` and whitespace is not wrapped in `<span class="w">`. See [Chroma compatibility](compatibility.html).

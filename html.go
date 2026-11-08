@@ -3,34 +3,30 @@ package fasthighlight
 import (
 	"bufio"
 	"io"
-	"strings"
 )
 
-// Writing HTML. The output is byte-for-byte the same as Chroma 2.27.0's formatters/html used with
-// WithClasses(true), except for the outer wrapper's class name (Chroma uses chroma, here it is highlight)
-// and the data-lang and language- class below (Copyright (C) 2017 Alec Thomas, MIT License; see THIRD_PARTY_NOTICES.md).
+// Writing HTML. The class names of the tokens are Chroma's (WithClasses(true) in formatters/html; Copyright (C)
+// 2017 Alec Thomas, MIT License; see THIRD_PARTY_NOTICES.md), but the shape is smaller than Chroma's: lines are
+// not wrapped (Chroma wraps each one in <span class="line"><span class="cl"> for line numbers and highlighted
+// lines, which fhl does not have), and whitespace is written as it is, without <span class="w">.
 //
 // The shape of the output:
 //
-//	<pre class="highlight"><code><span class="line"><span class="cl">…</span></span>…</code></pre>
+//	<pre class="highlight"><code><span class="kd">func</span> <span class="nf">main</span>…</code></pre>
 //
 // When the code block's language name is known (Highlight, and the markdown package's Extension and
 // Converter), <pre> gets data-lang="language name" and <code> gets class="language-language name", the
 // class CommonMark recommends and other tools read (Chroma's output has neither). Both hold the name as
 // written in the code block. WriteHTML does not know the language name, so it adds neither.
 //
-// Each line is wrapped in <span class="line"><span class="cl">, and tokens are wrapped in a <span> with the
-// type's class name. Types whose class name is empty (such as Text) are not wrapped. Lines are split as
-// in Chroma's SplitTokensIntoLines, and the newline is included at the end of the line. If the last line
-// is just one empty token, that line is not written.
+// Each token is wrapped in a <span> with its type's class name. Tokens whose class name is empty (such as
+// Text) and whitespace (TextWhitespace) are written without one. Empty tokens are not written.
 
 const (
-	preStart  = `<pre class="highlight"><code>`
-	preLang   = `<pre class="highlight" data-lang="`
-	preEnd    = `</code></pre>`
-	lineStart = `<span class="line"><span class="cl">`
-	lineEnd   = `</span></span>`
-	spanEnd   = `</span>`
+	preStart = `<pre class="highlight"><code>`
+	preLang  = `<pre class="highlight" data-lang="`
+	preEnd   = `</code></pre>`
+	spanEnd  = `</span>`
 )
 
 // spanStarts are the opening tags for each type. For a type whose class name is empty, it is "".
@@ -95,7 +91,6 @@ func writeHTML(w io.Writer, toks []Token, lang string) error {
 	for _, t := range toks {
 		hw.token(t)
 	}
-	hw.finish()
 	hw.str(preEnd)
 	if bw != nil && hw.err == nil {
 		hw.err = bw.Flush()
@@ -104,12 +99,8 @@ func writeHTML(w io.Writer, toks []Token, lang string) error {
 }
 
 type htmlWriter struct {
-	w      io.StringWriter
-	err    error
-	inLine bool
-	// pending are the empty tokens met at the start of a line. Chroma does not write the last line if it is
-	// just one empty token, so writing waits until more comes.
-	pending []TokenType
+	w   io.StringWriter
+	err error
 }
 
 func (h *htmlWriter) str(s string) {
@@ -118,68 +109,23 @@ func (h *htmlWriter) str(s string) {
 	}
 }
 
+// token writes one token: its text in a <span> with the class name of its type, or the text alone for
+// whitespace and types without a class name.
 func (h *htmlWriter) token(t Token) {
-	v := t.Value
-	if v == "" {
-		if h.inLine {
-			h.piece(t.Type, "")
-		} else {
-			h.pending = append(h.pending, t.Type)
-		}
+	if t.Value == "" {
 		return
 	}
-	for v != "" {
-		n := strings.IndexByte(v, '\n') + 1
-		if n == 0 {
-			n = len(v)
-		}
-		h.piece(t.Type, v[:n])
-		if v[n-1] == '\n' {
-			h.str(lineEnd)
-			h.inLine = false
-		}
-		v = v[n:]
+	start := ""
+	if t.Type != TextWhitespace {
+		start = spanStart(t.Type)
 	}
-}
-
-// piece writes part of the tokens within one line. It starts the line if necessary.
-func (h *htmlWriter) piece(t TokenType, s string) {
-	if !h.inLine {
-		h.str(lineStart)
-		h.inLine = true
-		for _, p := range h.pending {
-			h.span(p, "")
-		}
-		h.pending = h.pending[:0]
-	}
-	h.span(t, s)
-}
-
-func (h *htmlWriter) span(t TokenType, s string) {
-	start := spanStart(t)
 	if start == "" {
-		h.escape(s)
+		h.escape(t.Value)
 		return
 	}
 	h.str(start)
-	h.escape(s)
+	h.escape(t.Value)
 	h.str(spanEnd)
-}
-
-func (h *htmlWriter) finish() {
-	switch {
-	case h.inLine:
-		h.str(lineEnd)
-	case len(h.pending) > 1:
-		// Chroma also writes a last line that consists only of two or more empty tokens.
-		h.str(lineStart)
-		for _, p := range h.pending {
-			h.span(p, "")
-		}
-		h.str(lineEnd)
-	}
-	h.inLine = false
-	h.pending = h.pending[:0]
 }
 
 // escape writes s with the same replacements as html.EscapeString.

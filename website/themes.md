@@ -69,7 +69,7 @@ pre.highlight .nf { color: var(--highlight-function); }
 - The colors are CSS variables on `:root`. Every class gets its color from one of them.
 - Every variable and every class has a comment that says what it is, so the CSS explains itself to people and AI agents.
 - Selectors start with `pre.highlight`, so other uses of a `highlight` class on your page are not affected.
-- A code block is `<pre class="highlight" data-lang="…"><code class="language-…">`, and each line is `<span class="line"><span class="cl">…</span></span>`.
+- A code block is `<pre class="highlight" data-lang="…"><code class="language-…">`, and each token is a `<span>` with its class. Lines and whitespace are not wrapped.
 
 ## CSS variables
 

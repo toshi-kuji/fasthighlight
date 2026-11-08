@@ -6,13 +6,11 @@ import (
 	"testing"
 )
 
-// The main rules of WriteHTML. Agreement with Chroma's output is checked in compat/.
+// The main rules of WriteHTML. Agreement of the tokens with Chroma is checked in compat/.
 func TestWriteHTML(t *testing.T) {
 	const (
 		pre = `<pre class="highlight"><code>`
 		end = `</code></pre>`
-		ls  = `<span class="line"><span class="cl">`
-		le  = `</span></span>`
 	)
 	tests := []struct {
 		name string
@@ -21,21 +19,20 @@ func TestWriteHTML(t *testing.T) {
 	}{
 		{"empty", []Token{{Text, ""}}, pre + end},
 		{"no tokens", nil, pre + end},
-		{"escape", []Token{{Text, "a<b>&'\"\n"}},
-			pre + ls + "a&lt;b&gt;&amp;&#39;&#34;\n" + le + end},
+		{"escape", []Token{{Text, "a<b>&'\"\n"}}, pre + "a&lt;b&gt;&amp;&#39;&#34;\n" + end},
 		{"class and text", []Token{{KeywordReserved, "const"}, {Text, " x\n"}},
-			pre + ls + `<span class="kr">const</span> x` + "\n" + le + end},
+			pre + `<span class="kr">const</span> x` + "\n" + end},
+		// Lines are not wrapped: a token across lines stays one <span>.
 		{"token across lines", []Token{{CommentMultiline, "/* a\nb */"}, {Text, "\n"}},
-			pre + ls + `<span class="cm">/* a` + "\n</span>" + le +
-				ls + `<span class="cm">b */</span>` + "\n" + le + end},
-		{"no trailing newline", []Token{{NameOther, "x"}},
-			pre + ls + `<span class="nx">x</span>` + le + end},
-		{"parent class", []Token{{NameKeyword, "x"}, {Text, "\n"}},
-			pre + ls + `<span class="n">x</span>` + "\n" + le + end},
-		{"trailing lone empty token is dropped", []Token{{Text, "a\n"}, {Keyword, ""}},
-			pre + ls + "a\n" + le + end},
-		{"empty token inside a line", []Token{{Text, "a"}, {Keyword, ""}, {Text, "\n"}},
-			pre + ls + `a<span class="k"></span>` + "\n" + le + end},
+			pre + `<span class="cm">/* a` + "\n" + `b */</span>` + "\n" + end},
+		{"no trailing newline", []Token{{NameOther, "x"}}, pre + `<span class="nx">x</span>` + end},
+		{"parent class", []Token{{NameKeyword, "x"}, {Text, "\n"}}, pre + `<span class="n">x</span>` + "\n" + end},
+		// Whitespace is written without <span class="w">.
+		{"whitespace", []Token{{Keyword, "if"}, {TextWhitespace, " \t"}, {NameOther, "x"}, {TextWhitespace, "\n"}},
+			pre + `<span class="k">if</span>` + " \t" + `<span class="nx">x</span>` + "\n" + end},
+		{"whitespace is escaped", []Token{{TextWhitespace, "<"}}, pre + "&lt;" + end},
+		// Empty tokens write nothing.
+		{"empty tokens", []Token{{Text, "a"}, {Keyword, ""}, {Text, "\n"}, {Keyword, ""}}, pre + "a\n" + end},
 	}
 	for _, tt := range tests {
 		var b bytes.Buffer
