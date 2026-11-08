@@ -1282,3 +1282,107 @@ func TestThemeSelector(t *testing.T) {
 		}
 	}
 }
+
+// TestCodeBlocks checks --code-blocks: one line of JSON per fenced code block, with the same HTML as a
+// conversion writes, and its inputs, summary, exit status and errors.
+func TestCodeBlocks(t *testing.T) {
+	dir := t.TempDir()
+	doc := "---\ntitle: x\n---\n# Doc\n\n```go\nx := \"<a>\"\n```\n\n- item\n\n  ```rust\n  fn main() {}\n  ```\n\n" +
+		"```\nno language\n```\n\n```text\nlog\n```\n\n````cobol\nDISPLAY \"```\".\n````\n\n```go\n```\n\n    indented, not fenced\n"
+	writeFiles(t, dir, map[string]string{
+		"doc.md": doc, "docs/b.md": "```py\nx = 1\n```\n", "docs/a.md": "```js\nlet x\n```\n",
+		"docs/.hidden/c.md": "```go\nx\n```\n", "docs/note.txt": "```go\nx\n```\n", "main.go": "package main\n",
+	})
+	t.Chdir(dir)
+	read := func(out string) []codeBlock {
+		var bs []codeBlock
+		for _, line := range strings.Split(strings.TrimSuffix(out, "\n"), "\n") {
+			var b codeBlock
+			if err := json.Unmarshal([]byte(line), &b); err != nil {
+				t.Fatalf("not JSON: %q", line)
+			}
+			bs = append(bs, b)
+		}
+		return bs
+	}
+	code, out, stderr := fhlRun(t, "", "", false, "--code-blocks", "doc.md")
+	if code != 0 || stderr != "fhl: 1 files, 6 code blocks (2 uncolored)\n" {
+		t.Fatalf("code %d, %q", code, stderr)
+	}
+	bs := read(out)
+	type want struct {
+		line    int
+		lang    string
+		colored bool
+		reason  string
+	}
+	wants := []want{{6, "go", true, ""}, {12, "rust", true, ""}, {16, "", false, "no-language"}, {20, "text", false, "plain"},
+		{24, "cobol", false, "unsupported"}, {28, "go", true, ""}}
+	if len(bs) != len(wants) {
+		t.Fatalf("%d blocks, want %d:\n%s", len(bs), len(wants), out)
+	}
+	for i, w := range wants {
+		b := bs[i]
+		if b.File != "doc.md" || b.Line != w.line || b.Lang != w.lang || b.Colored != w.colored || b.Reason != w.reason ||
+			b.Close != "</code></pre>" || !strings.HasPrefix(b.Open, `<pre class="highlight"`) || strings.Contains(b.Code, "<code") {
+			t.Errorf("block %d: %+v", i, b)
+		}
+	}
+	// open + code + close is the HTML that a conversion writes for each block, in the same order.
+	_, conv, _ := fhlRun(t, "", "", false, "-q", "-o", "-", "doc.md")
+	var pres []string
+	for rest := conv; ; {
+		i := strings.Index(rest, `<pre class="highlight"`)
+		if i < 0 {
+			break
+		}
+		j := strings.Index(rest[i:], "</code></pre>") + len("</code></pre>")
+		pres = append(pres, rest[i:i+j])
+		rest = rest[i+j:]
+	}
+	if len(pres) != len(bs) {
+		t.Fatalf("the conversion has %d highlighted blocks, --code-blocks %d", len(pres), len(bs))
+	}
+	for i, b := range bs {
+		if b.Open+b.Code+b.Close != pres[i] {
+			t.Errorf("block %d differs from the conversion:\n%s\n%s", i, b.Open+b.Code+b.Close, pres[i])
+		}
+	}
+	// Standard input, folders (in name order, names starting with . skipped), -q and --strict.
+	code, out, stderr = fhlRun(t, "", doc, false, "-q", "--code-blocks", "-", "docs/")
+	var files []string
+	for _, b := range read(out) {
+		files = append(files, b.File+":"+b.Lang)
+	}
+	if code != 0 || stderr != "" || fmt.Sprint(files) != fmt.Sprint([]string{"-:go", "-:rust", "-:", "-:text", "-:cobol", "-:go",
+		filepath.Join("docs", "a.md") + ":js", filepath.Join("docs", "b.md") + ":py"}) {
+		t.Errorf("code %d, %q, %v", code, stderr, files)
+	}
+	if code, _, _ := fhlRun(t, "", "", false, "-q", "--strict", "--code-blocks", "doc.md"); code != 2 {
+		t.Errorf("--strict: code %d", code)
+	}
+	if code, _, _ := fhlRun(t, "", "", false, "-q", "--strict", "--code-blocks", "docs/"); code != 0 {
+		t.Errorf("--strict, all colored: code %d", code)
+	}
+	// A file that cannot be read is reported, and the others are still written.
+	code, out, stderr = fhlRun(t, "", "", false, "-q", "--code-blocks", "missing.md", "docs/a.md")
+	if code != 1 || len(read(out)) != 1 || !strings.Contains(stderr, "fhl: cannot read missing.md") {
+		t.Errorf("missing: code %d, %q, %q", code, out, stderr)
+	}
+	for _, tt := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"--code-blocks"}, "fhl: no input; give Markdown files, folders or -"},
+		{[]string{"--code-blocks", "main.go"}, "fhl: --code-blocks reads Markdown (.md, .markdown, .mkd), not main.go"},
+		{[]string{"--code-blocks", "--json", "doc.md"}, "fhl: --code-blocks already writes JSON (one line per code block); leave out --json"},
+		{[]string{"--code-blocks", "-o", "x.jsonl", "doc.md"}, "fhl: --code-blocks writes only the code blocks, as JSON Lines on standard output; -o cannot be used with it"},
+		{[]string{"--code-blocks", "--print-css"}, "--print-css cannot be used with it"},
+		{[]string{"--code-blocks", "--single-html", "doc.md"}, "--single-html cannot be used with it"},
+		{[]string{"--code-blocks", "--theme", "dark", "doc.md"}, "--theme cannot be used with it"},
+	} {
+		if code, _, stderr := fhlRun(t, "", "", false, tt.args...); code != 1 || !strings.Contains(stderr, tt.want) {
+			t.Errorf("%v: code %d, %q", tt.args, code, stderr)
+		}
+	}
+}

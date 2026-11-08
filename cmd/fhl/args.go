@@ -21,6 +21,7 @@ type options struct {
 	theme       string
 	themeSet    bool
 	printCSS    bool
+	codeBlocks  bool
 	themeSels   stringList
 	noFrame     bool
 	rawHTML     string
@@ -53,6 +54,7 @@ func parseArgs(args []string) (*options, error) {
 	fs.StringVar(&o.htmlLang, "html-lang", "en", "")
 	fs.StringVar(&o.theme, "theme", "both:default", "")
 	fs.BoolVar(&o.printCSS, "print-css", false, "")
+	fs.BoolVar(&o.codeBlocks, "code-blocks", false, "")
 	fs.Var(&o.themeSels, "theme-selector", "")
 	fs.BoolVar(&o.noFrame, "no-frame", false, "")
 	fs.StringVar(&o.rawHTML, "raw-html", "escape", "")
@@ -144,6 +146,7 @@ Examples:
   fhl --lang go main.txt                  # read a code file as code of that language
   fhl --theme dark:github README.md       # choose the colors: light, dark or both, and a theme
   fhl --print-css > highlight.css         # only the CSS, to standard output
+  fhl --code-blocks page.md               # each code block, colored, as one line of JSON
   fhl --force docs/                       # overwrite without asking
   fhl --list-langs                        # supported languages
   fhl --list-themes                       # available color themes
@@ -173,6 +176,9 @@ Flags:
                      (e.g. dark:':root[data-theme="dark"]')
   --no-frame         leave out the rule that sets the background and text color of
                      pre.highlight, so that your own styles for code blocks apply
+  --code-blocks      write each fenced code block of the Markdown inputs, colored, as one
+                     line of JSON on standard output (file, line, lang, open, code, close,
+                     colored, reason), for tools that convert the Markdown themselves
   --print-css        write only the CSS (as for highlight.css, with --theme) to standard
                      output and exit; give no inputs
   --raw-html MODE    raw HTML in Markdown: escape (default; shown as text), omit (dropped),
