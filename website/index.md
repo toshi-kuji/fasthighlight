@@ -1,6 +1,6 @@
 <div class="hero">
 
-<p align="center"><img src="assets/logo-light.webp" alt="fasthighlight" width="480"></p>
+<p align="center"><img class="logo-light" src="assets/logo-light.webp" alt="fasthighlight" width="480"><img class="logo-dark" src="assets/logo-dark.webp" alt="fasthighlight" width="480"></p>
 
 # fasthighlight
 

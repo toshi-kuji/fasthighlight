@@ -1,5 +1,3 @@
-[fasthighlight](index.html) · [Contents](contents.html)
-
 # The command `fhl`
 
 `fhl` turns Markdown (GFM) and code files into HTML with highlighted code blocks. It writes body-only HTML and a `highlight.css` with the code colors, so that you or an AI agent can put the HTML into your own page and style it.

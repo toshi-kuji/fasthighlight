@@ -1,8 +1,12 @@
 /*
- * Styles of the fasthighlight documentation site (light only).
+ * Styles of the fasthighlight documentation site, light and dark.
  * website/build.sh appends this file to the highlight.css that every page reads, after the code colors.
  * The pages are plain HTML from Markdown (headings, paragraphs, lists, tables, code blocks) plus a few
- * <div class="..."> sections on the top page, so the rules below select elements and those classes.
+ * <div class="..."> sections on the top page, and the header that build.sh adds to every page, so the
+ * rules below select elements and those classes.
+ *
+ * Dark follows the viewer's device, and the button in the header overrides it with data-theme="light"
+ * or "dark" on <html> (the same conditions as the code colors).
  */
 :root {
   --site-text: #0c1524;          /* body text: the navy of the logo */
@@ -19,7 +23,35 @@
   --site-radius: 8px;
   --site-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Noto Sans JP", sans-serif;
   --site-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  color-scheme: light;
 }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --site-text: #e4ebf5;
+    --site-muted: #9aa8ba;
+    --site-link: #6cbcff;
+    --site-background: #0f1720;
+    --site-tint: #16212d;
+    --site-line: #2a3746;
+    --site-code-inline: #1c2836;
+    color-scheme: dark;
+  }
+  :root:not([data-theme="light"]) .logo-light { display: none; }
+  :root:not([data-theme="light"]) .logo-dark { display: inline; }
+}
+:root[data-theme="dark"] {
+  --site-text: #e4ebf5;
+  --site-muted: #9aa8ba;
+  --site-link: #6cbcff;
+  --site-background: #0f1720;
+  --site-tint: #16212d;
+  --site-line: #2a3746;
+  --site-code-inline: #1c2836;
+  color-scheme: dark;
+}
+:root[data-theme="dark"] .logo-light { display: none; }
+:root[data-theme="dark"] .logo-dark { display: inline; }
+.logo-dark { display: none; }
 
 /* page */
 html { -webkit-text-size-adjust: 100%; }
@@ -35,14 +67,37 @@ body {
 }
 img { max-width: 100%; height: auto; }
 
-/* the line of links at the top of each page ([fasthighlight] · [Contents]) */
-body > p:first-child {
+/* the header of every page (written by build.sh): the links on the left, the light/dark button on the right */
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   margin: 0 0 2rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--site-line);
   font-size: 0.9rem;
   color: var(--site-muted);
 }
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 1px solid var(--site-line);
+  border-radius: 50%;
+  background: var(--site-background);
+  color: var(--site-text);
+  cursor: pointer;
+}
+.theme-toggle[hidden] { display: none; }
+.theme-toggle:hover { background: var(--site-tint); }
+.theme-toggle:focus-visible { outline: 2px solid var(--site-link); outline-offset: 2px; }
+.theme-toggle svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.theme-toggle .icon-moon { fill: currentColor; stroke: none; }
+.theme-toggle[data-current="light"] .icon-sun, .theme-toggle[data-current="dark"] .icon-moon { display: none; }
 
 /* headings */
 h1, h2, h3, h4 { line-height: 1.3; font-weight: 700; }

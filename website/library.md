@@ -1,5 +1,3 @@
-[fasthighlight](index.html) · [Contents](contents.html)
-
 # The library
 
 This page covers the basics. The full API is on pkg.go.dev:

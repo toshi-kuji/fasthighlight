@@ -16,6 +16,12 @@
 #     title of every page but the top one (as search results and tabs show the title alone).
 #     Also copy the share image (website/og.png) and add Open Graph and Twitter card tags, so that a
 #     link to a page shows the image, the title and a description on social media.
+#     Then put the header common to every page (links, and the button that switches between light
+#     and dark) at the top of each page.
+#
+# Light and dark: the site follows the viewer's device, and the button overrides it. The choice is
+# saved in localStorage ("theme") and set as data-theme="light" or "dark" on <html> before the page
+# is drawn; without a saved choice there is no data-theme, and the device setting decides.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -36,10 +42,11 @@ cp "$root/assets/logo-light.webp" "$root/assets/logo-dark.webp" "$src/assets/"
 
 "$fhl" --list-langs --json >"$work/langs.json"
 "$fhl" --list-themes --json >"$work/themes.json"
-# The light CSS of each theme (the site is light only), and the default CSS (for the lists of
+# The light and the dark CSS of each theme (for the samples), and the default CSS (for the lists of
 # variables and classes).
 for name in $(python3 -c 'import json,sys; print(" ".join(t["name"] for t in json.load(open(sys.argv[1]))))' "$work/themes.json"); do
 	"$fhl" --print-css --theme "light:$name" >"$work/css-light-$name.css"
+	"$fhl" --print-css --theme "dark:$name" >"$work/css-dark-$name.css"
 done
 "$fhl" --print-css >"$work/css-default.css"
 
@@ -71,7 +78,7 @@ for t in themes:
     rows.append(f"| `{t['name']}` | {cell(t['label'])} | {cell(t['light'])} | {cell(t['dark'])} |")
 markers["THEMES"] = "\n".join(rows)
 
-# <!-- THEME-SAMPLES -->: the same code in each theme, in its light colors (the site is light only).
+# <!-- THEME-SAMPLES -->: the same code in each theme, in its light or dark colors as the site is shown.
 # Each block is in a <div> whose class (theme-NAME) carries that theme's variables (themes.css,
 # appended to highlight.css).
 sample = '''```go
@@ -109,13 +116,23 @@ for page in ("index.md", "themes.md"):
         text = text.replace(f"<!-- {name} -->", value)
     open(path, "w", encoding="utf-8").write(text)
 
-# themes.css: the light variables of each theme, under .theme-NAME instead of :root.
-out = ["", "/* theme samples (website/build.sh): each theme's light variables under .theme-NAME */"]
-for t in themes:
-    c = style(f"{work}/css-light-{t['name']}.css")
+# themes.css: the variables of each theme under .theme-NAME instead of :root: the light ones, and the
+# dark ones where the site is dark (the same conditions as the site colors in style.css).
+def variables(mode, name, selector):
+    c = style(f"{work}/css-{mode}-{name}.css")
     start = c.index(":root {")
-    block = c[start:c.index("\n}\n", start) + 2]
-    out.append(block.replace(":root {", f".theme-{t['name']} {{", 1))
+    return c[start:c.index("\n}\n", start) + 2].replace(":root {", f"{selector} {{", 1)
+
+out = ["", "/* theme samples (website/build.sh): each theme's variables under .theme-NAME */"]
+dark = []
+for t in themes:
+    out.append(variables("light", t["name"], f".theme-{t['name']}"))
+    dark.append(variables("dark", t["name"], f':root:not([data-theme="light"]) .theme-{t["name"]}'))
+out.append("@media (prefers-color-scheme: dark) {")
+out += dark
+out.append("}")
+for t in themes:
+    out.append(variables("dark", t["name"], f':root[data-theme="dark"] .theme-{t["name"]}'))
 open(f"{work}/themes.css", "w", encoding="utf-8").write("\n".join(out) + "\n")
 
 left = [m for m in re.findall(r"<!-- ([A-Z-]+) -->", open(f"{src}/index.md").read() + open(f"{src}/themes.md").read())]
@@ -123,9 +140,12 @@ if left:
     sys.exit(f"build.sh: markers left: {left}")
 PY
 
-# 3. Convert. --force, because the output is rebuilt every time.
+# 3. Convert. --force, because the output is rebuilt every time. The code colors follow the device, and
+#    data-theme (set by the button) overrides it.
 rm -rf "$out"
-"$fhl" -q --static-site --raw-html unsafe --theme light --force -o "$out/" "$src"
+"$fhl" -q --static-site --raw-html unsafe --force -o "$out/" \
+	--theme both --theme-selector dark:':root[data-theme="dark"]' --theme-selector light:':root[data-theme="light"]' \
+	"$src"
 
 # 4. The site styles and the theme samples go after the code colors in the one highlight.css.
 if [ -f "$root/website/style.css" ]; then
@@ -162,8 +182,9 @@ lines.append("</urlset>")
 open(os.path.join(out, "sitemap.xml"), "w", encoding="utf-8").write("\n".join(lines) + "\n")
 PY
 
-# 6. The icon and the page titles. fhl writes <title> from the first heading and a <link> to highlight.css
-#    (with a relative path); the icon link goes after it, with the same path.
+# 6. The icon, the page titles and the header. fhl writes <title> from the first heading and a <link> to
+#    highlight.css (with a relative path); the icon link goes after it, with the same path, and the
+#    header after the tags of <head>, at the start of the page.
 cp "$root/website/favicon.png" "$root/website/og.png" "$out/"
 python3 - "$out" "$site_url" <<'PY'
 import html as h, os, re, sys
@@ -171,6 +192,31 @@ import html as h, os, re, sys
 out, base, site = sys.argv[1], sys.argv[2].rstrip("/") + "/", "fasthighlight"
 description = ("Fast syntax highlighting written in Go, without regular expressions. A goldmark extension, "
                "and the command fhl that turns Markdown into HTML or a basic static site.")
+
+# Before the page is drawn: the saved choice, if any, as data-theme on <html>. localStorage can be
+# unavailable (blocked, private windows); then the device setting decides.
+THEME_INIT = ('<script>try{var t=localStorage.getItem("theme");'
+              'if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>')
+
+# The button shows the mode it switches to (a moon in light, a sun in dark). It is hidden until the script
+# runs, as it does nothing without it.
+MOON = ('<svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">'
+        '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>')
+SUN = ('<svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">'
+       '<circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3M4.6 4.6l2.1 2.1'
+       'M17.3 17.3l2.1 2.1M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1"/></svg>')
+TOGGLE = """<script>(function(){
+var r=document.documentElement,b=document.querySelector(".theme-toggle"),m=matchMedia("(prefers-color-scheme: dark)");
+function now(){return r.dataset.theme||(m.matches?"dark":"light")}
+function show(){var d=now()==="dark",l=d?"Switch to light mode":"Switch to dark mode";b.dataset.current=d?"dark":"light";b.setAttribute("aria-label",l);b.title=l}
+b.addEventListener("click",function(){var t=now()==="dark"?"light":"dark";r.dataset.theme=t;try{localStorage.setItem("theme",t)}catch(e){}show()});
+m.addEventListener("change",show);show();b.hidden=false})()</script>"""
+
+def header(prefix):
+    return (f'<header class="site-header"><nav><a href="{prefix}index.html">fasthighlight</a> · '
+            f'<a href="{prefix}contents.html">Contents</a></nav>'
+            f'<button type="button" class="theme-toggle" hidden>{MOON}{SUN}</button></header>\n{TOGGLE}')
+
 for dirpath, _, files in os.walk(out):
     for name in files:
         if not name.endswith(".html") or (dirpath == out and name.startswith("google")):
@@ -194,6 +240,8 @@ for dirpath, _, files in os.walk(out):
         tags = [f'<link rel="icon" type="image/png" href="{css.group(1)}favicon.png">']
         tags += [f'<meta property="{k}" content="{h.escape(v)}">' for k, v in meta.items()]
         tags.append('<meta name="twitter:card" content="summary_large_image">')
+        tags.append(THEME_INIT)
+        tags.append(header(css.group(1)))
         html = html[:css.end()] + "\n".join(tags) + "\n" + html[css.end():]
         if not re.search(r'<link rel="stylesheet" href="[^"<>]*highlight\.css">\n<link rel="icon"', html):
             sys.exit(f"build.sh: the head of {path} came out broken")

@@ -1,5 +1,3 @@
-[fasthighlight](index.html)
-
 # Contents
 
 ## Pages

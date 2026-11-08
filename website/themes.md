@@ -1,5 +1,3 @@
-[fasthighlight](index.html) · [Contents](contents.html)
-
 # Themes and CSS
 
 `fhl` writes the code colors as `highlight.css` (or into `<style>` with `--single-html`). The library writes no CSS; use the one from `fhl`, or your own.
@@ -50,7 +48,7 @@ The default theme, `default`, has fhl's own colors: Go's brand colors (Gopher Bl
 
 ## Samples
 
-The same code in each theme, in its light colors (this site is light only).
+The same code in each theme, in its light or dark colors, as this site is shown now (switch with the button at the top right).
 
 <!-- THEME-SAMPLES -->
 
