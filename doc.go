@@ -23,7 +23,19 @@
 //
 //	err := fasthighlight.Highlight(w, "go", code)
 //
-// Code of a language that is not registered is only escaped, without highlighting.
+// Code of a language that is not registered is only escaped, without highlighting. Highlight may be called
+// from several goroutines at the same time.
+//
+// To work with the tokens yourself (to build your own HTML, count keywords, and so on), look the language
+// up and call Language.Tokenise; WriteHTML turns tokens into the same HTML as Highlight (without data-lang
+// and the language- class):
+//
+//	l := fasthighlight.LookupRegistered("go")
+//	for _, t := range l.Tokenise(code) {
+//		fmt.Println(t.Type, t.Value) // the type (Keyword, NameFunction, ...) and the text
+//	}
+//
+// The tokens joined together are the code, with newlines normalized to \n.
 //
 // # Languages
 //

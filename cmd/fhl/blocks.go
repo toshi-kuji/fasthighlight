@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,9 +12,6 @@ import (
 
 	fh "github.com/toshi-kuji/fasthighlight"
 	"github.com/toshi-kuji/fasthighlight/markdown"
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/text"
 )
 
 // codeBlock is one line of the output of --code-blocks: a fenced code block of a Markdown input, colored.
@@ -28,7 +24,7 @@ type codeBlock struct {
 	Code    string `json:"code"`             // the contents of <code>: the colored code
 	Close   string `json:"close"`            // </code></pre>
 	Colored bool   `json:"colored"`          // whether the code got colors
-	Reason  string `json:"reason,omitempty"` // why not: no-language, unsupported or plain
+	Reason  string `json:"reason,omitempty"` // why not: no-language, unsupported, not-built-in or plain
 }
 
 // runCodeBlocks runs --code-blocks: it reads the Markdown inputs and writes each fenced code block, colored,
@@ -44,7 +40,7 @@ func runCodeBlocks(o *options, e env) int {
 	enc.SetEscapeHTML(false)
 	failed := false
 	files, blocks, uncolored := 0, 0, 0
-	parser := newMarkdown("escape", markdown.ParallelNever, false, false).Parser()
+	conv := markdown.NewConverter()
 	for _, in := range o.inputs {
 		paths, errs := codeBlockInputs(in)
 		for _, msg := range errs {
@@ -65,7 +61,7 @@ func runCodeBlocks(o *options, e env) int {
 				continue
 			}
 			files++
-			for _, b := range codeBlocksOf(parser, p, []byte(fh.NormalizeNewlines(string(src)))) {
+			for _, b := range codeBlocksOf(conv, p, []byte(fh.NormalizeNewlines(string(src)))) {
 				blocks++
 				if !b.Colored && b.Reason != "plain" {
 					uncolored++
@@ -169,46 +165,18 @@ func codeBlockInputs(in string) ([]string, []string) {
 	return paths, errs
 }
 
-// codeBlocksOf returns the fenced code blocks of the Markdown src (newlines normalized), colored as a conversion
-// colors them. Front matter is skipped, and lines are counted in the original src.
-func codeBlocksOf(p parser.Parser, name string, src []byte) []codeBlock {
+// codeBlocksOf returns the fenced code blocks of the Markdown src (newlines normalized), colored by the
+// markdown package's CodeBlocks. Front matter is skipped, and lines are counted in the original src.
+func codeBlocksOf(c *markdown.Converter, name string, src []byte) []codeBlock {
 	body, offset := stripFrontMatter(src)
-	doc := p.Parse(text.NewReader(body))
 	var blocks []codeBlock
-	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
-		b, ok := n.(*ast.FencedCodeBlock)
-		if !entering || !ok {
-			return ast.WalkContinue, nil
-		}
-		lang := string(b.Language(body))
-		line := fenceLine(body, b)
+	for _, b := range c.CodeBlocks(c.Parse(name, body)) {
+		line := b.Line
 		if line > 0 {
 			line += offset
 		}
-		var code bytes.Buffer
-		lines := b.Lines()
-		for i := 0; i < lines.Len(); i++ {
-			seg := lines.At(i)
-			code.Write(seg.Value(body))
-		}
-		var html bytes.Buffer
-		_ = fh.Highlight(&html, lang, code.String()) // writing to a bytes.Buffer does not fail
-		h := html.String()
-		// The HTML is <pre …><code …>, the code, then </code></pre>; the code itself has no <code.
-		i := strings.Index(h, "<code")
-		i += strings.IndexByte(h[i:], '>') + 1
-		j := len(h) - len("</code></pre>")
-		cb := codeBlock{File: name, Line: line, Lang: lang, Open: h[:i], Code: h[i:j], Close: h[j:], Colored: true}
-		switch {
-		case lang == "":
-			cb.Colored, cb.Reason = false, "no-language"
-		case fh.IsPlainText(lang):
-			cb.Colored, cb.Reason = false, "plain"
-		case fh.LookupRegistered(lang) == nil:
-			cb.Colored, cb.Reason = false, "unsupported"
-		}
-		blocks = append(blocks, cb)
-		return ast.WalkSkipChildren, nil
-	})
+		blocks = append(blocks, codeBlock{File: name, Line: line, Lang: b.Lang, Open: b.Open, Code: b.Code,
+			Close: b.Close, Colored: b.Colored, Reason: b.Reason})
+	}
 	return blocks
 }

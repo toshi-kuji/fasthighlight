@@ -65,7 +65,18 @@ import (
 err := fasthighlight.Highlight(w, "go", code)
 ```
 
-A language that is not registered is escaped without colors. To work with the tokens yourself, use [`Language.Tokenise`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight#Language.Tokenise) and [`WriteHTML`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight#WriteHTML).
+A language that is not registered is escaped without colors. `Highlight` may be called from several goroutines at the same time, so you can highlight many pieces of code in parallel yourself.
+
+### Work with the tokens
+
+To build your own HTML or look at the code's structure, get the tokens with [`Language.Tokenise`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight#Language.Tokenise). Each token has a type (`Keyword`, `NameFunction`, `LiteralString`, …) and its text; joined together, the tokens are the code (with newlines normalized to `\n`). [`WriteHTML`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight#WriteHTML) turns tokens into the same HTML as `Highlight`.
+
+```go
+l := fasthighlight.LookupRegistered("go") // nil if the language is not registered
+for _, t := range l.Tokenise(code) {
+	fmt.Println(t.Type, t.Value)
+}
+```
 
 ## Choose the languages
 
@@ -113,6 +124,22 @@ Blocks marked as plain text (`text`, `plaintext`, `plain` or `no-highlight`) are
 To check a single language name, use [`fasthighlight.LookupSupported`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight#LookupSupported). It searches all the supported languages, imported or not, and the result's `Package` is the package to import. [`LookupRegistered`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight#LookupRegistered) searches only the languages that can color now.
 
 Language names are matched as in Chroma: case does not matter, and a name that is not a language name or alias is tried as a file extension (`mts`) or file name (`app.ts`). Only the first word after the ``` is used (`ts title="app.ts"` is `ts`).
+
+## Only the code blocks
+
+If you convert the Markdown yourself and need only the colored code, parse the document and call [`CodeBlocks`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight/markdown#Converter.CodeBlocks). It returns each fenced code block, highlighted, in order, and writes no other HTML. It is the library side of `fhl --code-blocks`.
+
+```go
+c := markdown.NewConverter()
+doc := c.Parse("page.md", src)
+for _, b := range c.CodeBlocks(doc) {
+	// b.Line, b.Lang: where the block is and its language name
+	// b.Open + b.Code + b.Close: the same HTML Render writes; b.Code alone goes inside <code>
+	// b.Colored, b.Reason: whether it got colors, and if not why (no-language, plain, not-built-in, unsupported)
+}
+```
+
+The blocks are highlighted in parallel as `Parallelism` decides, as in `Render`.
 
 ## Parallel highlighting
 

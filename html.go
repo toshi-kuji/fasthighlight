@@ -156,7 +156,8 @@ func (h *htmlWriter) escape(s string) {
 
 // Highlight turns one code block into HTML. lang is the code block's language name; if it is not empty,
 // it is put in the <pre> data-lang and the <code> class (language-lang). A language that is not registered is written as Text without
-// highlighting (only escaped).
+// highlighting (only escaped). Highlight may be called from several goroutines at the same time: each
+// language prepares its tables once, on first use, and the registry of languages is safe for concurrent use.
 func Highlight(w io.Writer, lang, code string) error {
 	return writeBlock(w, LookupRegistered(lang), lang, code)
 }

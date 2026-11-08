@@ -21,6 +21,9 @@
 // blocks that will not be highlighted, including those of languages fasthighlight supports but whose
 // packages are not imported, with the package to import.
 //
+// If you convert the Markdown yourself and need only the colored code, call CodeBlocks on a parsed
+// document: it returns each code block, highlighted, without the rest of the HTML.
+//
 // A code block of a language that is not registered is only escaped, without highlighting. For the shape
 // of the HTML, see the fasthighlight package.
 //
