@@ -99,6 +99,9 @@ func run(args []string, e env) int {
 	case o.listThemes:
 		return outputStatus(e, listThemes(e.stdout, o.json))
 	}
+	if o.codeBlocks {
+		return runCodeBlocks(o, e)
+	}
 	if o.printCSS {
 		return printCSS(o, e)
 	}

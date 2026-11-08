@@ -154,6 +154,7 @@ Before converting, `fhl` compares every input and every file it would write.
 | `--list-langs`, `--list-themes` | print the languages or themes (JSON with `--json`) |
 | `--theme-selector MODE:SELECTOR` | with `--theme both`, also use the `MODE` colors (`light` or `dark`) under the CSS selector, over the device setting; give it once for each selector, such as `dark:':root[data-theme="dark"]'` ([Themes and CSS](themes.html)) |
 | `--no-frame` | leave out the background and text color of `pre.highlight` in the CSS |
+| `--code-blocks` | write only the code blocks, colored, as one line of JSON each ([Code blocks only](#code-blocks-only)) |
 | `--print-css` | write only the CSS of `--theme` to standard output, without converting anything (`fhl --print-css > highlight.css`) |
 
 A value follows its flag after a space or `=` (`--theme light` and `--theme=light` are the same). All flags and examples: `fhl --help`.
@@ -182,6 +183,32 @@ fhl: README.html already exists; use --force to overwrite it
 | 0 | success (uncolored code blocks and files skipped with `N` are not errors) |
 | 1 | an error (a bad flag, an unreadable input, an unwritable output, an overwrite without a terminal, a collision). Other files are still converted |
 | 2 | with `--strict`, a code block is not colored |
+
+## Code blocks only
+
+If your build already converts Markdown (markdown-it, a Python library, your own code) and only needs the code colors, give `fhl` the same Markdown with `--code-blocks`. It writes each fenced code block, in order, as one line of JSON (JSON Lines) on standard output, and converts nothing else:
+
+```sh
+fhl --code-blocks page.md
+```
+
+```json
+{"file":"page.md","line":6,"lang":"go","open":"<pre class=\"highlight\" data-lang=\"go\"><code class=\"language-go\">","code":"<span class=\"line\">…</span>","close":"</code></pre>","colored":true}
+{"file":"page.md","line":24,"lang":"cobol","open":"…","code":"…","close":"</code></pre>","colored":false,"reason":"unsupported"}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `file` | the input (`-` for standard input) |
+| `line` | the line of the opening fence, counted as your editor does (front matter included), to match the block with the one your converter found |
+| `lang` | the language name after the fence (empty if none) |
+| `open`, `code`, `close` | the HTML: `open + code + close` is the same block a conversion writes; `code` alone is what goes inside `<code>` |
+| `colored` | whether the code got colors |
+| `reason` | when not colored: `no-language`, `unsupported` or `plain` (`text` and the like) |
+
+- Inputs are Markdown files, folders (their Markdown files, as in a conversion) and `-` for standard input. Only fenced code blocks are written; indented code blocks are not.
+- The summary goes to standard error (`-q` leaves it out), so standard output is only JSON. The exit status is as above: `--strict` exits with 2 if a block is not colored (`plain` blocks do not count).
+- It writes no files and no CSS; get the CSS with `--print-css`.
 
 ## AI agents
 

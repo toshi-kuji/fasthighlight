@@ -61,6 +61,7 @@ err := markdown.NewConverter().Convert(src, w)
 
 - **Build a tech blog or documentation site.** In Go, add the library to your app; in any other language, call `fhl`. [How](use-cases.html#static-site-builds)
 - **Use the code colors in your own build or template.** `fhl --print-css > highlight.css` writes only the CSS of a theme. [How](themes.html)
+- **Color only the code blocks of Markdown your build converts itself.** `fhl --code-blocks page.md` writes each code block, colored, as one line of JSON. [How](cli.html#code-blocks-only)
 - **Turn a folder into a basic static site.** `fhl --static-site -o dist/ docs/` makes pages that open as they are, with heading ids, links between pages and one style sheet to add your styles to. This site is built that way, in CI. [How](use-cases.html#a-documentation-site)
 - **Convert a lot of Markdown at once.** `fhl -o dist/ docs/` converts a whole folder in one run. [How](use-cases.html#convert-a-folder)
 - **Let an AI agent publish documents.** The AI writes Markdown, `fhl` turns it into HTML, and the AI styles it. `--json` gives the result in a form a program can read. [How](cli.html#ai-agents)
