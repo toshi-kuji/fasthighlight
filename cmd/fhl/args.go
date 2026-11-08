@@ -20,6 +20,7 @@ type options struct {
 	htmlLangSet bool
 	theme       string
 	themeSet    bool
+	printCSS    bool
 	rawHTML     string
 	force       bool
 	listLangs   bool
@@ -49,6 +50,7 @@ func parseArgs(args []string) (*options, error) {
 	fs.BoolVar(&o.staticSite, "static-site", false, "")
 	fs.StringVar(&o.htmlLang, "html-lang", "en", "")
 	fs.StringVar(&o.theme, "theme", "both:default", "")
+	fs.BoolVar(&o.printCSS, "print-css", false, "")
 	fs.StringVar(&o.rawHTML, "raw-html", "escape", "")
 	fs.BoolVar(&o.force, "force", false, "")
 	fs.BoolVar(&o.listLangs, "list-langs", false, "")
@@ -137,6 +139,7 @@ Examples:
   cat note.md | fhl -o note.html -        # read standard input
   fhl --lang go main.txt                  # read a code file as code of that language
   fhl --theme dark:github README.md       # choose the colors: light, dark or both, and a theme
+  fhl --print-css > highlight.css         # only the CSS, to standard output
   fhl --force docs/                       # overwrite without asking
   fhl --list-langs                        # supported languages
   fhl --list-themes                       # available color themes
@@ -160,6 +163,8 @@ Flags:
                      code colors. MODE is light, dark or both (both switches with the
                      viewer's light or dark preference); THEME is one of --list-themes.
                      Default: both:default
+  --print-css        write only the CSS (as for highlight.css, with --theme) to standard
+                     output and exit; give no inputs
   --raw-html MODE    raw HTML in Markdown: escape (default; shown as text), omit (dropped),
                      unsafe (written as is; do not use for untrusted Markdown)
   --force            overwrite existing files without asking

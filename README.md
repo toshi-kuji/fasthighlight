@@ -34,6 +34,7 @@ fhl -o - README.md                 # body-only HTML to standard output
 cat note.md | fhl -o note.html -   # read standard input
 fhl main.go                        # a code file becomes one highlighted code block
 fhl --theme dark:github docs/      # choose the colors (light, dark or both, and a theme)
+fhl --print-css > highlight.css    # only the CSS, for your own build or template
 fhl --check --strict docs/         # fail (exit status 2) if a code block is not colored
 fhl -o dist/ docs/ --json          # machine-readable result, for scripts and AI agents
 fhl --help                         # all flags, with examples

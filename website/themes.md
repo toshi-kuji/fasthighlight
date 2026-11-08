@@ -11,6 +11,7 @@ fhl --theme dark:github docs/       # GitHub, dark colors only
 fhl --theme light docs/             # default, light colors only
 fhl --theme both:tokyo-night docs/  # Tokyo Night, light and dark
 fhl --list-themes
+fhl --print-css --theme both:github > highlight.css  # only the CSS, for your own build
 ```
 
 Every theme has light and dark colors. `--theme MODE:THEME` chooses which to write and the theme:

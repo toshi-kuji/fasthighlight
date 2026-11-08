@@ -48,7 +48,7 @@ The HTML file is named after the input, with `.html` (`README.md` becomes `READM
 | none | next to each input |
 | `-o FILE` | that file (one input only) |
 | `-o DIR/` | inside that folder, keeping the folder layout of the inputs. A value ending with `/`, or an existing folder, is a folder |
-| `-o -` | standard output (one input only). Body-only HTML, no `highlight.css`; with `--single-html`, a standalone HTML |
+| `-o -` | standard output (one input only). Body-only HTML, no `highlight.css` (get it with `--print-css`); with `--single-html`, a standalone HTML |
 
 - `highlight.css` is written once per folder that gets HTML, and shared by the HTML in it. It is not written with `--single-html` or `-o -`. With `--static-site`, it is written once, at the top of the output ([A static site](#a-static-site)).
 - The same input always gives the same output, byte for byte.
@@ -152,6 +152,7 @@ Before converting, `fhl` compares every input and every file it would write.
 | `--strict` | exit with 2 if a code block is not colored |
 | `--json` | print the result as JSON on standard output |
 | `--list-langs`, `--list-themes` | print the languages or themes (JSON with `--json`) |
+| `--print-css` | write only the CSS of `--theme` to standard output, without converting anything (`fhl --print-css > highlight.css`) |
 
 A value follows its flag after a space or `=` (`--theme light` and `--theme=light` are the same). All flags and examples: `fhl --help`.
 

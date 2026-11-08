@@ -697,7 +697,7 @@ func TestHelp(t *testing.T) {
 		"fhl README.md", "fhl docs/", "fhl -o dist/ docs/", "fhl -o dist/ docs/ --json", "fhl --single-html README.md",
 		"fhl -o - README.md", "fhl --single-html -o - README.md", "fhl --static-site -o dist/ docs/",
 		"cat note.md | fhl -o note.html -", "fhl --lang go main.txt", "fhl --theme dark:github README.md",
-		"fhl --force docs/", "fhl --list-langs", "fhl --list-themes", "fhl --check docs/",
+		"fhl --print-css > highlight.css", "fhl --force docs/", "fhl --list-langs", "fhl --list-themes", "fhl --check docs/",
 	} {
 		if !strings.Contains(out, cmd) {
 			t.Errorf("--help lacks %q", cmd)
@@ -1154,6 +1154,49 @@ func TestValueErrors(t *testing.T) {
 	for _, v := range []string{"", "in/", "e n", "en-", "-en", "1en", `en"`, "toolongpart"} {
 		if isLangTag(v) {
 			t.Errorf("isLangTag(%q) = true", v)
+		}
+	}
+}
+
+// TestPrintCSS checks --print-css: the CSS of --theme on standard output, the same as highlight.css.
+func TestPrintCSS(t *testing.T) {
+	dir := t.TempDir()
+	writeFiles(t, dir, map[string]string{"a.md": "# a\n"})
+	t.Chdir(dir)
+	for _, theme := range []string{"", "dark:github", "light"} {
+		args := []string{"--print-css"}
+		conv := []string{"-q", "--force", "a.md"}
+		if theme != "" {
+			args = append(args, "--theme", theme)
+			conv = append(conv, "--theme", theme)
+		}
+		code, out, stderr := fhlRun(t, "", "", false, args...)
+		if code != 0 || stderr != "" {
+			t.Fatalf("%v: code %d, %s", args, code, stderr)
+		}
+		if code, _, stderr := fhlRun(t, "", "", false, conv...); code != 0 {
+			t.Fatalf("%v: code %d, %s", conv, code, stderr)
+		}
+		want, err := os.ReadFile("highlight.css")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if out != string(want) {
+			t.Errorf("%v: the CSS differs from highlight.css", args)
+		}
+	}
+	for _, tt := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"--print-css", "a.md"}, "fhl: --print-css writes only the CSS to standard output; give no inputs"},
+		{[]string{"--print-css", "-o", "x.css"}, "fhl: --print-css writes to standard output; redirect it instead of -o"},
+		{[]string{"--print-css", "--json"}, "fhl: --json cannot be used with --print-css"},
+		{[]string{"--print-css", "--theme", "nope"}, "fhl: --theme must be MODE or MODE:THEME"},
+		{[]string{"-o", "-", "--theme", "dark", "a.md"}, "for only the CSS, use --print-css"},
+	} {
+		if code, _, stderr := fhlRun(t, "", "", false, tt.args...); code != 1 || !strings.Contains(stderr, tt.want) {
+			t.Errorf("%v: code %d, %q", tt.args, code, stderr)
 		}
 	}
 }
