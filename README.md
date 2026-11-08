@@ -153,7 +153,7 @@ becomes
 </code></pre>
 ```
 
-`data-lang` and the `language-` class (the one CommonMark recommends, which other tools read) hold the language name as written in the Markdown. The library writes no CSS; use the `highlight.css` that `fhl` writes, or your own. Apart from the outer class name (`highlight`, where Chroma uses `chroma`), `data-lang` and the `language-` class, the HTML for a given token sequence is the same as Chroma's HTML formatter with `WithClasses(true)`.
+`data-lang` and the `language-` class (the one CommonMark recommends, which other tools read) hold the language name as written in the Markdown. The library writes no CSS; use the `highlight.css` that `fhl` writes, or your own. The token classes are the same as those of Chroma's HTML formatter with `WithClasses(true)`, but the HTML is smaller: lines are not wrapped in `<span class="line"><span class="cl">` and whitespace is not wrapped in `<span class="w">` ([Chroma compatibility](https://toshi-kuji.github.io/fasthighlight/compatibility.html)).
 
 ### Parallel highlighting
 
@@ -188,4 +188,4 @@ Both documents are in [`testdata/`](testdata/). The implementations color code a
 
 ## License
 
-MIT. See [LICENSE](LICENSE). The highlighting reproduces Chroma's lexing rules, token types and HTML output, the `markdown` package and `fhl` use goldmark, and the color themes of `fhl` are copied from other projects; their licenses are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+MIT. See [LICENSE](LICENSE). The highlighting reproduces Chroma's lexing rules, token types and HTML class names, the `markdown` package and `fhl` use goldmark, and the color themes of `fhl` are copied from other projects; their licenses are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
