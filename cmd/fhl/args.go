@@ -21,6 +21,8 @@ type options struct {
 	theme       string
 	themeSet    bool
 	printCSS    bool
+	themeSels   stringList
+	noFrame     bool
 	rawHTML     string
 	force       bool
 	listLangs   bool
@@ -51,6 +53,8 @@ func parseArgs(args []string) (*options, error) {
 	fs.StringVar(&o.htmlLang, "html-lang", "en", "")
 	fs.StringVar(&o.theme, "theme", "both:default", "")
 	fs.BoolVar(&o.printCSS, "print-css", false, "")
+	fs.Var(&o.themeSels, "theme-selector", "")
+	fs.BoolVar(&o.noFrame, "no-frame", false, "")
 	fs.StringVar(&o.rawHTML, "raw-html", "escape", "")
 	fs.BoolVar(&o.force, "force", false, "")
 	fs.BoolVar(&o.listLangs, "list-langs", false, "")
@@ -163,6 +167,12 @@ Flags:
                      code colors. MODE is light, dark or both (both switches with the
                      viewer's light or dark preference); THEME is one of --list-themes.
                      Default: both:default
+  --theme-selector MODE:SELECTOR
+                     with --theme both, also use the MODE colors (light or dark) under the
+                     CSS selector, over the device setting; can be given more than once
+                     (e.g. dark:':root[data-theme="dark"]')
+  --no-frame         leave out the rule that sets the background and text color of
+                     pre.highlight, so that your own styles for code blocks apply
   --print-css        write only the CSS (as for highlight.css, with --theme) to standard
                      output and exit; give no inputs
   --raw-html MODE    raw HTML in Markdown: escape (default; shown as text), omit (dropped),
@@ -209,14 +219,21 @@ func flagError(err error) string {
 	return fmt.Sprintf("fhl: %v; see fhl --help", err)
 }
 
+// stringList is a flag that can be given more than once; it keeps every value in order.
+type stringList []string
+
+func (l *stringList) String() string     { return strings.Join(*l, " ") }
+func (l *stringList) Set(v string) error { *l = append(*l, v); return nil }
+
 // valueHints tells what each flag with a value takes. It completes the messages about a missing or wrong value.
 var valueHints = map[string]string{
-	"o":         "a file, a folder (DIR/) or - for standard output",
-	"lang":      "a language name such as go (see fhl --list-langs)",
-	"html-lang": "a language tag such as en or ja",
-	"theme":     themeUsage,
-	"raw-html":  "escape, omit or unsafe",
-	"j":         "a number of 1 or more",
+	"o":              "a file, a folder (DIR/) or - for standard output",
+	"lang":           "a language name such as go (see fhl --list-langs)",
+	"html-lang":      "a language tag such as en or ja",
+	"theme":          themeUsage,
+	"raw-html":       "escape, omit or unsafe",
+	"j":              "a number of 1 or more",
+	"theme-selector": "dark:SELECTOR or light:SELECTOR, such as dark:':root[data-theme=\"dark\"]'",
 }
 
 // flagName writes a flag as the help does: -o and -j with one dash, the others with two.

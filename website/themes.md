@@ -22,7 +22,25 @@ Every theme has light and dark colors. `--theme MODE:THEME` chooses which to wri
 | `dark` | the dark colors only |
 | `both` | the light colors, switched to the dark ones when the viewer's device prefers dark (`prefers-color-scheme`) |
 
-`THEME` can be left out for `default`; without `--theme`, it is `both:default`. `both` follows the viewer's device setting only. If your site has its own light and dark switch, connecting the colors to it is up to you.
+`THEME` can be left out for `default`; without `--theme`, it is `both:default`. `both` follows the viewer's device setting by default.
+
+For a site with its own light and dark switch, `--theme-selector MODE:SELECTOR` adds the `MODE` colors (`light` or `dark`) under your CSS selector. The device setting stays the starting point, and your selector wins over it. Give the flag once for each selector:
+
+| What decides the colors | Flags |
+| --- | --- |
+| The device setting only | none |
+| The device setting, then the site's switch (`<html data-theme="light">` or `"dark"`) | `--theme-selector dark:':root[data-theme="dark"]' --theme-selector light:':root[data-theme="light"]'` |
+| The site's switch only (`<html data-theme="dark">` or nothing) | `--theme-selector dark:':root[data-theme="dark"]' --theme-selector light:':root:not([data-theme="dark"])'` |
+
+Tip: to override the device setting completely, give the light colors a selector with `:not(…)` that matches whenever the dark one does not, as in the last row. Then the device setting never shows, even though its `@media (prefers-color-scheme: dark)` block is still in the CSS.
+
+`--no-frame` leaves out the background and text color of `pre.highlight`, so that your own styles for code blocks apply.
+
+```sh
+fhl --print-css --theme both:github \
+  --theme-selector dark:':root[data-theme="dark"]' \
+  --theme-selector light:':root[data-theme="light"]' --no-frame > highlight.css
+```
 
 The default theme, `default`, has fhl's own colors. Every color in it has a contrast ratio of at least 4.5 against its background (WCAG AA). The other themes copy the colors of the original themes as they are, so some of their colors have a lower contrast.
 

@@ -153,7 +153,7 @@ func run(args []string, e env) int {
 	if len(jobs) == 1 {
 		parallel = markdown.ParallelAuto
 	}
-	css := th.css(thMode)
+	css := th.css(thMode, cssOptionsOf(o))
 	type result struct {
 		c   *converted
 		err error
@@ -330,6 +330,8 @@ func checkOptions(o *options) string {
 		return fmt.Sprintf("fhl: --raw-html must be escape, omit or unsafe, not %q", o.rawHTML)
 	case themeError(o.theme) != "":
 		return themeError(o.theme)
+	case themeSelectorError(o) != "":
+		return themeSelectorError(o)
 	case o.lang != "" && fh.LookupRegistered(o.lang) == nil:
 		return fmt.Sprintf("fhl: unknown language %q for --lang; see fhl --list-langs", o.lang)
 	case o.jobs < 1:
@@ -353,8 +355,8 @@ func checkOptions(o *options) string {
 		return ""
 	case o.json && o.outSet && o.out == "-":
 		return "fhl: --json cannot be used with -o -"
-	case o.themeSet && o.outSet && o.out == "-" && !o.single:
-		return "fhl: --theme has no effect with -o - unless --single-html is also given, because no CSS is written; for only the CSS, use --print-css"
+	case cssFlag(o) != "" && o.outSet && o.out == "-" && !o.single:
+		return "fhl: " + cssFlag(o) + " has no effect with -o - unless --single-html is also given, because no CSS is written; for only the CSS, use --print-css"
 	}
 	return ""
 }
@@ -427,9 +429,73 @@ func isLangTag(s string) bool {
 	return true
 }
 
+// cssFlag returns the first flag given that only changes the CSS, or "".
+func cssFlag(o *options) string {
+	switch {
+	case o.themeSet:
+		return "--theme"
+	case len(o.themeSels) > 0:
+		return "--theme-selector"
+	case o.noFrame:
+		return "--no-frame"
+	}
+	return ""
+}
+
+// parseThemeSelector reads the value of --theme-selector (MODE:SELECTOR). It splits at the first colon, so
+// dark::root[data-theme="dark"] (as the shell passes dark:':root[data-theme="dark"]') is dark and
+// :root[data-theme="dark"].
+func parseThemeSelector(v string) (mode, string, bool) {
+	ms, sel, ok := strings.Cut(v, ":")
+	if !ok {
+		return 0, "", false
+	}
+	switch ms {
+	case "light":
+		return modeLight, sel, true
+	case "dark":
+		return modeDark, sel, true
+	}
+	return 0, "", false
+}
+
+// cssOptionsOf returns the shape of the CSS that the flags ask for (the values are checked before).
+func cssOptionsOf(o *options) cssOptions {
+	c := cssOptions{noFrame: o.noFrame}
+	for _, v := range o.themeSels {
+		m, sel, _ := parseThemeSelector(v)
+		c.selectors = append(c.selectors, themeSelector{m, sel})
+	}
+	return c
+}
+
+// themeSelectorError returns the error message for the first wrong --theme-selector, or "" if they are valid or
+// none is given. The selector is written into the CSS as is (also inside <style> with --single-html), so braces,
+// ; and < are refused.
+func themeSelectorError(o *options) string {
+	for _, v := range o.themeSels {
+		_, sel, ok := parseThemeSelector(v)
+		if !ok {
+			return fmt.Sprintf("fhl: --theme-selector must start with dark: or light:, then a CSS selector, such as dark:':root[data-theme=\"dark\"]', not %q", v)
+		}
+		if strings.TrimSpace(sel) == "" || strings.ContainsAny(sel, "{};<\n") {
+			return fmt.Sprintf("fhl: --theme-selector needs a CSS selector after the mode, such as dark:':root[data-theme=\"dark\"]', not %q", v)
+		}
+	}
+	if len(o.themeSels) > 0 {
+		if _, m, _ := parseTheme(o.theme); m != modeBoth {
+			return "fhl: --theme-selector is only for --theme both (the default), which writes light and dark colors"
+		}
+	}
+	return ""
+}
+
 // printCSS writes only the CSS of --theme to standard output (--print-css) and returns the exit code.
 func printCSS(o *options, e env) int {
 	msg := themeError(o.theme)
+	if msg == "" {
+		msg = themeSelectorError(o)
+	}
 	switch {
 	case msg != "":
 	case len(o.inputs) > 0:
@@ -444,7 +510,7 @@ func printCSS(o *options, e env) int {
 		return 1
 	}
 	th, m, _ := parseTheme(o.theme)
-	if _, err := io.WriteString(e.stdout, th.css(m)); err != nil {
+	if _, err := io.WriteString(e.stdout, th.css(m, cssOptionsOf(o))); err != nil {
 		fmt.Fprintf(e.stderr, "fhl: cannot write the CSS: %v\n", err)
 		return 1
 	}

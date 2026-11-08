@@ -369,14 +369,31 @@ func parseTheme(v string) (*theme, mode, string) {
 	return t, mode(m), ""
 }
 
-// css builds the CSS of the color theme in mode m. The same theme and mode always give the same CSS.
-func (t *theme) css(m mode) string {
+// themeSelector is one --theme-selector: the colors of mode (modeLight or modeDark) apply under selector.
+type themeSelector struct {
+	mode     mode
+	selector string
+}
+
+// cssOptions changes the shape of the CSS. In mode both, each of selectors adds a block with the colors of its
+// mode, after the switch with prefers-color-scheme (which stays), so that a site's own switch wins over the
+// device setting. noFrame leaves out the rule for the background and text color of pre.highlight (--no-frame).
+type cssOptions struct {
+	selectors []themeSelector
+	noFrame   bool
+}
+
+// css builds the CSS of the color theme in mode m. The same theme, mode and options always give the same CSS.
+func (t *theme) css(m mode, o cssOptions) string {
 	var b strings.Builder
 	b.WriteString("/*\n")
 	b.WriteString(" * color theme of fhl code blocks: " + t.label + ", " + modeNames[m] + " (--theme " + modeNames[m] + ":" + t.name + ")\n")
 	switch m {
 	case modeBoth:
 		b.WriteString(" * Light colors, switched to dark ones when the viewer's device prefers dark (prefers-color-scheme).\n")
+		for _, s := range o.selectors {
+			b.WriteString(" * Under " + s.selector + ", the " + modeNames[s.mode] + " colors (this wins over the device setting).\n")
+		}
 	case modeLight:
 		b.WriteString(" * Light colors only.\n")
 	case modeDark:
@@ -401,9 +418,21 @@ func (t *theme) css(m mode) string {
 		b.WriteString("@media (prefers-color-scheme: dark) {\n  :root {\n")
 		vars("    ", t.dark)
 		b.WriteString("  }\n}\n")
+		for _, s := range o.selectors {
+			p := t.light
+			if s.mode == modeDark {
+				p = t.dark
+			}
+			b.WriteString(s.selector + " {\n")
+			vars("  ", p)
+			b.WriteString("}\n")
+		}
 	}
-	b.WriteString("\n/* code block frame: background and plain text color */\n")
-	b.WriteString("pre.highlight { background-color: var(--highlight-background); color: var(--highlight-text); }\n")
+	b.WriteString("\n")
+	if !o.noFrame {
+		b.WriteString("/* code block frame: background and plain text color */\n")
+		b.WriteString("pre.highlight { background-color: var(--highlight-background); color: var(--highlight-text); }\n")
+	}
 	for _, c := range classRules {
 		b.WriteString("/* " + c.class + ": " + c.meaning + " (" + c.token + ") */\n")
 		b.WriteString("pre.highlight ." + c.class + " {")
