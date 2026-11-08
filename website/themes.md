@@ -48,7 +48,7 @@ The default theme, `default`, has fhl's own colors: Go's brand colors (Gopher Bl
 
 ## Samples
 
-The same code in each theme, in its light or dark colors, as this site is shown now (switch with the button at the top right).
+The same code in each theme.
 
 <!-- THEME-SAMPLES -->
 
