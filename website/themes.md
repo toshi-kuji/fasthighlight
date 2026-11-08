@@ -44,7 +44,7 @@ fhl --print-css --theme both:github \
 
 One selector can still match several things: `dark:':root[data-theme="dark"], .dark-mode'` puts the dark colors under both, as a comma does in CSS.
 
-The default theme, `default`, has fhl's own colors. Every color in it has a contrast ratio of at least 4.5 against its background (WCAG AA). The other themes copy the colors of the original themes as they are, so some of their colors have a lower contrast.
+The default theme, `default`, has fhl's own colors: Go's brand colors (Gopher Blue, Aqua, Fuchsia, Yellow) with pinks, and bold keywords. Every color in it has a contrast ratio of at least 6 against its background (above WCAG AA). The other themes copy the colors of the original themes as they are, so some of their colors have a lower contrast.
 
 <!-- THEMES -->
 

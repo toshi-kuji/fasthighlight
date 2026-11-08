@@ -147,6 +147,8 @@ type theme struct {
 	lightSource string // original color theme of the light colors (shown by --list-themes)
 	darkSource  string // original color theme of the dark colors
 	light, dark palette
+	// boldKeywords makes keywords (k, kd, kn, kp, kr) bold.
+	boldKeywords bool
 }
 
 // themes is the list of selectable color themes. --list-themes writes them in this order.
@@ -160,25 +162,28 @@ type theme struct {
 // themes, their versions and their licenses are listed in THIRD_PARTY_NOTICES.md.
 var themes = []*theme{
 	{
-		name:        "default",
-		label:       "default",
-		lightSource: "fhl's own colors",
-		darkSource:  "fhl's own colors",
+		name:         "default",
+		label:        "default",
+		lightSource:  "fhl's own colors",
+		darkSource:   "fhl's own colors",
+		boldKeywords: true,
+		// Go's brand colors (Gopher Blue, Aqua, Fuchsia, Yellow) with pinks; every color has a contrast ratio of at
+		// least 6 against its background (TestDefaultContrast).
 		light: palette{
-			"background": "#f6f7f9", "text": "#1e2430", "comment": "#5d6875", "keyword": "#a3195b",
-			"type": "#6a3fb5", "string": "#17663a", "escape": "#8a5a00", "number": "#9a4700",
-			"constant": "#9a4700", "function": "#1f55b8", "builtin": "#00707f", "variable": "#7a4b1f",
-			"attribute": "#7a4b1f", "tag": "#a3195b", "operator": "#5b4a8a", "punctuation": "#1e2430",
-			"preproc": "#7a5a00", "decorator": "#6a3fb5", "inserted": "#17663a", "deleted": "#b3261e",
-			"heading": "#1f55b8", "muted": "#5d6875", "error": "#b3261e",
+			"background": "#f7fbfd", "text": "#0f1b24", "comment": "#506273", "keyword": "#b81265",
+			"type": "#006981", "string": "#1c6d41", "escape": "#a3005f", "number": "#875500",
+			"constant": "#875500", "function": "#005f9e", "builtin": "#006c65", "variable": "#8a3a6a",
+			"attribute": "#8a3a6a", "tag": "#b81265", "operator": "#b0145e", "punctuation": "#33424f",
+			"preproc": "#735e00", "decorator": "#b81265", "inserted": "#1c6d41", "deleted": "#b8242b",
+			"heading": "#005f9e", "muted": "#506273", "error": "#b8242b",
 		},
 		dark: palette{
-			"background": "#1a1d23", "text": "#dde3ec", "comment": "#8f9aa8", "keyword": "#ff85b3",
-			"type": "#c7a6ff", "string": "#8bd49c", "escape": "#f0c674", "number": "#f5a96b",
-			"constant": "#f5a96b", "function": "#82b4ff", "builtin": "#5fd4df", "variable": "#e8c39e",
-			"attribute": "#e8c39e", "tag": "#ff85b3", "operator": "#b8a9e8", "punctuation": "#dde3ec",
-			"preproc": "#e6c36b", "decorator": "#c7a6ff", "inserted": "#8bd49c", "deleted": "#ff8a80",
-			"heading": "#82b4ff", "muted": "#8f9aa8", "error": "#ff8a80",
+			"background": "#0b1720", "text": "#e8f4f8", "comment": "#8ba3b3", "keyword": "#ff6eb0",
+			"type": "#4fe3d6", "string": "#a8e6a1", "escape": "#ffa3d2", "number": "#ffd966",
+			"constant": "#ffd966", "function": "#4fd2f5", "builtin": "#5dc9e2", "variable": "#f5b5d6",
+			"attribute": "#f5b5d6", "tag": "#ff6eb0", "operator": "#ff8cc4", "punctuation": "#b9cdd8",
+			"preproc": "#ffd966", "decorator": "#ff6eb0", "inserted": "#a8e6a1", "deleted": "#ff7d86",
+			"heading": "#4fd2f5", "muted": "#8ba3b3", "error": "#ff7d86",
 		},
 	},
 	{
@@ -441,6 +446,9 @@ func (t *theme) css(m mode, o cssOptions) string {
 		}
 		if c.extra != "" {
 			b.WriteString(" " + c.extra)
+		}
+		if t.boldKeywords && c.role == "keyword" && strings.HasPrefix(c.class, "k") {
+			b.WriteString(" font-weight: bold;")
 		}
 		b.WriteString(" }\n")
 	}
