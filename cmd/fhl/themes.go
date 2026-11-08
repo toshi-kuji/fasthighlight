@@ -167,22 +167,22 @@ var themes = []*theme{
 		lightSource:  "fhl's own colors",
 		darkSource:   "fhl's own colors",
 		boldKeywords: true,
-		// Go's brand colors (Gopher Blue, Aqua, Fuchsia, Yellow) with pinks; every color has a contrast ratio of at
+		// blues and aquas with purple keywords and operators; every color has a contrast ratio of at
 		// least 6 against its background (TestDefaultContrast).
 		light: palette{
-			"background": "#f7fbfd", "text": "#0f1b24", "comment": "#506273", "keyword": "#b81265",
-			"type": "#006981", "string": "#1c6d41", "escape": "#a3005f", "number": "#875500",
-			"constant": "#875500", "function": "#005f9e", "builtin": "#006c65", "variable": "#8a3a6a",
-			"attribute": "#8a3a6a", "tag": "#b81265", "operator": "#b0145e", "punctuation": "#33424f",
-			"preproc": "#735e00", "decorator": "#b81265", "inserted": "#1c6d41", "deleted": "#b8242b",
+			"background": "#f7fbfd", "text": "#0f1b24", "comment": "#506273", "keyword": "#8a1fd6",
+			"type": "#006981", "string": "#1c6d41", "escape": "#6a1fb0", "number": "#875500",
+			"constant": "#875500", "function": "#005f9e", "builtin": "#006c65", "variable": "#73409e",
+			"attribute": "#73409e", "tag": "#8a1fd6", "operator": "#8a1fd6", "punctuation": "#33424f",
+			"preproc": "#735e00", "decorator": "#8a1fd6", "inserted": "#1c6d41", "deleted": "#b8242b",
 			"heading": "#005f9e", "muted": "#506273", "error": "#b8242b",
 		},
 		dark: palette{
-			"background": "#0b1720", "text": "#e8f4f8", "comment": "#8ba3b3", "keyword": "#ff6eb0",
-			"type": "#4fe3d6", "string": "#a8e6a1", "escape": "#ffa3d2", "number": "#ffd966",
-			"constant": "#ffd966", "function": "#4fd2f5", "builtin": "#5dc9e2", "variable": "#f5b5d6",
-			"attribute": "#f5b5d6", "tag": "#ff6eb0", "operator": "#ff8cc4", "punctuation": "#b9cdd8",
-			"preproc": "#ffd966", "decorator": "#ff6eb0", "inserted": "#a8e6a1", "deleted": "#ff7d86",
+			"background": "#0b1720", "text": "#e8f4f8", "comment": "#8ba3b3", "keyword": "#c77dff",
+			"type": "#4fe3d6", "string": "#a8e6a1", "escape": "#e0b3ff", "number": "#ffd966",
+			"constant": "#ffd966", "function": "#4fd2f5", "builtin": "#5dc9e2", "variable": "#d9b8ff",
+			"attribute": "#d9b8ff", "tag": "#c77dff", "operator": "#c77dff", "punctuation": "#b9cdd8",
+			"preproc": "#ffd966", "decorator": "#c77dff", "inserted": "#a8e6a1", "deleted": "#ff7d86",
 			"heading": "#4fd2f5", "muted": "#8ba3b3", "error": "#ff7d86",
 		},
 	},
