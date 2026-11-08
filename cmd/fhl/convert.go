@@ -131,7 +131,7 @@ func renderRawHTML(w util.BufWriter, src []byte, node ast.Node, entering bool) (
 // Leading front matter (the part enclosed in ---) is skipped. Line numbers are counted in the original src.
 func convertMarkdown(md goldmark.Markdown, name string, src []byte) (*converted, error) {
 	body, offset := stripFrontMatter(src)
-	doc := md.Parser().Parse(text.NewReader(body))
+	doc := md.Parser().Parse(text.NewReader(body), parser.WithContext(parseContext()))
 	c := &converted{}
 	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
