@@ -89,7 +89,7 @@ fhl --static-site --theme light --html-lang ja -o dist/ docs/
 
 - **Pages.** Each Markdown file becomes a page that starts with `<!DOCTYPE html>`, `<html lang="en">` (change it with `--html-lang`), the charset, the viewport, a `<title>` (the first heading, or the file name) and a link to `highlight.css`.
 - **One style sheet.** `highlight.css` is written once, at the top of the output, and every page links to it with a relative path, so the site works in any folder (such as `https://user.github.io/project/`).
-- **Heading ids.** Headings get ids (with `--single-html` too), so you can link to sections: `## Results and exit status` becomes `results-and-exit-status`. A second heading with the same text gets `-1` added. A heading with no ASCII letters or digits (for example, only Japanese) becomes `heading`, `heading-1` and so on.
+- **Heading ids.** Headings get ids (with `--single-html` too), so you can link to sections: `## Results and exit status` becomes `results-and-exit-status`. A second heading with the same text gets `-1` added. Letters and digits of other scripts are kept, as on GitHub: `## インストール` becomes `インストール`. A heading with no letters or digits at all becomes `heading`.
 - **Links between pages.** Relative links to Markdown files are rewritten to the pages: `[setup](guide.md#setup)` becomes `guide.html#setup`. Links that start with a scheme (`https:`), `/` or `#` are left alone.
 - **Other files.** Images and any other files in the folder are copied to the same place in the output. Files and folders whose names start with `.` are skipped.
 
@@ -107,7 +107,7 @@ fhl --static-site --theme light --html-lang ja -o dist/ docs/
 - **Write raw HTML only if you need it, and turn it on.** By default, HTML tags in Markdown are shown as text. For your own trusted pages, add `--raw-html unsafe`.
 - **Choose the code colors for your site.** Without `--theme`, code blocks switch to dark colors when the viewer's device prefers dark (`both:default`). For a light-only site, add `--theme light`. See [Themes and CSS](themes.html).
 - **Keep names apart.** A file that would be copied onto a page or onto `highlight.css` is not copied, and `fhl` reports an error: for example `guide.html` next to `guide.md`, or your own `highlight.css` at the top of the folder.
-- **Link to sections by the English heading text.** For headings in other scripts, the ids are `heading`, `heading-1` and so on, which change when you add headings.
+- **Link to sections by the heading text.** `[Install](#install)`, or `[インストール](#インストール)` for a heading in Japanese. Punctuation is dropped from ids (`使い方（基本）` becomes `使い方基本`).
 - **Use `-o DIR/`.** Without `-o`, pages are written next to the Markdown files, `highlight.css` at the top of the folder, and nothing is copied. Converting again overwrites only after asking (or with `--force`); files whose content did not change are left alone.
 - **Check first, if you like.** `fhl --static-site --check docs/` writes nothing and only lists code blocks that will not be colored.
 

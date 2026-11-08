@@ -873,7 +873,7 @@ func TestStaticSite(t *testing.T) {
 	}
 	intro := readFile(t, "dist/guide/intro.html")
 	for _, s := range []string{
-		`<link rel="stylesheet" href="../highlight.css">`, `<h2 id="setup">Setup</h2>`, `<h2 id="heading">日本語</h2>`,
+		`<link rel="stylesheet" href="../highlight.css">`, `<h2 id="setup">Setup</h2>`, `<h2 id="日本語">日本語</h2>`,
 		`<a href="../index.html">home</a>`, `<a href="https://example.com/a.md">ext</a>`, `<a href="#intro">top</a>`,
 	} {
 		if !strings.Contains(intro, s) {
