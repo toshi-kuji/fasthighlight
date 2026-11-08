@@ -153,7 +153,7 @@ func run(args []string, e env) int {
 	if len(jobs) == 1 {
 		parallel = markdown.ParallelAuto
 	}
-	css := th.css(thMode)
+	css := th.css(thMode, cssOptions{o.darkSel, o.noFrame})
 	type result struct {
 		c   *converted
 		err error
@@ -330,6 +330,8 @@ func checkOptions(o *options) string {
 		return fmt.Sprintf("fhl: --raw-html must be escape, omit or unsafe, not %q", o.rawHTML)
 	case themeError(o.theme) != "":
 		return themeError(o.theme)
+	case darkSelectorError(o) != "":
+		return darkSelectorError(o)
 	case o.lang != "" && fh.LookupRegistered(o.lang) == nil:
 		return fmt.Sprintf("fhl: unknown language %q for --lang; see fhl --list-langs", o.lang)
 	case o.jobs < 1:
@@ -353,8 +355,8 @@ func checkOptions(o *options) string {
 		return ""
 	case o.json && o.outSet && o.out == "-":
 		return "fhl: --json cannot be used with -o -"
-	case o.themeSet && o.outSet && o.out == "-" && !o.single:
-		return "fhl: --theme has no effect with -o - unless --single-html is also given, because no CSS is written; for only the CSS, use --print-css"
+	case cssFlag(o) != "" && o.outSet && o.out == "-" && !o.single:
+		return "fhl: " + cssFlag(o) + " has no effect with -o - unless --single-html is also given, because no CSS is written; for only the CSS, use --print-css"
 	}
 	return ""
 }
@@ -427,9 +429,41 @@ func isLangTag(s string) bool {
 	return true
 }
 
+// cssFlag returns the first flag given that only changes the CSS, or "".
+func cssFlag(o *options) string {
+	switch {
+	case o.themeSet:
+		return "--theme"
+	case o.darkSelSet:
+		return "--dark-selector"
+	case o.noFrame:
+		return "--no-frame"
+	}
+	return ""
+}
+
+// darkSelectorError returns the error message for --dark-selector, or "" if it is valid or not given. The
+// selector is written into the CSS as is (also inside <style> with --single-html), so braces, ; and < are
+// refused.
+func darkSelectorError(o *options) string {
+	if !o.darkSelSet {
+		return ""
+	}
+	if strings.TrimSpace(o.darkSel) == "" || strings.ContainsAny(o.darkSel, "{};<\n") {
+		return fmt.Sprintf("fhl: --dark-selector must be a CSS selector such as :root[data-theme=dark], not %q", o.darkSel)
+	}
+	if _, m, _ := parseTheme(o.theme); m != modeBoth {
+		return "fhl: --dark-selector is only for --theme both (the default), which writes light and dark colors"
+	}
+	return ""
+}
+
 // printCSS writes only the CSS of --theme to standard output (--print-css) and returns the exit code.
 func printCSS(o *options, e env) int {
 	msg := themeError(o.theme)
+	if msg == "" {
+		msg = darkSelectorError(o)
+	}
 	switch {
 	case msg != "":
 	case len(o.inputs) > 0:
@@ -444,7 +478,7 @@ func printCSS(o *options, e env) int {
 		return 1
 	}
 	th, m, _ := parseTheme(o.theme)
-	if _, err := io.WriteString(e.stdout, th.css(m)); err != nil {
+	if _, err := io.WriteString(e.stdout, th.css(m, cssOptions{o.darkSel, o.noFrame})); err != nil {
 		fmt.Fprintf(e.stderr, "fhl: cannot write the CSS: %v\n", err)
 		return 1
 	}

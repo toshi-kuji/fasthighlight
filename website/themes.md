@@ -22,7 +22,13 @@ Every theme has light and dark colors. `--theme MODE:THEME` chooses which to wri
 | `dark` | the dark colors only |
 | `both` | the light colors, switched to the dark ones when the viewer's device prefers dark (`prefers-color-scheme`) |
 
-`THEME` can be left out for `default`; without `--theme`, it is `both:default`. `both` follows the viewer's device setting only. If your site has its own light and dark switch, connecting the colors to it is up to you.
+`THEME` can be left out for `default`; without `--theme`, it is `both:default`. `both` follows the viewer's device setting by default.
+
+For a site with its own light and dark switch, `--dark-selector` puts the dark colors under your selector instead of `prefers-color-scheme`: with `--dark-selector ':root[data-theme="dark"]'`, they apply while `<html data-theme="dark">` is set. `--no-frame` leaves out the background and text color of `pre.highlight`, so that your own styles for code blocks apply.
+
+```sh
+fhl --print-css --theme both:github --dark-selector ':root[data-theme="dark"]' --no-frame > highlight.css
+```
 
 The default theme, `default`, has fhl's own colors. Every color in it has a contrast ratio of at least 4.5 against its background (WCAG AA). The other themes copy the colors of the original themes as they are, so some of their colors have a lower contrast.
 

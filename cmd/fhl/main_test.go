@@ -70,7 +70,7 @@ func TestDefaultWritesNextToInput(t *testing.T) {
 	if got := readFile(t, "README.html"); got != readmeHTML {
 		t.Errorf("README.html:\n%s", got)
 	}
-	if got := readFile(t, "highlight.css"); got != lookupTheme("default").css(modeBoth) {
+	if got := readFile(t, "highlight.css"); got != lookupTheme("default").css(modeBoth, cssOptions{}) {
 		t.Errorf("highlight.css differs")
 	}
 	if !strings.HasPrefix(stderr, "fhl: 1 files, 1 code blocks (0 uncolored) in ") {
@@ -166,7 +166,7 @@ func TestStdout(t *testing.T) {
 		t.Errorf("-o - wrote a file")
 	}
 	code, stdout, _ = fhlRun(t, "", "", false, "--single-html", "-o", "-", "README.md")
-	want := "<!DOCTYPE html>\n<meta charset=\"utf-8\">\n<title>Usage</title>\n<style>\n" + lookupTheme("default").css(modeBoth) + "</style>\n" +
+	want := "<!DOCTYPE html>\n<meta charset=\"utf-8\">\n<title>Usage</title>\n<style>\n" + lookupTheme("default").css(modeBoth, cssOptions{}) + "</style>\n" +
 		strings.Replace(readmeHTML, "<h1>", `<h1 id="usage">`, 1) // a standalone page: headings get ids
 	if code != 0 || stdout != want {
 		t.Errorf("--single-html -o -: code %d\n%s", code, stdout)
@@ -199,7 +199,7 @@ func TestSingleHTML(t *testing.T) {
 		t.Errorf("README.html: no heading id:\n%s", got)
 	}
 	got := readFile(t, "plain.html")
-	want := "<!DOCTYPE html>\n<meta charset=\"utf-8\">\n<title>plain.md</title>\n<style>\n" + lookupTheme("default").css(modeBoth) + "</style>\n<p>no heading &lt;b&gt;x&lt;/b&gt;</p>\n"
+	want := "<!DOCTYPE html>\n<meta charset=\"utf-8\">\n<title>plain.md</title>\n<style>\n" + lookupTheme("default").css(modeBoth, cssOptions{}) + "</style>\n<p>no heading &lt;b&gt;x&lt;/b&gt;</p>\n"
 	if got != want {
 		t.Errorf("plain.html:\n%s", got)
 	}
@@ -745,7 +745,7 @@ func TestThemeFlag(t *testing.T) {
 	for _, th := range themes {
 		for m, mn := range modeNames {
 			v := "--theme=" + mn + ":" + th.name
-			css := th.css(mode(m))
+			css := th.css(mode(m), cssOptions{})
 			code, out, stderr := fhlRun(t, "", "", false, v, "--single-html", "-o", "-", "a.md")
 			if code != 0 || !strings.Contains(out, css) {
 				t.Errorf("%s: code %d, %s", v, code, stderr)
@@ -758,8 +758,8 @@ func TestThemeFlag(t *testing.T) {
 	// The theme can be left out (default), and default can be written.
 	def := lookupTheme("default")
 	for v, want := range map[string]string{
-		"--theme=light": def.css(modeLight), "--theme=light:": def.css(modeLight), "--theme=light:default": def.css(modeLight),
-		"--theme=dark": def.css(modeDark), "--theme=both": def.css(modeBoth),
+		"--theme=light": def.css(modeLight, cssOptions{}), "--theme=light:": def.css(modeLight, cssOptions{}), "--theme=light:default": def.css(modeLight, cssOptions{}),
+		"--theme=dark": def.css(modeDark, cssOptions{}), "--theme=both": def.css(modeBoth, cssOptions{}),
 	} {
 		if code, out, stderr := fhlRun(t, "", "", false, v, "--single-html", "-o", "-", "a.md"); code != 0 || !strings.Contains(out, want) {
 			t.Errorf("%s: code %d, %s", v, code, stderr)
@@ -793,7 +793,7 @@ func TestThemeFlag(t *testing.T) {
 // prefers-color-scheme; light and dark have only their own colors, with no switching.
 func TestThemeModes(t *testing.T) {
 	for _, th := range themes {
-		both, light, dark := th.css(modeBoth), th.css(modeLight), th.css(modeDark)
+		both, light, dark := th.css(modeBoth, cssOptions{}), th.css(modeLight, cssOptions{}), th.css(modeDark, cssOptions{})
 		bg := func(p palette) string { return "--highlight-background: " + p["background"] + ";" }
 		if !strings.Contains(both, bg(th.light)) || !strings.Contains(both, "@media (prefers-color-scheme: dark)") || !strings.Contains(both, bg(th.dark)) {
 			t.Errorf("%s: both lacks light or dark colors", th.name)
@@ -822,7 +822,7 @@ func TestCSS(t *testing.T) {
 			}
 		}
 		for m := range modeNames {
-			css := th.css(mode(m))
+			css := th.css(mode(m), cssOptions{})
 			for _, c := range classRules {
 				sel := "pre.highlight ." + c.class + " {"
 				if !strings.Contains(css, "/* "+c.class+": ") || !strings.Contains(css, sel) {
@@ -841,7 +841,7 @@ func TestCSS(t *testing.T) {
 					}
 				}
 			}
-			if css != th.css(mode(m)) {
+			if css != th.css(mode(m), cssOptions{}) {
 				t.Errorf("%s: CSS is not deterministic", th.name)
 			}
 		}
@@ -882,7 +882,7 @@ func TestStaticSite(t *testing.T) {
 	if strings.Contains(intro, "title: x") {
 		t.Errorf("front matter was written")
 	}
-	if readFile(t, "dist/highlight.css") != lookupTheme("default").css(modeBoth) {
+	if readFile(t, "dist/highlight.css") != lookupTheme("default").css(modeBoth, cssOptions{}) {
 		t.Errorf("highlight.css differs")
 	}
 	if _, err := os.Stat("dist/guide/highlight.css"); err == nil {
@@ -906,7 +906,7 @@ func TestStaticSite(t *testing.T) {
 
 	// --html-lang and --theme.
 	if code, _, stderr := fhlRun(t, "", "", false, "--static-site", "--force", "--html-lang", "ja", "--theme=light", "-o", "dist/", "site"); code != 0 ||
-		!strings.Contains(readFile(t, "dist/index.html"), `<html lang="ja">`) || readFile(t, "dist/highlight.css") != lookupTheme("default").css(modeLight) {
+		!strings.Contains(readFile(t, "dist/index.html"), `<html lang="ja">`) || readFile(t, "dist/highlight.css") != lookupTheme("default").css(modeLight, cssOptions{}) {
 		t.Errorf("--html-lang ja --theme=light: code %d, %s", code, stderr)
 	}
 
@@ -1194,6 +1194,61 @@ func TestPrintCSS(t *testing.T) {
 		{[]string{"--print-css", "--json"}, "fhl: --json cannot be used with --print-css"},
 		{[]string{"--print-css", "--theme", "nope"}, "fhl: --theme must be MODE or MODE:THEME"},
 		{[]string{"-o", "-", "--theme", "dark", "a.md"}, "for only the CSS, use --print-css"},
+	} {
+		if code, _, stderr := fhlRun(t, "", "", false, tt.args...); code != 1 || !strings.Contains(stderr, tt.want) {
+			t.Errorf("%v: code %d, %q", tt.args, code, stderr)
+		}
+	}
+}
+
+// TestDarkSelector checks --dark-selector and --no-frame: the shape of the CSS, where they apply, and the errors.
+func TestDarkSelector(t *testing.T) {
+	dir := t.TempDir()
+	writeFiles(t, dir, map[string]string{"a.md": "# a\n"})
+	t.Chdir(dir)
+	def := lookupTheme("default")
+	code, out, stderr := fhlRun(t, "", "", false, "--print-css", "--dark-selector", `:root[data-theme="dark"]`)
+	if code != 0 {
+		t.Fatalf("code %d, %s", code, stderr)
+	}
+	want := def.css(modeBoth, cssOptions{darkSelector: `:root[data-theme="dark"]`})
+	if out != want || !strings.Contains(out, ":root[data-theme=\"dark\"] {\n  --highlight-") || strings.Contains(out, "@media") {
+		t.Errorf("--dark-selector CSS:\n%s", out)
+	}
+	if !strings.Contains(out, "pre.highlight { background-color") {
+		t.Errorf("the frame rule is missing without --no-frame")
+	}
+	_, out, _ = fhlRun(t, "", "", false, "--print-css", "--no-frame")
+	if strings.Contains(out, "pre.highlight {") || !strings.Contains(out, "@media (prefers-color-scheme: dark)") ||
+		!strings.Contains(out, "pre.highlight .kd {") {
+		t.Errorf("--no-frame CSS:\n%s", out)
+	}
+	// The default CSS does not change.
+	_, out, _ = fhlRun(t, "", "", false, "--print-css")
+	if out != def.css(modeBoth, cssOptions{}) || !strings.Contains(out, "@media (prefers-color-scheme: dark)") {
+		t.Errorf("default CSS changed")
+	}
+	// highlight.css and --single-html get the same CSS.
+	if code, _, stderr := fhlRun(t, "", "", false, "-q", "--force", "--dark-selector", ".dark", "--no-frame", "a.md"); code != 0 {
+		t.Fatalf("code %d, %s", code, stderr)
+	}
+	if b, _ := os.ReadFile("highlight.css"); string(b) != def.css(modeBoth, cssOptions{".dark", true}) {
+		t.Errorf("highlight.css:\n%s", b)
+	}
+	if _, out, _ := fhlRun(t, "", "", false, "--single-html", "-o", "-", "--dark-selector", ".dark", "a.md"); !strings.Contains(out, "\n.dark {\n") {
+		t.Errorf("--single-html:\n%s", out)
+	}
+	for _, tt := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"--print-css", "--dark-selector", "a{b"}, `fhl: --dark-selector must be a CSS selector such as :root[data-theme=dark], not "a{b"`},
+		{[]string{"--print-css", "--dark-selector", "x</style>"}, "fhl: --dark-selector must be a CSS selector"},
+		{[]string{"--print-css", "--dark-selector", " "}, "fhl: --dark-selector must be a CSS selector"},
+		{[]string{"--theme", "light", "--dark-selector", ".dark", "a.md"}, "fhl: --dark-selector is only for --theme both (the default)"},
+		{[]string{"a.md", "--dark-selector"}, "fhl: --dark-selector needs a value: a CSS selector such as :root[data-theme=dark]"},
+		{[]string{"-o", "-", "--no-frame", "a.md"}, "fhl: --no-frame has no effect with -o -"},
+		{[]string{"-o", "-", "--dark-selector", ".dark", "a.md"}, "fhl: --dark-selector has no effect with -o -"},
 	} {
 		if code, _, stderr := fhlRun(t, "", "", false, tt.args...); code != 1 || !strings.Contains(stderr, tt.want) {
 			t.Errorf("%v: code %d, %q", tt.args, code, stderr)

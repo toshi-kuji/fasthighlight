@@ -61,7 +61,7 @@ fhl --theme dark:tokyo-night docs/   # Tokyo Night, dark colors only
 fhl --theme both:github docs/        # GitHub, light or dark by the viewer's device
 ```
 
-`both` follows the viewer's device setting only. If your site has its own light and dark switch, connect the colors to it yourself.
+`both` follows the viewer's device setting. If your site has its own light and dark switch, add `--dark-selector ':root[data-theme="dark"]'` (or your own selector) to put the dark colors under it.
 
 More: [Themes and CSS](themes.html), `fhl --list-themes`
 

@@ -370,13 +370,25 @@ func parseTheme(v string) (*theme, mode, string) {
 }
 
 // css builds the CSS of the color theme in mode m. The same theme and mode always give the same CSS.
-func (t *theme) css(m mode) string {
+// cssOptions changes the shape of the CSS: darkSelector puts the dark colors of mode both under a selector
+// instead of prefers-color-scheme (--dark-selector), and noFrame leaves out the rule for the background and
+// text color of pre.highlight (--no-frame).
+type cssOptions struct {
+	darkSelector string
+	noFrame      bool
+}
+
+func (t *theme) css(m mode, o cssOptions) string {
 	var b strings.Builder
 	b.WriteString("/*\n")
 	b.WriteString(" * color theme of fhl code blocks: " + t.label + ", " + modeNames[m] + " (--theme " + modeNames[m] + ":" + t.name + ")\n")
 	switch m {
 	case modeBoth:
-		b.WriteString(" * Light colors, switched to dark ones when the viewer's device prefers dark (prefers-color-scheme).\n")
+		if o.darkSelector != "" {
+			b.WriteString(" * Light colors, switched to dark ones under " + o.darkSelector + ".\n")
+		} else {
+			b.WriteString(" * Light colors, switched to dark ones when the viewer's device prefers dark (prefers-color-scheme).\n")
+		}
 	case modeLight:
 		b.WriteString(" * Light colors only.\n")
 	case modeDark:
@@ -397,13 +409,21 @@ func (t *theme) css(m mode) string {
 	b.WriteString(":root {\n")
 	vars("  ", first)
 	b.WriteString("}\n")
-	if m == modeBoth {
+	switch {
+	case m == modeBoth && o.darkSelector != "":
+		b.WriteString(o.darkSelector + " {\n")
+		vars("  ", t.dark)
+		b.WriteString("}\n")
+	case m == modeBoth:
 		b.WriteString("@media (prefers-color-scheme: dark) {\n  :root {\n")
 		vars("    ", t.dark)
 		b.WriteString("  }\n}\n")
 	}
-	b.WriteString("\n/* code block frame: background and plain text color */\n")
-	b.WriteString("pre.highlight { background-color: var(--highlight-background); color: var(--highlight-text); }\n")
+	b.WriteString("\n")
+	if !o.noFrame {
+		b.WriteString("/* code block frame: background and plain text color */\n")
+		b.WriteString("pre.highlight { background-color: var(--highlight-background); color: var(--highlight-text); }\n")
+	}
 	for _, c := range classRules {
 		b.WriteString("/* " + c.class + ": " + c.meaning + " (" + c.token + ") */\n")
 		b.WriteString("pre.highlight ." + c.class + " {")
