@@ -1,11 +1,20 @@
 name: Pages
 
 # Build the documentation site with website/build.sh (fhl --static-site) and publish it on GitHub Pages,
-# every time main changes, or by hand (Actions → Pages → Run workflow).
+# when main changes in a file the site is built from, or by hand (Actions → Pages → Run workflow).
+# The paths are what build.sh reads: website/, the Go code of fhl (cmd/fhl and the packages it uses, so any
+# .go file), go.mod and go.sum, and assets/ (the logo). When build.sh starts reading more files, add them here.
 # The repository's Pages settings must use "GitHub Actions" as the source (Settings → Pages → Build and deployment).
 on:
   push:
     branches: [main]
+    paths:
+      - 'website/**'
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'assets/**'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
