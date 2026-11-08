@@ -170,11 +170,11 @@ var themes = []*theme{
 		// Blues and aquas, with keywords set apart by bold (navy in light, the text color in dark). Every color has a
 		// contrast ratio of at least 6 against its background (TestDefaultContrast).
 		light: palette{
-			"background": "#f7fbfd", "text": "#0f1b24", "comment": "#506273", "keyword": "#1e3a8a",
-			"type": "#006981", "string": "#1c6d41", "escape": "#2348a8", "number": "#875500",
+			"background": "#f7fbfd", "text": "#0f1b24", "comment": "#506273", "keyword": "#2348a8",
+			"type": "#006981", "string": "#1c6d41", "escape": "#1e3a8a", "number": "#875500",
 			"constant": "#875500", "function": "#005f9e", "builtin": "#006c65", "variable": "#3d5a80",
-			"attribute": "#3d5a80", "tag": "#1e3a8a", "operator": "#33424f", "punctuation": "#33424f",
-			"preproc": "#735e00", "decorator": "#1e3a8a", "inserted": "#1c6d41", "deleted": "#b8242b",
+			"attribute": "#3d5a80", "tag": "#2348a8", "operator": "#33424f", "punctuation": "#33424f",
+			"preproc": "#735e00", "decorator": "#2348a8", "inserted": "#1c6d41", "deleted": "#b8242b",
 			"heading": "#005f9e", "muted": "#506273", "error": "#b8242b",
 		},
 		dark: palette{
