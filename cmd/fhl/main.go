@@ -153,7 +153,7 @@ func run(args []string, e env) int {
 	if len(jobs) == 1 {
 		parallel = markdown.ParallelAuto
 	}
-	css := th.css(thMode, cssOptions{o.darkSel, o.noFrame})
+	css := th.css(thMode, cssOptionsOf(o))
 	type result struct {
 		c   *converted
 		err error
@@ -330,8 +330,8 @@ func checkOptions(o *options) string {
 		return fmt.Sprintf("fhl: --raw-html must be escape, omit or unsafe, not %q", o.rawHTML)
 	case themeError(o.theme) != "":
 		return themeError(o.theme)
-	case darkSelectorError(o) != "":
-		return darkSelectorError(o)
+	case themeSelectorError(o) != "":
+		return themeSelectorError(o)
 	case o.lang != "" && fh.LookupRegistered(o.lang) == nil:
 		return fmt.Sprintf("fhl: unknown language %q for --lang; see fhl --list-langs", o.lang)
 	case o.jobs < 1:
@@ -434,26 +434,56 @@ func cssFlag(o *options) string {
 	switch {
 	case o.themeSet:
 		return "--theme"
-	case o.darkSelSet:
-		return "--dark-selector"
+	case o.themeSelSet:
+		return "--theme-selector"
 	case o.noFrame:
 		return "--no-frame"
 	}
 	return ""
 }
 
-// darkSelectorError returns the error message for --dark-selector, or "" if it is valid or not given. The
+// parseThemeSelector reads the value of --theme-selector (MODE:SELECTOR). It splits at the first colon, so
+// dark::root[data-theme="dark"] (as the shell passes dark:':root[data-theme="dark"]') is dark and
+// :root[data-theme="dark"].
+func parseThemeSelector(v string) (mode, string, bool) {
+	ms, sel, ok := strings.Cut(v, ":")
+	if !ok {
+		return 0, "", false
+	}
+	switch ms {
+	case "light":
+		return modeLight, sel, true
+	case "dark":
+		return modeDark, sel, true
+	}
+	return 0, "", false
+}
+
+// cssOptionsOf returns the shape of the CSS that the flags ask for.
+func cssOptionsOf(o *options) cssOptions {
+	c := cssOptions{noFrame: o.noFrame}
+	if o.themeSelSet {
+		c.switchTo, c.selector, _ = parseThemeSelector(o.themeSel)
+	}
+	return c
+}
+
+// themeSelectorError returns the error message for --theme-selector, or "" if it is valid or not given. The
 // selector is written into the CSS as is (also inside <style> with --single-html), so braces, ; and < are
 // refused.
-func darkSelectorError(o *options) string {
-	if !o.darkSelSet {
+func themeSelectorError(o *options) string {
+	if !o.themeSelSet {
 		return ""
 	}
-	if strings.TrimSpace(o.darkSel) == "" || strings.ContainsAny(o.darkSel, "{};<\n") {
-		return fmt.Sprintf("fhl: --dark-selector must be a CSS selector such as :root[data-theme=dark], not %q", o.darkSel)
+	_, sel, ok := parseThemeSelector(o.themeSel)
+	if !ok {
+		return fmt.Sprintf("fhl: --theme-selector must start with dark: or light:, then a CSS selector, such as dark:':root[data-theme=\"dark\"]', not %q", o.themeSel)
+	}
+	if strings.TrimSpace(sel) == "" || strings.ContainsAny(sel, "{};<\n") {
+		return fmt.Sprintf("fhl: --theme-selector needs a CSS selector after the mode, such as dark:':root[data-theme=\"dark\"]', not %q", o.themeSel)
 	}
 	if _, m, _ := parseTheme(o.theme); m != modeBoth {
-		return "fhl: --dark-selector is only for --theme both (the default), which writes light and dark colors"
+		return "fhl: --theme-selector is only for --theme both (the default), which writes light and dark colors"
 	}
 	return ""
 }
@@ -462,7 +492,7 @@ func darkSelectorError(o *options) string {
 func printCSS(o *options, e env) int {
 	msg := themeError(o.theme)
 	if msg == "" {
-		msg = darkSelectorError(o)
+		msg = themeSelectorError(o)
 	}
 	switch {
 	case msg != "":
@@ -478,7 +508,7 @@ func printCSS(o *options, e env) int {
 		return 1
 	}
 	th, m, _ := parseTheme(o.theme)
-	if _, err := io.WriteString(e.stdout, th.css(m, cssOptions{o.darkSel, o.noFrame})); err != nil {
+	if _, err := io.WriteString(e.stdout, th.css(m, cssOptionsOf(o))); err != nil {
 		fmt.Fprintf(e.stderr, "fhl: cannot write the CSS: %v\n", err)
 		return 1
 	}

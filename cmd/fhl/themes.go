@@ -370,12 +370,14 @@ func parseTheme(v string) (*theme, mode, string) {
 }
 
 // css builds the CSS of the color theme in mode m. The same theme and mode always give the same CSS.
-// cssOptions changes the shape of the CSS: darkSelector puts the dark colors of mode both under a selector
-// instead of prefers-color-scheme (--dark-selector), and noFrame leaves out the rule for the background and
+// cssOptions changes the shape of the CSS: with a selector (--theme-selector), mode both writes the colors of
+// switchTo under it, and the other colors as the base, instead of switching to dark with prefers-color-scheme.
+// noFrame leaves out the rule for the background and
 // text color of pre.highlight (--no-frame).
 type cssOptions struct {
-	darkSelector string
-	noFrame      bool
+	switchTo mode   // modeLight or modeDark, with selector
+	selector string // the CSS selector of --theme-selector, or ""
+	noFrame  bool
 }
 
 func (t *theme) css(m mode, o cssOptions) string {
@@ -384,9 +386,12 @@ func (t *theme) css(m mode, o cssOptions) string {
 	b.WriteString(" * color theme of fhl code blocks: " + t.label + ", " + modeNames[m] + " (--theme " + modeNames[m] + ":" + t.name + ")\n")
 	switch m {
 	case modeBoth:
-		if o.darkSelector != "" {
-			b.WriteString(" * Light colors, switched to dark ones under " + o.darkSelector + ".\n")
-		} else {
+		switch {
+		case o.selector != "" && o.switchTo == modeLight:
+			b.WriteString(" * Dark colors, switched to light ones under " + o.selector + ".\n")
+		case o.selector != "":
+			b.WriteString(" * Light colors, switched to dark ones under " + o.selector + ".\n")
+		default:
 			b.WriteString(" * Light colors, switched to dark ones when the viewer's device prefers dark (prefers-color-scheme).\n")
 		}
 	case modeLight:
@@ -402,17 +407,17 @@ func (t *theme) css(m mode, o cssOptions) string {
 			b.WriteString(indent + "--highlight-" + r.name + ": " + p[r.name] + "; /* " + r.comment + " */\n")
 		}
 	}
-	first := t.light
-	if m == modeDark {
-		first = t.dark
+	first, second := t.light, t.dark
+	if m == modeDark || m == modeBoth && o.selector != "" && o.switchTo == modeLight {
+		first, second = t.dark, t.light
 	}
 	b.WriteString(":root {\n")
 	vars("  ", first)
 	b.WriteString("}\n")
 	switch {
-	case m == modeBoth && o.darkSelector != "":
-		b.WriteString(o.darkSelector + " {\n")
-		vars("  ", t.dark)
+	case m == modeBoth && o.selector != "":
+		b.WriteString(o.selector + " {\n")
+		vars("  ", second)
 		b.WriteString("}\n")
 	case m == modeBoth:
 		b.WriteString("@media (prefers-color-scheme: dark) {\n  :root {\n")

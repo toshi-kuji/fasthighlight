@@ -152,7 +152,7 @@ Before converting, `fhl` compares every input and every file it would write.
 | `--strict` | exit with 2 if a code block is not colored |
 | `--json` | print the result as JSON on standard output |
 | `--list-langs`, `--list-themes` | print the languages or themes (JSON with `--json`) |
-| `--dark-selector SEL` | with `--theme both`, the dark colors apply under the CSS selector `SEL` (such as `:root[data-theme="dark"]`) instead of `prefers-color-scheme` |
+| `--theme-selector MODE:SELECTOR` | with `--theme both`, switch to the `MODE` colors (`light` or `dark`) under the CSS selector instead of with `prefers-color-scheme`, such as `dark:':root[data-theme="dark"]'` ([Themes and CSS](themes.html)) |
 | `--no-frame` | leave out the background and text color of `pre.highlight` in the CSS |
 | `--print-css` | write only the CSS of `--theme` to standard output, without converting anything (`fhl --print-css > highlight.css`) |
 
