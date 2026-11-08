@@ -38,9 +38,9 @@ type Options struct {
 	// the same as \w, so a name can also start with a digit). If false, it is a word character other than
 	// digits, as the rule intends.
 	ChromaIdent bool
-	// ChromaFieldTypes, if true, leaves the names in the types of struct fields as NameOther, as Chroma
-	// does. If false, they get the type color (fields.go).
-	ChromaFieldTypes bool
+	// ChromaTypeNames, if true, leaves the names in type positions (struct fields, declarations,
+	// parameters and results) as NameOther, as Chroma does. If false, they get the type color (types.go).
+	ChromaTypeNames bool
 }
 
 type lexer struct {
@@ -57,8 +57,8 @@ func Lex(src string, end int, o Options) []fh.Token {
 	x := lexkit.NewTokens(src)
 	raws := lexInto(x, src, end, o)
 	toks := x.Result()
-	if !o.ChromaFieldTypes {
-		markFieldTypes(toks, raws)
+	if !o.ChromaTypeNames {
+		markTypes(toks, raws)
 	}
 	return toks
 }

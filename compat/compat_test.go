@@ -186,9 +186,10 @@ const phpTags = "PHP <?php and ?> are CommentPreproc, and what follows ?> is rea
 // become names.
 const goIdent = "Go names do not start with a digit (Chroma's [^\\W\\d] is the same as \\w in regexp2)"
 
-// goFieldTypes: Chroma makes every Go name other than the built-in types NameOther, so in a struct body
-// `data string` colors the type but `ctx context.Context` does not. Ours colors the names in field types.
-const goFieldTypes = "Names in the types of Go struct fields get the type color (Chroma colors only built-in types such as string)"
+// goTypeNames: Chroma makes every Go name other than the built-in types NameOther, so `data string` colors the
+// type but `ctx context.Context` does not. Ours colors the names in type positions (struct fields, declarations,
+// parameters, results and receivers).
+const goTypeNames = "Names in Go type positions get the type color (Chroma colors only built-in types such as string)"
 
 // rNames: the [a-zA-z] at the start of an R name is a typo, and [ ] ^ and so on also become names. Ours
 // uses [a-zA-Z].
@@ -243,11 +244,17 @@ var intendedDiffs = []intendedDiff{
 	{"PHP", "php", fh.CommentPreproc, fh.NameOther, phpTags},
 	{"PHP", "\n", fh.Text, fh.Error, phpTags},
 	{"Go", "1", fh.LiteralNumberInteger, fh.NameOther, goIdent},
-	{"Go", "context", fh.NameNamespace, fh.NameOther, goFieldTypes},
-	{"Go", "Context", fh.NameClass, fh.NameOther, goFieldTypes},
-	{"Go", "io", fh.NameNamespace, fh.NameOther, goFieldTypes},
-	{"Go", "Reader", fh.NameClass, fh.NameOther, goFieldTypes},
-	{"Go", "Base", fh.NameClass, fh.NameOther, goFieldTypes},
+	{"Go", "context", fh.NameNamespace, fh.NameOther, goTypeNames},
+	{"Go", "Context", fh.NameClass, fh.NameOther, goTypeNames},
+	{"Go", "io", fh.NameNamespace, fh.NameOther, goTypeNames},
+	{"Go", "Reader", fh.NameClass, fh.NameOther, goTypeNames},
+	{"Go", "Base", fh.NameClass, fh.NameOther, goTypeNames},
+	{"Go", "Point", fh.NameClass, fh.NameOther, goTypeNames},
+	{"Go", "http", fh.NameNamespace, fh.NameOther, goTypeNames},
+	{"Go", "Client", fh.NameClass, fh.NameOther, goTypeNames},
+	{"Go", "time", fh.NameNamespace, fh.NameOther, goTypeNames},
+	{"Go", "Duration", fh.NameClass, fh.NameOther, goTypeNames},
+	{"Go", "Request", fh.NameClass, fh.NameOther, goTypeNames},
 	{"R", "1", fh.LiteralNumber, fh.Name, rNames},
 	{"R", "2", fh.LiteralNumber, fh.Name, rNames},
 	{"R", "[[", fh.Punctuation, fh.Name, rNames},
