@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 
 	_ "github.com/toshi-kuji/fasthighlight/lang/all"
@@ -78,6 +79,12 @@ func TestNewDocument(t *testing.T) {
 		for name, md := range mds {
 			root := md.Parser().Parse(text.NewReader(src.Bytes()))
 			got := c.CodeBlocks(markdown.NewDocument("doc.md", src.Bytes(), root))
+			for k := range got {
+				if got[k].Node == nil || got[k].Node.Lines().Len() == 0 || got[k].Line != want[k].Line {
+					t.Errorf("parallelism %d, %s goldmark, block %d: bad node or line", p, name, k)
+				}
+				got[k].Node, want[k].Node = nil, nil // different ASTs
+			}
 			if fmt.Sprint(got) != fmt.Sprint(want) {
 				t.Errorf("parallelism %d, %s goldmark: the blocks differ from Parse's", p, name)
 			}
@@ -86,6 +93,30 @@ func TestNewDocument(t *testing.T) {
 			}
 		}
 	}
+}
+
+// TestCodeBlocksConcurrent calls CodeBlocks of one Converter for several documents at the same time, as a
+// site would for its pages (run with -race).
+func TestCodeBlocksConcurrent(t *testing.T) {
+	c := markdown.NewConverter()
+	c.Parallelism = markdown.ParallelAlways
+	md := goldmark.New(goldmark.WithExtensions(extension.GFM))
+	var docs []*markdown.Document
+	for i := range 8 {
+		src := []byte(fmt.Sprintf("```go\nx := %d\n```\n\n```python\ny = %d\n```\n", i, i))
+		docs = append(docs, markdown.NewDocument("", src, md.Parser().Parse(text.NewReader(src))))
+	}
+	var wg sync.WaitGroup
+	for i, d := range docs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if bs := c.CodeBlocks(d); len(bs) != 2 || !strings.Contains(bs[0].Code, fmt.Sprint(i)) {
+				t.Errorf("document %d: %+v", i, bs)
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 // NewDocument lets CodeBlocks work on a document parsed with your own goldmark, so it is parsed once.

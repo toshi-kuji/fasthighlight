@@ -44,6 +44,9 @@ var highlightedAttr = []byte("fasthighlight-html")
 type parallelTransformer struct{ e *Extension }
 
 func (t *parallelTransformer) Transform(doc *ast.Document, reader text.Reader, _ parser.Context) {
+	if t.e.Parallelism == ParallelNever {
+		return // nothing to do, so do not even walk the document
+	}
 	src := reader.Source()
 	var blocks []*ast.FencedCodeBlock
 	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {

@@ -37,7 +37,7 @@ import (
 err := markdown.NewConverter().Convert(src, w)
 ```
 
-Do not use one `Converter` from several goroutines at the same time.
+Do not call `Parse` or `Convert` of one `Converter` from several goroutines at the same time. `CodeBlocks` and `Render` may be called from several goroutines at the same time, on documents already parsed.
 
 ## Add to your own goldmark
 
@@ -150,6 +150,8 @@ for _, b := range c.CodeBlocks(markdown.NewDocument("page.md", src, root)) {
 	// the same blocks as above
 }
 ```
+
+Each block's `Node` is its node in your AST, so your renderer can look a block up by its node (for example, in a `map[*ast.FencedCodeBlock]markdown.HighlightedBlock`) instead of by its position. `CodeBlocks` may be called for several pages in parallel.
 
 The code blocks are the fenced code block nodes (`*ast.FencedCodeBlock`) under the root, in order. A block that your AST transformers turned into another kind of node is not one.
 

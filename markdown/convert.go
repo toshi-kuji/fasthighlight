@@ -32,7 +32,10 @@ const ParallelMinBytes = 32 * 1024
 
 // Converter turns Markdown (GFM) into HTML. It is goldmark with Extension added. To use your own goldmark
 // configuration, use Extension instead of Converter. Parallelism decides whether code blocks are
-// highlighted in parallel. Do not use one Converter from several goroutines at the same time.
+// highlighted in parallel. Parse and Convert must not be called from several goroutines at the same time.
+// CodeBlocks and Render may be: one Converter can serve the pages of a site in parallel once they are
+// parsed (with Parse one at a time, or with your own goldmark and NewDocument). Do not change Parallelism
+// while it is in use.
 //
 // For a single document, use Convert. To find out which languages are used before converting several
 // documents, parse all the documents with Parse, check them with Scan, and then write them out with

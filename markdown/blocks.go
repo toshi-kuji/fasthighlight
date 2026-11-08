@@ -11,6 +11,9 @@ import (
 // HighlightedBlock is one code block of a document, highlighted. Open + Code + Close is the same HTML that
 // Render writes for the block; Code alone is what goes inside <code>.
 type HighlightedBlock struct {
+	// Node is the code block's node in the document's AST. With your own goldmark (NewDocument), your
+	// renderer can look the block up by its node instead of by its position.
+	Node *ast.FencedCodeBlock
 	// Document is the name of the document (the one passed to Parse).
 	Document string
 	// Line is the line number of the start of the code block (the ``` line), counting from 1. For an empty
@@ -61,7 +64,7 @@ func (c *Converter) CodeBlocks(d *Document) []HighlightedBlock {
 		i := strings.Index(h, "<code")
 		i += strings.IndexByte(h[i:], '>') + 1
 		j := len(h) - len("</code></pre>")
-		hb := HighlightedBlock{Document: d.Name, Line: fenceLine(d.src, b), Lang: name,
+		hb := HighlightedBlock{Node: b, Document: d.Name, Line: fenceLine(d.src, b), Lang: name,
 			Open: h[:i], Code: h[i:j], Close: h[j:], Colored: true}
 		switch {
 		case name == "":
