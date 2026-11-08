@@ -24,7 +24,7 @@ Every theme has light and dark colors. `--theme MODE:THEME` chooses which to wri
 
 `THEME` can be left out for `default`; without `--theme`, it is `both:default`. `both` follows the viewer's device setting by default.
 
-For a site with its own light and dark switch, `--theme-selector MODE:SELECTOR` adds the `MODE` colors (`light` or `dark`) under your CSS selector. The device setting stays the starting point, and your selector wins over it. Give the flag once for each selector:
+For a site with its own light and dark switch, `--theme-selector MODE:SELECTOR` adds the `MODE` colors (`light` or `dark`) under your CSS selector. The device setting stays the starting point, and your selector wins over it. To add selectors for both light and dark, repeat the flag in the same command, once for each selector (the CSS of both comes out of one run):
 
 | What decides the colors | Flags |
 | --- | --- |
@@ -41,6 +41,8 @@ fhl --print-css --theme both:github \
   --theme-selector dark:':root[data-theme="dark"]' \
   --theme-selector light:':root[data-theme="light"]' --no-frame > highlight.css
 ```
+
+One selector can still match several things: `dark:':root[data-theme="dark"], .dark-mode'` puts the dark colors under both, as a comma does in CSS.
 
 The default theme, `default`, has fhl's own colors. Every color in it has a contrast ratio of at least 4.5 against its background (WCAG AA). The other themes copy the colors of the original themes as they are, so some of their colors have a lower contrast.
 
