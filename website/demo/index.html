@@ -3,6 +3,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>fasthighlight WASM demo</title>
+<script>
+// Light or dark before the page is drawn, so that a dark page does not flash light first: the demo's own
+// choice, else the docs site's (key "theme"), else the device. The script at the end does the same.
+try {
+  var m = localStorage.getItem("fhl-demo-mode") || localStorage.getItem("theme");
+  if (m !== "light" && m !== "dark") m = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", m);
+} catch (e) {}
+</script>
 <meta name="description" content="Try fasthighlight in your browser: highlight code in __LANG_COUNT__ languages, switch themes, and download the result as HTML or an image.">
 <link rel="icon" type="image/png" href="../favicon.png">
 <style>
