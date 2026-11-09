@@ -52,17 +52,14 @@ jobs:
           go vet ./...
           go test -count=1 ./...
       - name: fuzz (short)
+        # A number of runs (Nx) rather than a duration: with -fuzztime=20s, Go's fuzzer sometimes failed with
+        # "context deadline exceeded" as the time ran out, although no input failed. The numbers take about as
+        # long as 20 seconds did on the CI runners.
         run: |
-          go test -run='^$' -fuzz=FuzzTokenise -fuzztime=20s .
-          go test -run='^$' -fuzz=FuzzConvert -fuzztime=20s ./markdown
-          (cd compat && go test -run='^$' -fuzz=FuzzHTMLMatchesChroma -fuzztime=20s .)
-          (cd compat && go test -run='^$' -fuzz=FuzzTokensMatchChroma -fuzztime=20s .)
-      - name: vet and build (comparison implementations)
-        working-directory: bench
-        run: |
-          go vet ./...
-          go build -o /dev/null ./chroma-all ./chroma-subset ./chroma-subset-prof ./chroma-init
-          go build -o /dev/null -tags 'grammar_subset grammar_subset_typescript grammar_subset_javascript' ./gotreesitter
+          go test -run='^$' -fuzz=FuzzTokenise -fuzztime=150000x .
+          go test -run='^$' -fuzz=FuzzConvert -fuzztime=80000x ./markdown
+          (cd compat && go test -run='^$' -fuzz=FuzzHTMLMatchesChroma -fuzztime=50000x .)
+          (cd compat && go test -run='^$' -fuzz=FuzzTokensMatchChroma -fuzztime=60000x .)
       - name: fhl distribution archives (only check that they can be built)
         run: scripts/release.sh dev "$RUNNER_TEMP/dist"
       - name: documentation site and demo (only check that they can be built)

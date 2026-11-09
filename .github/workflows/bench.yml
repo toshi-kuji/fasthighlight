@@ -1,0 +1,30 @@
+name: Bench
+
+# Checks that the comparison implementations in bench/ (Chroma, goldmark-highlighting, gotreesitter) still
+# build. They are only for the speed comparisons, so this runs only when bench/ or this workflow changes,
+# not with every change to the library (CI, ci.yml).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'bench/**'
+      - '.github/workflows/bench.yml'
+  pull_request:
+    paths:
+      - 'bench/**'
+      - '.github/workflows/bench.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: vet and build (comparison implementations)
+        working-directory: bench
+        run: |
+          go vet ./...
+          go build -o /dev/null ./chroma-all ./chroma-subset ./chroma-subset-prof ./chroma-init
+          go build -o /dev/null -tags 'grammar_subset grammar_subset_typescript grammar_subset_javascript' ./gotreesitter
