@@ -398,7 +398,7 @@ footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line-s
   var canShareFiles = false, shareFile = null;
   try { canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [new File([new Uint8Array(1)], "x.png", { type: "image/png" })] })); } catch (e) {}
   // Browsers built into apps (such as X's) and most desktop browsers cannot share files.
-  var SHARE_NOTE = "To share the image, open this page in Safari or Chrome on a phone.";
+  var SHARE_NOTE = "To share the image, copy it as PNG with the button on the preview below, or open this page in Safari or Chrome on a phone.";
   if (!canShareFiles) { $("share").disabled = true; $("share").title = SHARE_NOTE; $("share").textContent = "Share (not available in this browser)"; }
   function prepareShare() {
     shareFile = null;
