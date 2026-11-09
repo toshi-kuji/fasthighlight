@@ -12,7 +12,7 @@ go install github.com/toshi-kuji/fasthighlight/cmd/fhl@latest
 
 Or download a single binary for Linux, macOS or Windows from the [releases page](https://github.com/toshi-kuji/fasthighlight/releases). No Go needed.
 
-[GitHub](https://github.com/toshi-kuji/fasthighlight) · [Contents](contents.html) · [Demo](themes.html#samples)
+[GitHub](https://github.com/toshi-kuji/fasthighlight) · [Contents](contents.html) · [✨DEMO](demo/)
 
 </div>
 
@@ -76,7 +76,7 @@ err := markdown.NewConverter().Convert(src, w)
 ## What it is not for
 
 - **Replacing a full site generator.** `fhl --static-site` makes a basic site to build on: the page design, navigation and templates are up to you or your AI agent.
-- **Running in the browser.** There is no browser version.
+- **Running in the browser.** There is no browser version. The [demo](demo/) runs fasthighlight compiled to WebAssembly, built only for that page.
 - **Coloring languages it does not support.** Code blocks in other languages are escaped but not colored.
 - **Starting `fhl` for every web request.** Starting takes a few milliseconds; in a Go server, use the library.
 

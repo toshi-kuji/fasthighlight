@@ -18,6 +18,9 @@
 #     link to a page shows the image, the title and a description on social media.
 #     Then put the header common to every page (links, and the button that switches between light
 #     and dark) at the top of each page.
+#  7. Build the demo page (website/demo): fasthighlight compiled to WebAssembly, only for this page,
+#     with the CSS of every theme and one sample per language filled in, and add it to sitemap.xml.
+#     It is a page of its own, built after steps 4 to 6, which leave it alone.
 #
 # Light and dark: the site follows the viewer's device, and the button overrides it. The choice is
 # saved in localStorage ("theme") and set as data-theme="light" or "dark" on <html> before the page
@@ -246,6 +249,62 @@ for dirpath, _, files in os.walk(out):
         if not re.search(r'<link rel="stylesheet" href="[^"<>]*highlight\.css">\n<link rel="icon"', html):
             sys.exit(f"build.sh: the head of {path} came out broken")
         open(path, "w", encoding="utf-8").write(html)
+PY
+
+# 7. The demo: demo/index.html (the themes and samples filled in), demo/fasthighlight.wasm and Go's
+#    demo/wasm_exec.js, which loads it.
+mkdir -p "$out/demo"
+(cd "$root" && GOOS=js GOARCH=wasm go build -trimpath -ldflags "-s -w" -o "$out/demo/fasthighlight.wasm" ./website/demo/wasm)
+goroot="$(cd "$root" && go env GOROOT)"
+if [ -f "$goroot/lib/wasm/wasm_exec.js" ]; then
+	install -m 644 "$goroot/lib/wasm/wasm_exec.js" "$out/demo/"
+else
+	install -m 644 "$goroot/misc/wasm/wasm_exec.js" "$out/demo/"
+fi
+python3 - "$work" "$root/website/demo" "$out" "$site_url" <<'PY'
+import json, sys
+from xml.sax.saxutils import escape
+
+work, src, out, base = sys.argv[1:5]
+read = lambda path: open(path, encoding="utf-8").read()
+
+# The CSS of every theme and the languages, as step 2 wrote them.
+themes = {t["name"]: {"label": t["label"], "light": read(f"{work}/css-light-{t['name']}.css"),
+                      "dark": read(f"{work}/css-dark-{t['name']}.css")}
+          for t in json.load(open(f"{work}/themes.json"))}
+langs = json.load(open(f"{work}/langs.json"))
+
+# One sample per language: each name a supported language, once, with a lang that names it.
+samples = json.loads(read(src + "/samples.json"))
+by_name = {l["name"]: l for l in langs}
+problems, seen = [], set()
+for s in samples:
+    l = by_name.get(s.get("name"))
+    if l is None:
+        problems.append(f"{s.get('name')!r} is not a supported language")
+    elif s["name"] in seen:
+        problems.append(f"{s['name']!r} has more than one sample")
+    elif s.get("lang", "").lower() not in [a.lower() for a in l["aliases"]] + [l["name"].lower()]:
+        problems.append(f"the lang of {s['name']!r}, {s.get('lang')!r}, is not one of its names or aliases")
+    seen.add(s.get("name"))
+problems += [f"{n!r} has no sample" for n in sorted(set(by_name) - seen)]
+if problems:
+    sys.exit("build.sh: website/demo/samples.json: " + "; ".join(problems))
+
+page = read(src + "/index.html")
+for marker, value in (("/*THEMES*/", themes), ("/*SAMPLES*/", samples)):
+    if page.count(marker) != 1:
+        sys.exit(f"build.sh: website/demo/index.html needs one {marker}")
+    # Nothing in the data may end the <script> it goes into or start an HTML comment in it.
+    js = json.dumps(value, ensure_ascii=False).replace("</", "<\\/").replace("<!--", "<\\!--")
+    page = page.replace(marker, js)
+page = page.replace("__LANG_COUNT__", str(len(langs)))
+open(out + "/demo/index.html", "w", encoding="utf-8").write(page)
+
+sitemap = out + "/sitemap.xml"
+url = "  <url><loc>" + escape(base.rstrip("/") + "/demo/") + "</loc></url>\n"
+xml = read(sitemap)  # read before opening it for writing, which empties it
+open(sitemap, "w", encoding="utf-8").write(xml.replace("</urlset>", url + "</urlset>", 1))
 PY
 
 echo "build.sh: wrote $out"
