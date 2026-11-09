@@ -261,32 +261,49 @@ if [ -f "$goroot/lib/wasm/wasm_exec.js" ]; then
 else
 	install -m 644 "$goroot/misc/wasm/wasm_exec.js" "$out/demo/"
 fi
-python3 - "$fhl" "$work/themes.json" "$root/website/demo" "$out" "$site_url" <<'PY'
-import json, subprocess, sys
+python3 - "$work" "$root/website/demo" "$out" "$site_url" <<'PY'
+import json, sys
 from xml.sax.saxutils import escape
 
-fhl, themes_json, src, out, base = sys.argv[1:6]
-run = lambda *args: subprocess.run([fhl, *args], check=True, capture_output=True, text=True).stdout
-themes = {}
-for t in json.load(open(themes_json)):
-    themes[t["name"]] = {"label": t["label"], "light": run("--print-css", "--theme", "light:" + t["name"]),
-                         "dark": run("--print-css", "--theme", "dark:" + t["name"])}
-samples = json.load(open(src + "/samples.json", encoding="utf-8"))
-missing = sorted({l["name"] for l in json.loads(run("--list-langs", "--json"))} - {s["name"] for s in samples})
-if missing:
-    sys.exit(f"build.sh: website/demo/samples.json has no sample for {missing}")
-page = open(src + "/index.html", encoding="utf-8").read()
-for name, value in (("THEMES", themes), ("SAMPLES", samples)):
-    marker = "/*" + name + "*/"
+work, src, out, base = sys.argv[1:5]
+read = lambda path: open(path, encoding="utf-8").read()
+
+# The CSS of every theme and the languages, as step 2 wrote them.
+themes = {t["name"]: {"label": t["label"], "light": read(f"{work}/css-light-{t['name']}.css"),
+                      "dark": read(f"{work}/css-dark-{t['name']}.css")}
+          for t in json.load(open(f"{work}/themes.json"))}
+langs = json.load(open(f"{work}/langs.json"))
+
+# One sample per language: each name a supported language, once, with a lang that names it.
+samples = json.loads(read(src + "/samples.json"))
+by_name = {l["name"]: l for l in langs}
+problems, seen = [], set()
+for s in samples:
+    l = by_name.get(s.get("name"))
+    if l is None:
+        problems.append(f"{s.get('name')!r} is not a supported language")
+    elif s["name"] in seen:
+        problems.append(f"{s['name']!r} has more than one sample")
+    elif s.get("lang", "").lower() not in [a.lower() for a in l["aliases"]] + [l["name"].lower()]:
+        problems.append(f"the lang of {s['name']!r}, {s.get('lang')!r}, is not one of its names or aliases")
+    seen.add(s.get("name"))
+problems += [f"{n!r} has no sample" for n in sorted(set(by_name) - seen)]
+if problems:
+    sys.exit("build.sh: website/demo/samples.json: " + "; ".join(problems))
+
+page = read(src + "/index.html")
+for marker, value in (("/*THEMES*/", themes), ("/*SAMPLES*/", samples)):
     if page.count(marker) != 1:
         sys.exit(f"build.sh: website/demo/index.html needs one {marker}")
-    # "</" is escaped so that nothing in the data can close the <script> it goes into.
-    page = page.replace(marker, json.dumps(value, ensure_ascii=False).replace("</", "<\\/"))
+    # Nothing in the data may end the <script> it goes into or start an HTML comment in it.
+    js = json.dumps(value, ensure_ascii=False).replace("</", "<\\/").replace("<!--", "<\\!--")
+    page = page.replace(marker, js)
+page = page.replace("__LANG_COUNT__", str(len(langs)))
 open(out + "/demo/index.html", "w", encoding="utf-8").write(page)
 
 sitemap = out + "/sitemap.xml"
-xml = open(sitemap, encoding="utf-8").read()
 url = "  <url><loc>" + escape(base.rstrip("/") + "/demo/") + "</loc></url>\n"
+xml = read(sitemap)  # read before opening it for writing, which empties it
 open(sitemap, "w", encoding="utf-8").write(xml.replace("</urlset>", url + "</urlset>", 1))
 PY
 

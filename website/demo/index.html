@@ -3,17 +3,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>fasthighlight WASM demo</title>
-<meta name="description" content="Try fasthighlight in your browser: highlight code in 34 languages, switch themes, and download the result as HTML or an image.">
+<meta name="description" content="Try fasthighlight in your browser: highlight code in __LANG_COUNT__ languages, switch themes, and download the result as HTML or an image.">
 <link rel="icon" type="image/png" href="../favicon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 :root {
   --bg: #fbfcfd; --surface: #f1f4f7; --fg: #1c2530; --muted: #5a6573; --line: #cfd7e1; --line-soft: #dfe5ec; --accent: #1f5fae; --accent-fg: #ffffff; --warn: #9a5b00;
   --btn: #ffffff; --btn-hover: #eef3f9;
-  --font-body: "IBM Plex Sans", system-ui, sans-serif;
-  --font-ui-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-ui-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   --code-font: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   --shot-a: #7cc8ff; --shot-b: #1096fe; --shot-c: #0b6cf9;
   color-scheme: light;
@@ -132,7 +129,7 @@ footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line-s
       <nav class="links"><a href="../">Docs</a><a href="https://github.com/toshi-kuji/fasthighlight">GitHub ↗</a></nav>
     </div>
     <h1>fasthighlight WASM demo</h1>
-    <p class="lead">Highlighting runs live in your browser with WebAssembly. Try a sample, or paste any code of your own; nothing is sent to a server. Switching the theme or light and dark changes only the CSS: the highlighted HTML stays the same.</p>
+    <p class="lead">Highlighting runs live in your browser with WebAssembly. Try a sample, or paste any code of your own: it never leaves your browser, and the highlighting runs locally. Switching the theme or light and dark changes only the CSS: the highlighted HTML stays the same.</p>
   </header>
 
   <div class="controls">
@@ -154,7 +151,7 @@ footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line-s
       <div class="row">
         <button type="button" id="dlHtml">HTML</button>
         <button type="button" id="dlImg">WebP</button>
-        <button type="button" id="share">Share on X</button>
+        <button type="button" id="share">Share</button>
         <span class="note" id="dlnote"></span>
       </div>
   </section>
@@ -182,7 +179,7 @@ footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line-s
   var SAMPLES = /*SAMPLES*/;
   var SITE = "https://toshi-kuji.github.io/fasthighlight/";
   var CODE_FONT = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
-  var UI_FONT = '"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
+  var UI_FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
   var $ = function (id) { return document.getElementById(id); };
   var themeSel = $("theme"), src = $("src"), out = $("out"), status = $("status"), run = $("run");
   var ready = false, current = null, lastHTML = "";
@@ -195,6 +192,7 @@ footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line-s
     $("hl").textContent = css;
     $("css").textContent = css;
     $("cssTitle").textContent = "CSS (" + (t.label || themeSel.value) + ", " + (isDark() ? "dark" : "light") + ")";
+    if (typeof prepareShare === "function") prepareShare();
   }
   function setMode(mode) {
     document.documentElement.setAttribute("data-theme", mode);
@@ -210,8 +208,10 @@ footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line-s
   });
   try { var saved = localStorage.getItem("fhl-demo-theme"); if (saved && THEMES[saved]) themeSel.value = saved; } catch (e) {}
   themeSel.addEventListener("change", function () { try { localStorage.setItem("fhl-demo-theme", themeSel.value); } catch (e) {} applyTheme(); });
+  // Light or dark at first: the demo's own choice if there is one, else the one made on the docs site
+  // (same origin, key "theme"), else the device setting.
   var savedMode = null;
-  try { savedMode = localStorage.getItem("fhl-demo-mode"); } catch (e) {}
+  try { savedMode = localStorage.getItem("fhl-demo-mode") || localStorage.getItem("theme"); } catch (e) {}
   setMode(savedMode === "light" || savedMode === "dark" ? savedMode : (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
 
   // Samples: one per supported language.
@@ -253,6 +253,7 @@ footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line-s
     $("html").textContent = lastHTML;
     $("extra").hidden = false;
     setDownloads(true);
+    prepareShare();
   }
   run.addEventListener("click", highlight);
   src.addEventListener("keydown", function (e) { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); highlight(); } });
@@ -275,16 +276,9 @@ footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line-s
     });
   });
 
-  // Saving files: through the viewer's downloads capability when there is one, else a plain browser download.
-  var downloads = null;
-  if (window.claude && typeof window.claude.use === "function") { window.claude.use("downloads").then(function (d) { downloads = d; }, function () {}); }
+  // Saving files: a plain browser download.
   function note(msg) { $("dlnote").textContent = msg; }
   function save(name, blob) {
-    if (downloads) {
-      return downloads.save({ filename: name, data: blob }).then(function () { note(""); }, function (e) {
-        if (e && e.code !== "declined") note("Could not save the file (" + (e.code || e) + ").");
-      });
-    }
     var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
@@ -397,15 +391,24 @@ footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line-s
     imageBlob().then(function (b) { if (b) save(baseName() + (WEBP ? ".webp" : ".png"), b); });
   });
 
-  // Share on X: only where the device can share an image (the share sheet on phones).
-  var canShareFiles = false;
+  // Share: the device's share sheet (on phones), with the image and a line of text. The image is made when
+  // the code is highlighted or the colors change, so that the click can call share at once: browsers allow
+  // share only right after a tap.
+  var canShareFiles = false, shareFile = null;
   try { canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [new File([new Uint8Array(1)], "x.png", { type: "image/png" })] })); } catch (e) {}
-  if (!canShareFiles) { $("share").disabled = true; $("share").title = "Mobile only"; $("share").textContent = "Share on X (mobile only)"; }
-  $("share").addEventListener("click", function () {
+  if (!canShareFiles) { $("share").disabled = true; $("share").title = "Mobile only"; $("share").textContent = "Share (mobile only)"; }
+  function prepareShare() {
+    shareFile = null;
+    if (!canShareFiles || !lastHTML) return;
+    var html = lastHTML;
     imageBlob().then(function (b) {
-      if (!b) return;
-      var f = new File([b], baseName() + (WEBP ? ".webp" : ".png"), { type: b.type });
-      navigator.share({ files: [f], text: "Highlighted with fasthighlight " + SITE }).catch(function () {});
+      if (b && html === lastHTML) shareFile = new File([b], baseName() + (WEBP ? ".webp" : ".png"), { type: b.type });
+    });
+  }
+  $("share").addEventListener("click", function () {
+    if (!shareFile) { note("The image is still being made. Try again in a moment."); return; }
+    navigator.share({ files: [shareFile], text: "Highlighted with fasthighlight " + SITE }).then(function () { note(""); }, function (e) {
+      if (!e || e.name !== "AbortError") note("Could not share the image" + (e && e.message ? " (" + e.message + ")" : "") + ". Use the download buttons.");
     });
   });
 

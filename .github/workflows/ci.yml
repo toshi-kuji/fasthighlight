@@ -1,7 +1,7 @@
 name: CI
 
 # Run only when a file that affects the test results changes (allowlist).
-# Changes to only documentation (*.md, docs/, website/), images (assets/),
+# Changes to only documentation (*.md, docs/, website/ except build.sh and demo/), images (assets/),
 # benchmark scripts (scripts/ except release.sh, bench/node/)
 # do not trigger it. When CI starts reading more files, add them to the paths of both push and pull_request.
 on:
@@ -15,6 +15,8 @@ on:
       - 'bench/internal/chromadata/data/**'
       - '.github/workflows/**'
       - 'scripts/release.sh'
+      - 'website/build.sh'
+      - 'website/demo/**'
   pull_request:
     paths:
       - '**.go'
@@ -24,6 +26,8 @@ on:
       - 'bench/internal/chromadata/data/**'
       - '.github/workflows/**'
       - 'scripts/release.sh'
+      - 'website/build.sh'
+      - 'website/demo/**'
 
 jobs:
   test:
@@ -61,3 +65,7 @@ jobs:
           go build -o /dev/null -tags 'grammar_subset grammar_subset_typescript grammar_subset_javascript' ./gotreesitter
       - name: fhl distribution archives (only check that they can be built)
         run: scripts/release.sh dev "$RUNNER_TEMP/dist"
+      - name: documentation site and demo (only check that they can be built)
+        # The demo's WebAssembly package is built only for js/wasm, and build.sh checks that every supported
+        # language has a demo sample; without this step, either breaking would show only when Pages deploys.
+        run: website/build.sh "$RUNNER_TEMP/site"
