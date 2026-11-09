@@ -57,8 +57,9 @@ select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visi
 .field select { min-width: 10rem; }
 .field #theme { min-width: 0; width: 8rem; }
 /* The two controls: Language (across two columns) and Feeling lucky; Theme, Light/Dark and Highlight.
-   The two action buttons share the last column, at the right edge. */
-.controls { display: grid; grid-template-columns: auto auto 1fr; gap: 12px 10px; align-items: center; }
+   The grid is only as wide as its contents, at the left; the two action buttons share its last column,
+   right-aligned with each other (at the right edge of a wide screen they would be far from the rest). */
+.controls { display: grid; grid-template-columns: auto auto auto; gap: 12px 10px; align-items: center; width: fit-content; max-width: 100%; }
 .lang-field { grid-column: 1 / 3; justify-self: start; }
 #run, #lucky { justify-self: end; background: var(--btn); color: var(--fg); border-color: var(--line); font-weight: 500; padding: 6px 14px; }
 #run:hover:not(:disabled), #lucky:hover:not(:disabled) { background: var(--btn-hover); filter: none; }
