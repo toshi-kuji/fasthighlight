@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fasthighlight WASM demo</title>
+<meta name="description" content="Try fasthighlight in your browser: highlight code in 34 languages, switch themes, and download the result as HTML or an image.">
+<link rel="icon" type="image/png" href="../favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #fbfcfd; --surface: #f1f4f7; --fg: #1c2530; --muted: #5a6573; --line: #cfd7e1; --line-soft: #dfe5ec; --accent: #1f5fae; --accent-fg: #ffffff; --warn: #9a5b00;
+  --btn: #ffffff; --btn-hover: #eef3f9;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-ui-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --code-font: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --shot-a: #7cc8ff; --shot-b: #1096fe; --shot-c: #0b6cf9;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg: #12171d; --surface: #1a2129; --fg: #e3e8ee; --muted: #9aa6b4; --line: #3a4552; --line-soft: #2c3540; --accent: #7fb0ec; --accent-fg: #0d1520; --warn: #e0a95a;
+  --btn: #1f2730; --btn-hover: #27313c;
+  --shot-a: #0b4fa8; --shot-b: #0a2f6b; --shot-c: #071a3d;
+  color-scheme: dark;
+}
+body {
+  margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+  padding: 24px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px));
+}
+main { max-width: 56rem; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; } /* a wide code window scrolls inside; it never widens the page */
+header { display: grid; gap: 6px; }
+.topline { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; align-items: baseline; }
+.eyebrow { font-family: var(--font-ui-mono); font-size: 12px; letter-spacing: .04em; color: var(--muted); margin: 0; }
+.links { display: flex; gap: 14px; font-size: 13px; }
+.links a { color: var(--accent); text-decoration: none; font-weight: 500; }
+.links a:hover { text-decoration: underline; }
+h1 { font-size: 24px; line-height: 1.3; margin: 0; }
+p { margin: 0; }
+.lead { color: var(--muted); font-size: 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.row.split { justify-content: space-between; }
+select, button, textarea { font: inherit; color: var(--fg); }
+select { background: var(--btn); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 14px; max-width: 100%; }
+button {
+  background: var(--btn); border: 1px solid var(--line); border-radius: 8px; padding: 6px 14px; font-size: 14px; font-weight: 500; cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .08); transition: background .12s, transform .05s;
+}
+button:hover:not(:disabled) { background: var(--btn-hover); }
+button:active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
+button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); padding: 7px 22px; font-weight: 600; }
+button.primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
+button:disabled { opacity: .45; cursor: default; box-shadow: none; }
+select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+.seg button { border: 0; border-radius: 0; box-shadow: none; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.field { display: inline-grid; grid-template-columns: 4.6rem auto; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--muted); }
+.field select { min-width: 10rem; }
+.field #theme { min-width: 0; width: 8rem; }
+/* The two controls: Language (across two columns) and Feeling lucky; Theme, Light/Dark and Highlight.
+   The two action buttons share the last column, at the right edge. */
+.controls { display: grid; grid-template-columns: auto auto 1fr; gap: 12px 10px; align-items: center; }
+.lang-field { grid-column: 1 / 3; justify-self: start; }
+#run, #lucky { justify-self: end; background: var(--btn); color: var(--fg); border-color: var(--line); font-weight: 500; padding: 6px 14px; }
+#run:hover:not(:disabled), #lucky:hover:not(:disabled) { background: var(--btn-hover); filter: none; }
+.lang { font-family: var(--font-ui-mono); font-size: 13px; color: var(--muted); }
+.lang b { color: var(--fg); font-weight: 500; }
+.editor { position: relative; }
+.editor label { position: absolute; top: 7px; right: 12px; font-size: 11px; color: var(--muted); pointer-events: none; letter-spacing: .02em; }
+textarea {
+  display: block; width: 100%; box-sizing: border-box; min-height: 15rem; padding: 26px 14px 12px; resize: vertical; tab-size: 4;
+  font-family: var(--code-font); font-size: 13px; line-height: 1.6;
+  background: var(--surface); border: 1.5px dashed var(--line); border-radius: 10px; transition: border-color .12s, background .12s;
+}
+textarea:hover { border-color: var(--muted); }
+textarea:focus { border-style: solid; border-color: var(--accent); background: var(--bg); outline: none; }
+#status { font-size: 13px; color: var(--muted); }
+#status.bad { color: var(--warn); }
+.empty { padding: 18px 16px; border: 1px dashed var(--line-soft); border-radius: 10px; color: var(--muted); font-size: 14px; }
+
+/* The editor-style window: the same sizes as the image and the downloaded HTML. */
+.shot { position: relative; padding: 62px 56px 56px; border-radius: 12px; background: linear-gradient(135deg, var(--shot-a), var(--shot-b) 55%, var(--shot-c)); overflow-x: auto; }
+.win { width: max-content; min-width: min(560px, 100%); max-width: 100%; margin: 0 auto; border-radius: 10px; overflow: hidden; background: var(--highlight-background); box-shadow: 0 16px 40px rgba(0, 0, 0, .35); }
+.bar { position: relative; height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 16px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; }
+.dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+.title { position: absolute; left: 0; right: 0; text-align: center; font: 12px var(--font-body); color: var(--highlight-comment); pointer-events: none; }
+.win pre.highlight { margin: 0; padding: 4px 20px 18px; border: 0; border-radius: 0; overflow-x: auto; font: 14px/21px var(--code-font); tab-size: 4; }
+.win pre.highlight code { font: inherit; }
+.win.blank pre.highlight { min-height: 96px; }
+/* When the code is wider than the window: a thin scrollbar under the code. */
+@supports not selector(::-webkit-scrollbar) { .win pre.highlight { scrollbar-width: thin; scrollbar-color: rgba(128, 128, 128, .45) transparent; } }
+.win pre.highlight::-webkit-scrollbar { height: 6px; }
+.win pre.highlight::-webkit-scrollbar-track { background: transparent; margin: 0 12px; }
+.win pre.highlight::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, .45); border-radius: 3px; }
+.win pre.highlight::-webkit-scrollbar-thumb:hover { background: rgba(128, 128, 128, .7); }
+.shot-label { position: absolute; left: 16px; top: 10px; font: 600 11px var(--font-body); letter-spacing: .12em; color: rgba(255, 255, 255, .6); }
+.credit { position: absolute; right: 16px; bottom: 12px; font: 12px var(--font-body); color: rgba(255, 255, 255, .8); }
+@media (max-width: 40rem) {
+  .shot { padding: 32px 16px 36px; }
+  .field { grid-template-columns: none; gap: 2px; font-size: 12px; }
+  .field select { min-width: 9rem; }
+  .field #theme { width: 7.5rem; }
+  .row { gap: 8px; }
+  .controls { gap: 10px 8px; align-items: end; }
+  .seg button, #run, #lucky { padding-left: 11px; padding-right: 11px; }
+}
+
+.panel { display: grid; gap: 6px; }
+.panel h2 { margin: 10px 0 0; font-size: 13px; font-weight: 600; color: var(--muted); }
+.box { position: relative; }
+.box pre { margin: 0; padding: 12px 44px 12px 14px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line-soft); overflow: auto; max-height: 16rem; font-family: var(--code-font); font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
+.copy { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; padding: 0; display: grid; place-items: center; }
+.copy svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.shot .copy { top: 10px; right: 10px; background: rgba(255, 255, 255, .45); color: #1c2530; border-color: rgba(255, 255, 255, .5); box-shadow: none; }
+.shot .copy:hover:not(:disabled) { background: rgba(255, 255, 255, .75); }
+:root[data-theme="dark"] .shot .copy { background: rgba(13, 21, 32, .45); color: #e3e8ee; border-color: rgba(255, 255, 255, .2); }
+:root[data-theme="dark"] .shot .copy:hover:not(:disabled) { background: rgba(13, 21, 32, .75); }
+.shot .copy.fail { color: #9a5b00; }
+.copy .ok { display: none; } .copy.done .ok { display: block; } .copy.done .ic { display: none; }
+.note { font-size: 12px; color: var(--muted); }
+footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line-soft); font-size: 14px; color: var(--muted); }
+</style>
+<style id="hl"></style>
+
+<main>
+  <header>
+    <div class="topline">
+      <p class="eyebrow">toshi-kuji/fasthighlight</p>
+      <nav class="links"><a href="../">Docs</a><a href="https://github.com/toshi-kuji/fasthighlight">GitHub ↗</a></nav>
+    </div>
+    <h1>fasthighlight WASM demo</h1>
+    <p class="lead">Highlighting runs live in your browser with WebAssembly. Try a sample, or paste any code of your own; nothing is sent to a server. Switching the theme or light and dark changes only the CSS: the highlighted HTML stays the same.</p>
+  </header>
+
+  <div class="controls">
+    <label class="field lang-field">Language <select id="lang"></select></label>
+    <button type="button" id="lucky">Feeling lucky 🎲</button>
+    <label class="field">Theme <select id="theme"></select></label>
+    <div class="seg" role="group" aria-label="Light or dark"><button type="button" data-mode="light" aria-pressed="false">Light</button><button type="button" data-mode="dark" aria-pressed="false">Dark</button></div>
+    <button type="button" class="primary" id="run" disabled>Highlight ✨</button>
+  </div>
+  <p id="status" aria-live="polite">Loading WebAssembly…</p>
+
+  <div class="editor">
+    <label for="src">Your code — edit or paste</label>
+    <textarea id="src" spellcheck="false"></textarea>
+  </div>
+
+  <section class="panel">
+      <h2>DOWNLOAD and SHARE</h2>
+      <div class="row">
+        <button type="button" id="dlHtml">HTML</button>
+        <button type="button" id="dlImg">WebP</button>
+        <button type="button" id="share">Share on X</button>
+        <span class="note" id="dlnote"></span>
+      </div>
+  </section>
+
+  <div id="out"></div>
+
+
+  <div id="extra" hidden>
+    <section class="panel">
+      <h2>HTML (code block only)</h2>
+      <div class="box"><pre id="html"></pre><button type="button" class="copy" data-copy="html" aria-label="Copy the HTML"><svg class="ic" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><svg class="ok" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></button></div>
+      <h2 id="cssTitle">CSS</h2>
+      <div class="box"><pre id="css"></pre><button type="button" class="copy" data-copy="css" aria-label="Copy the CSS"><svg class="ic" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><svg class="ok" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></button></div>
+    </section>
+  </div>
+
+  <footer>This page runs fasthighlight compiled to WebAssembly, prepared only for this demo: fasthighlight itself does not ship a WebAssembly build. In the browser it is slower than the Go library and the <code>fhl</code> command.</footer>
+</main>
+
+<script src="wasm_exec.js"></script>
+<script>
+// website/build.sh fills in THEMES (the CSS of every theme, from fhl --print-css) and SAMPLES (samples.json).
+(function () {
+  var THEMES = /*THEMES*/;
+  var SAMPLES = /*SAMPLES*/;
+  var SITE = "https://toshi-kuji.github.io/fasthighlight/";
+  var CODE_FONT = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
+  var UI_FONT = '"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
+  var $ = function (id) { return document.getElementById(id); };
+  var themeSel = $("theme"), src = $("src"), out = $("out"), status = $("status"), run = $("run");
+  var ready = false, current = null, lastHTML = "";
+
+  // Light or dark: starts from the device setting; the buttons switch it.
+  function isDark() { return document.documentElement.getAttribute("data-theme") === "dark"; }
+  function themeCSS() { var t = THEMES[themeSel.value] || THEMES["default"]; return isDark() ? t.dark : t.light; }
+  function applyTheme() {
+    var t = THEMES[themeSel.value] || THEMES["default"], css = themeCSS();
+    $("hl").textContent = css;
+    $("css").textContent = css;
+    $("cssTitle").textContent = "CSS (" + (t.label || themeSel.value) + ", " + (isDark() ? "dark" : "light") + ")";
+  }
+  function setMode(mode) {
+    document.documentElement.setAttribute("data-theme", mode);
+    document.querySelectorAll(".seg button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-mode") === mode)); });
+    applyTheme();
+  }
+  // A mode chosen with the buttons is remembered in this browser; until then, the device setting decides.
+  document.querySelectorAll(".seg button").forEach(function (b) { b.addEventListener("click", function () {
+    var m = b.getAttribute("data-mode"); setMode(m); try { localStorage.setItem("fhl-demo-mode", m); } catch (e) {}
+  }); });
+  Object.keys(THEMES).forEach(function (k) {
+    var o = document.createElement("option"); o.value = k; o.textContent = THEMES[k].label || k; themeSel.appendChild(o);
+  });
+  try { var saved = localStorage.getItem("fhl-demo-theme"); if (saved && THEMES[saved]) themeSel.value = saved; } catch (e) {}
+  themeSel.addEventListener("change", function () { try { localStorage.setItem("fhl-demo-theme", themeSel.value); } catch (e) {} applyTheme(); });
+  var savedMode = null;
+  try { savedMode = localStorage.getItem("fhl-demo-mode"); } catch (e) {}
+  setMode(savedMode === "light" || savedMode === "dark" ? savedMode : (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+
+  // Samples: one per supported language.
+  function setDownloads(on) { $("dlHtml").disabled = !on; $("dlImg").disabled = !on; $("share").disabled = !on || !canShareFiles; $("dlnote").textContent = on ? "" : "Highlight the code first."; }
+  function clearResult() { lastHTML = ""; $("extra").hidden = true; setDownloads(false); renderShot('<pre class="highlight"><code></code></pre>', true); }
+  // Languages: choosing one shows its sample.
+  var langSel = $("lang");
+  SAMPLES.forEach(function (s, i) { var o = document.createElement("option"); o.value = String(i); o.textContent = s.name; langSel.appendChild(o); });
+  function showSample(s) { current = s; src.value = s.code; langSel.value = String(SAMPLES.indexOf(s)); clearResult(); }
+  langSel.addEventListener("change", function () { showSample(SAMPLES[Number(langSel.value)]); });
+  // Feeling lucky: another language, a theme and light or dark, all at random, highlighted at once.
+  function pick(list, not) { var v; do { v = list[Math.floor(Math.random() * list.length)]; } while (list.length > 1 && v === not); return v; }
+  $("lucky").addEventListener("click", function () {
+    themeSel.value = pick(Object.keys(THEMES));
+    setMode(pick(["light", "dark"]));
+    showSample(pick(SAMPLES, current));
+    highlight();
+  });
+  src.addEventListener("input", clearResult);
+  showSample(SAMPLES.filter(function (s) { return s.lang === "go"; })[0] || SAMPLES[0]);
+
+  function windowTitle() { return "fasthighlight - " + current.name; }
+  var COPY_ICONS = '<svg class="ic" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><svg class="ok" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>';
+  function renderShot(code, blank) {
+    out.innerHTML = '<div class="shot"><span class="shot-label">PREVIEW</span>' + windowHTML(code, blank) + '<span class="credit">fasthighlight</span>' +
+      (blank ? '' : '<button type="button" class="copy" id="copyImg" aria-label="Copy the image" title="Copy the image">' + COPY_ICONS + '</button>') + '</div>';
+    out.querySelector(".title").textContent = windowTitle();
+    if (!blank) $("copyImg").addEventListener("click", copyImage);
+  }
+  function windowHTML(code, blank) {
+    return '<div class="win' + (blank ? ' blank' : '') + '"><div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>' +
+      '<span class="title"></span></div>' + code + '</div>';
+  }
+  // The highlighted HTML is escaped by fasthighlight (the code never runs); the title is set as text.
+  function highlight() {
+    if (!ready || !current) return;
+    lastHTML = fhlHighlight(current.lang, src.value);
+    renderShot(lastHTML, false);
+    $("html").textContent = lastHTML;
+    $("extra").hidden = false;
+    setDownloads(true);
+  }
+  run.addEventListener("click", highlight);
+  src.addEventListener("keydown", function (e) { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); highlight(); } });
+
+  // Copy buttons.
+  function copyText(text) {
+    var fallback = function () {
+      var ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select(); var ok = false; try { ok = document.execCommand("copy"); } catch (e) {} ta.remove(); return ok;
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).then(function () { return true; }, fallback);
+    return Promise.resolve(fallback());
+  }
+  document.querySelectorAll(".copy").forEach(function (b) {
+    b.addEventListener("click", function () {
+      copyText($(b.getAttribute("data-copy")).textContent).then(function (ok) {
+        if (!ok) return;
+        b.classList.add("done"); setTimeout(function () { b.classList.remove("done"); }, 2000);
+      });
+    });
+  });
+
+  // Saving files: through the viewer's downloads capability when there is one, else a plain browser download.
+  var downloads = null;
+  if (window.claude && typeof window.claude.use === "function") { window.claude.use("downloads").then(function (d) { downloads = d; }, function () {}); }
+  function note(msg) { $("dlnote").textContent = msg; }
+  function save(name, blob) {
+    if (downloads) {
+      return downloads.save({ filename: name, data: blob }).then(function () { note(""); }, function (e) {
+        if (e && e.code !== "declined") note("Could not save the file (" + (e.code || e) + ").");
+      });
+    }
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+    return Promise.resolve();
+  }
+  function baseName() { return "fasthighlight-" + current.lang.replace(/[^a-z0-9]+/gi, "-").toLowerCase(); }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+
+  // HTML: one file that opens as it is, with the window centered on the gradient.
+  $("dlHtml").addEventListener("click", function () {
+    if (!lastHTML) return;
+    var root = getComputedStyle(document.documentElement);
+    var g = ["--shot-a", "--shot-b", "--shot-c"].map(function (v) { return root.getPropertyValue(v).trim(); });
+    var css = themeCSS() +
+      "\nhtml, body { margin: 0; min-height: 100%; }\n" +
+      "body { min-height: 100vh; display: grid; place-items: center; background: linear-gradient(135deg, " + g[0] + ", " + g[1] + " 55%, " + g[2] + "); }\n" +
+      ".shot { position: relative; padding: 56px; box-sizing: border-box; max-width: 100vw; }\n" +
+      ".win { width: max-content; min-width: min(560px, 100%); max-width: 100%; margin: 0 auto; border-radius: 10px; overflow: hidden; background: var(--highlight-background); box-shadow: 0 16px 40px rgba(0, 0, 0, .35); }\n" +
+      ".bar { position: relative; height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 16px; }\n" +
+      ".dot { width: 12px; height: 12px; border-radius: 50%; } .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }\n" +
+      ".title { position: absolute; left: 0; right: 0; text-align: center; font: 12px system-ui, -apple-system, \"Segoe UI\", sans-serif; color: var(--highlight-comment); }\n" +
+      ".win pre.highlight { margin: 0; padding: 4px 20px 18px; border: 0; border-radius: 0; overflow-x: auto; font: 14px/21px " + CODE_FONT + "; tab-size: 4; }\n" +
+      ".win pre.highlight code { font: inherit; }\n" +
+      ".credit { position: fixed; right: 16px; bottom: 12px; font: 12px system-ui, -apple-system, \"Segoe UI\", sans-serif; color: rgba(255, 255, 255, .85); text-decoration: none; }\n";
+    var doc = "<!DOCTYPE html>\n<html lang=\"en\">\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n" +
+      "<title>" + esc(windowTitle()) + "</title>\n<style>\n" + css + "</style>\n" +
+      "<div class=\"shot\"><div class=\"win\"><div class=\"bar\"><span class=\"dot r\"></span><span class=\"dot y\"></span><span class=\"dot g\"></span><span class=\"title\">" + esc(windowTitle()) + "</span></div>" +
+      lastHTML + "</div></div>\n<a class=\"credit\" href=\"" + SITE + "\">fasthighlight</a>\n";
+    save(baseName() + ".html", new Blob([doc], { type: "text/html" }));
+  });
+
+  // The image: drawn on a canvas from the highlighted spans, with the same sizes as the window on the page.
+  var probe = document.createElement("canvas"); probe.width = probe.height = 1;
+  var WEBP = probe.toDataURL("image/webp").indexOf("data:image/webp") === 0;
+  if (!WEBP) $("dlImg").textContent = "PNG";
+  function drawImage() {
+    var pre = out.querySelector("pre.highlight"); if (!pre) return null;
+    var code = pre.querySelector("code") || pre;
+    var pcs = getComputedStyle(pre), root = getComputedStyle(document.documentElement);
+    var base = { color: pcs.color, weight: "400", style: "normal" };
+    // Lines of runs, with tabs expanded to the next multiple of 4 columns.
+    var lines = [[]], col = 0;
+    (function walk(node, st) {
+      node.childNodes.forEach(function (n) {
+        if (n.nodeType === 3) {
+          n.nodeValue.split("\n").forEach(function (part, i) {
+            if (i > 0) { lines.push([]); col = 0; }
+            var t = "";
+            for (var k = 0; k < part.length; k++) {
+              var ch = part[k];
+              if (ch === "\t") { var sp = 4 - (col % 4); t += "    ".slice(0, sp); col += sp; } else { t += ch; col++; }
+            }
+            if (t) lines[lines.length - 1].push({ text: t, color: st.color, weight: st.weight, style: st.style });
+          });
+        } else if (n.nodeType === 1) {
+          var cs = getComputedStyle(n);
+          walk(n, { color: cs.color, weight: cs.fontWeight, style: cs.fontStyle });
+        }
+      });
+    })(code, base);
+    while (lines.length > 1 && lines[lines.length - 1].length === 0) lines.pop();
+
+    var S = 2, PAD = 56, BAR = 40, PX = 20, PT = 4, PB = 18, LH = 21, FS = 14, MINW = 560;
+    var c = document.createElement("canvas"), ctx = c.getContext("2d");
+    var fontOf = function (r) { return (r.style === "italic" ? "italic " : "") + (Number(r.weight) >= 600 || r.weight === "bold" ? "700 " : "400 ") + FS + "px " + CODE_FONT; };
+    var maxW = 0;
+    lines.forEach(function (line) {
+      var w = 0; line.forEach(function (r) { ctx.font = fontOf(r); w += ctx.measureText(r.text).width; }); if (w > maxW) maxW = w;
+    });
+    var winW = Math.ceil(Math.max(MINW, maxW + PX * 2)), winH = BAR + PT + lines.length * LH + PB;
+    var W = winW + PAD * 2, H = winH + PAD * 2;
+    c.width = W * S; c.height = H * S; ctx.scale(S, S);
+    var grad = ctx.createLinearGradient(0, 0, W, H);
+    grad.addColorStop(0, root.getPropertyValue("--shot-a").trim()); grad.addColorStop(0.55, root.getPropertyValue("--shot-b").trim()); grad.addColorStop(1, root.getPropertyValue("--shot-c").trim());
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+    var rr = function (x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); };
+    ctx.save(); ctx.shadowColor = "rgba(0,0,0,.35)"; ctx.shadowBlur = 40; ctx.shadowOffsetY = 16;
+    ctx.fillStyle = pcs.backgroundColor; rr(PAD, PAD, winW, winH, 10); ctx.fill(); ctx.restore();
+    [["#ff5f57", 0], ["#febc2e", 1], ["#28c840", 2]].forEach(function (d) { ctx.fillStyle = d[0]; ctx.beginPath(); ctx.arc(PAD + 16 + 6 + d[1] * 20, PAD + BAR / 2, 6, 0, Math.PI * 2); ctx.fill(); });
+    ctx.fillStyle = root.getPropertyValue("--highlight-comment").trim() || pcs.color;
+    ctx.font = "12px " + UI_FONT; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(windowTitle(), PAD + winW / 2, PAD + BAR / 2);
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    lines.forEach(function (line, i) {
+      var x = PAD + PX, y = PAD + BAR + PT + i * LH + Math.round(LH * 0.72);
+      line.forEach(function (r) { ctx.font = fontOf(r); ctx.fillStyle = r.color; ctx.fillText(r.text, x, y); x += ctx.measureText(r.text).width; });
+    });
+    ctx.fillStyle = "rgba(255,255,255,.8)"; ctx.font = "12px " + UI_FONT; ctx.textAlign = "right";
+    ctx.fillText("fasthighlight", W - 16, H - 14);
+    return c;
+  }
+  function imageBlob(type) {
+    return new Promise(function (resolve) {
+      var c = drawImage(); if (!c) return resolve(null);
+      c.toBlob(function (b) { resolve(b); }, type || (WEBP ? "image/webp" : "image/png"), 0.95);
+    });
+  }
+  // Copy the image: browsers put images on the clipboard as PNG only. The ClipboardItem is made at once,
+  // with the image still being drawn, as Safari requires.
+  function copyImage() {
+    var b = $("copyImg");
+    var flash = function (cls, label) { b.classList.add(cls); b.title = label; setTimeout(function () { b.classList.remove(cls); b.title = "Copy the image"; }, 2000); };
+    try {
+      if (!navigator.clipboard || !window.ClipboardItem) throw new Error("no clipboard");
+      navigator.clipboard.write([new ClipboardItem({ "image/png": imageBlob("image/png") })])
+        .then(function () { flash("done", "Copied"); }, function () { flash("fail", "Copying images is not allowed here"); note("Copying images is not allowed here. Use the download buttons."); });
+    } catch (e) { flash("fail", "Copying images is not allowed here"); note("Copying images is not allowed here. Use the download buttons."); }
+  }
+  $("dlImg").addEventListener("click", function () {
+    imageBlob().then(function (b) { if (b) save(baseName() + (WEBP ? ".webp" : ".png"), b); });
+  });
+
+  // Share on X: only where the device can share an image (the share sheet on phones).
+  var canShareFiles = false;
+  try { canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [new File([new Uint8Array(1)], "x.png", { type: "image/png" })] })); } catch (e) {}
+  if (!canShareFiles) { $("share").disabled = true; $("share").title = "Mobile only"; $("share").textContent = "Share on X (mobile only)"; }
+  $("share").addEventListener("click", function () {
+    imageBlob().then(function (b) {
+      if (!b) return;
+      var f = new File([b], baseName() + (WEBP ? ".webp" : ".png"), { type: b.type });
+      navigator.share({ files: [f], text: "Highlighted with fasthighlight " + SITE }).catch(function () {});
+    });
+  });
+
+  fetch("fasthighlight.wasm")
+    .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.arrayBuffer(); })
+    .then(function (buf) { var go = new Go(); return WebAssembly.instantiate(buf, go.importObject).then(function (res) { go.run(res.instance); }); })
+    .then(function () {
+      if (typeof fhlHighlight !== "function") throw new Error("it did not start");
+      ready = true; run.disabled = false;
+      status.textContent = SAMPLES.length + " languages. Press Highlight (or Ctrl/⌘ + Enter).";
+    })
+    .catch(function (e) {
+      status.className = "bad";
+      status.textContent = "WebAssembly could not run (" + (e && e.message ? e.message : e) + ").";
+    });
+})();
+</script>

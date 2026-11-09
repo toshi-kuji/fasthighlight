@@ -1,0 +1,172 @@
+[
+ {
+  "name": "Bash",
+  "lang": "bash",
+  "code": "#!/usr/bin/env bash\nset -euo pipefail\n\nREPO_URL=\"https://example.com/tasku/tasku.git\"\nWORKDIR=\"${HOME}/src/tasku\"\n\nif [[ ! -d \"$WORKDIR\" ]]; then\n  git clone \"$REPO_URL\" \"$WORKDIR\"\nfi\ncd \"$WORKDIR\"\n\n# 必要なツールの確認\nfor cmd in go cargo node python3 docker; do\n  if ! command -v \"$cmd\" >/dev/null 2>&1; then\n    echo \"error: $cmd が見つからない\" >&2\n    exit 1\n  fi\ndone\n\n# 依存の取得\ngo mod download\n(cd web && npm ci)\npython3 -m venv .venv && source .venv/bin/activate\npip install -r analytics/requirements.txt\n\ncat <<EOF > .env.local\nDATABASE_URL=postgres://tasku:tasku@localhost:5432/tasku\nREDIS_URL=redis://localhost:6379/0\nLOG_LEVEL=${LOG_LEVEL:-debug}\nEOF\n\necho \"準備ができた: $(date '+%Y-%m-%d %H:%M:%S')\"\n"
+ },
+ {
+  "name": "Bash Session",
+  "lang": "bash-session",
+  "code": "$ go install github.com/toshi-kuji/fasthighlight/cmd/fhl@latest\n$ fhl --version\nfhl v0.2.0\n"
+ },
+ {
+  "name": "C",
+  "lang": "c",
+  "code": "#include <stdio.h>\n#include <stdbool.h>\n#include <stdint.h>\n\n/* 閏年なら true を返す */\nstatic bool is_leap(int32_t year) {\n    return (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;\n}\n\nstatic const uint8_t days_in_month[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};\n\n/* 年の初めからの日数(1 月 1 日が 1) */\nint day_of_year(int32_t year, int month, int day) {\n    if (month < 1 || month > 12) {\n        return -1;\n    }\n    int n = day;\n    for (int m = 0; m < month - 1; m++) {\n        n += days_in_month[m];\n    }\n    if (month > 2 && is_leap(year)) {\n        n++;\n    }\n    return n;\n}\n\nint main(void) {\n    printf(\"%d\\n\", day_of_year(2026, 11, 1));\n    return 0;\n}\n"
+ },
+ {
+  "name": "C#",
+  "lang": "csharp",
+  "code": "using System;\nusing System.Collections.Generic;\nusing System.Linq;\nusing System.Threading.Tasks;\n\nnamespace Tasku.Reports\n{\n    public record TaskRow(long Id, string Title, string Status, DateTime? DueAt);\n\n    public sealed class WeeklyReport\n    {\n        private readonly ITaskSource _source;\n\n        public WeeklyReport(ITaskSource source) => _source = source;\n\n        public async Task<string> BuildAsync(DateTime weekStart)\n        {\n            var rows = await _source.LoadAsync(weekStart, weekStart.AddDays(7));\n            var done = rows.Count(r => r.Status == \"done\");\n            var overdue = rows\n                .Where(r => r.Status != \"done\" && r.DueAt is { } due && due < DateTime.Now)\n                .OrderBy(r => r.DueAt)\n                .ToList();\n\n            var lines = new List<string>\n            {\n                $\"週の始め: {weekStart:yyyy-MM-dd}\",\n                $\"完了: {done} 件 / 全 {rows.Count} 件\",\n            };\n            lines.AddRange(overdue.Select(r => $\"- 期限切れ: {r.Title} ({r.DueAt:MM/dd})\"));\n            return string.Join(Environment.NewLine, lines);\n        }\n    }\n}\n"
+ },
+ {
+  "name": "C++",
+  "lang": "cpp",
+  "code": "#include <algorithm>\n#include <string>\n#include <unordered_map>\n#include <vector>\n\nnamespace tasku {\n\nclass Index {\npublic:\n    void add(int id, const std::string& text) {\n        for (auto& word : split(text)) {\n            postings_[word].push_back(id);\n        }\n    }\n\n    std::vector<int> search(const std::string& word) const {\n        auto it = postings_.find(word);\n        if (it == postings_.end()) {\n            return {};\n        }\n        auto ids = it->second;\n        std::sort(ids.begin(), ids.end());\n        ids.erase(std::unique(ids.begin(), ids.end()), ids.end());\n        return ids;\n    }\n\nprivate:\n    static std::vector<std::string> split(const std::string& s) {\n        std::vector<std::string> out;\n        std::string cur;\n        for (char c : s) {\n            if (c == ' ') {\n                if (!cur.empty()) out.push_back(std::move(cur));\n                cur.clear();\n            } else {\n                cur += c;\n            }\n        }\n        if (!cur.empty()) out.push_back(cur);\n        return out;\n    }\n\n    std::unordered_map<std::string, std::vector<int>> postings_;\n};\n\n}  // namespace tasku\n"
+ },
+ {
+  "name": "CSS",
+  "lang": "css",
+  "code": ":root {\n  --color-primary: #2563eb;\n  --color-done: #16a34a;\n  --radius: 8px;\n  --gap: 12px;\n}\n\n.app-header {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  padding: var(--gap) calc(var(--gap) * 2);\n  border-bottom: 1px solid rgba(0, 0, 0, 0.08);\n}\n\n.task-card {\n  border-radius: var(--radius);\n  padding: 10px 14px;\n  margin-bottom: var(--gap);\n  background: #fff;\n  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);\n  transition: transform 0.15s ease-in-out;\n}\n\n.task-card:hover {\n  transform: translateY(-2px);\n}\n\n.task-card.done .title {\n  color: var(--color-done);\n  text-decoration: line-through;\n}\n\n@media (max-width: 600px) {\n  .app-header nav {\n    display: none;\n  }\n}\n"
+ },
+ {
+  "name": "Diff",
+  "lang": "diff",
+  "code": "diff --git a/config/tasku.toml b/config/tasku.toml\nindex 3f2a1b0..8c9d4e2 100644\n--- a/config/tasku.toml\n+++ b/config/tasku.toml\n@@ -9,8 +9,8 @@ allowed_origins = [\"https://tasku.example.com\", \"http://localhost:3000\"]\n [database]\n url = \"postgres://tasku:tasku@localhost:5432/tasku\"\n-max_open_conns = 20\n-max_idle_conns = 5\n+max_open_conns = 40\n+max_idle_conns = 10\n \n [features]\n recurring_tasks = true\n-ai_summary = false\n+ai_summary = true\n"
+ },
+ {
+  "name": "Docker",
+  "lang": "docker",
+  "code": "FROM golang:1.24 AS build\nWORKDIR /src\nCOPY . .\nRUN go build -o /out/fhl ./cmd/fhl\n\nFROM gcr.io/distroless/static\nCOPY --from=build /out/fhl /fhl\nENTRYPOINT [\"/fhl\"]\n"
+ },
+ {
+  "name": "Go",
+  "lang": "go",
+  "code": "package main\n\nimport (\n\t\"context\"\n\t\"io\"\n\t\"net/http\"\n\n\t\"cloud.google.com/go/storage\"\n)\n\n// RequestMemo keeps what one request needs.\ntype RequestMemo struct {\n\treqCtx  context.Context\n\tStorage *storage.Client\n\tBody    io.Reader\n\theaders map[string][]string `json:\"headers\"`\n\tid      string\n}\n\ntype AppEnv struct {\n\tClient  *http.Client\n\tMemo    RequestMemo\n\tRetries int\n}\n\ntype sseEvent struct {\n\tevent string\n\tdata  string\n}\n\nfunc (e *AppEnv) Do(req *http.Request) (*http.Response, error) {\n\treturn e.Client.Do(req.WithContext(e.Memo.reqCtx))\n}\n"
+ },
+ {
+  "name": "GraphQL",
+  "lang": "graphql",
+  "code": "# The latest posts of a user, with their comments.\nquery UserPosts($login: String!, $first: Int = 10) {\n  user(login: $login) {\n    name\n    posts(first: $first, orderBy: {field: CREATED_AT, direction: DESC}) {\n      edges {\n        node {\n          id\n          title\n          comments(first: 3) { totalCount }\n        }\n      }\n    }\n  }\n}\n"
+ },
+ {
+  "name": "HTML",
+  "lang": "html",
+  "code": "<!DOCTYPE html>\n<html lang=\"ja\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Tasku</title>\n  <link rel=\"stylesheet\" href=\"/assets/app.css\">\n</head>\n<body>\n  <header class=\"app-header\">\n    <h1>Tasku</h1>\n    <nav>\n      <a href=\"/today\" class=\"active\">今日</a>\n      <a href=\"/upcoming\">これから</a>\n    </nav>\n  </header>\n  <main id=\"app\" data-user-id=\"1001\">\n    <!-- ここに画面を描く -->\n    <p class=\"loading\">読み込み中&hellip;</p>\n  </main>\n  <script type=\"module\" src=\"/assets/main.js\"></script>\n</body>\n</html>\n"
+ },
+ {
+  "name": "HTTP",
+  "lang": "http",
+  "code": "POST /v1/items HTTP/1.1\nHost: api.example.com\nContent-Type: application/json\nContent-Length: 38\n\n{\"name\": \"widget\", \"tags\": [\"a\", \"b\"]}\n"
+ },
+ {
+  "name": "INI",
+  "lang": "ini",
+  "code": "; Settings for the build server.\n[server]\nhost = 0.0.0.0\nport = 8080\ndebug = false\n\n[paths]\nroot = /srv/site\ncache = \"${root}/cache\"   ; expanded at start\n"
+ },
+ {
+  "name": "JSON",
+  "lang": "json",
+  "code": "{\n  \"name\": \"fasthighlight\",\n  \"version\": \"0.2.0\",\n  \"languages\": 34,\n  \"regex\": false\n}\n"
+ },
+ {
+  "name": "Java",
+  "lang": "java",
+  "code": "package com.example.tasku.billing;\n\nimport java.math.BigDecimal;\nimport java.math.RoundingMode;\nimport java.util.List;\nimport java.util.Objects;\n\npublic final class Invoice {\n    private static final BigDecimal TAX_RATE = new BigDecimal(\"0.10\");\n\n    private final String customerId;\n    private final List<LineItem> items;\n\n    public Invoice(String customerId, List<LineItem> items) {\n        this.customerId = Objects.requireNonNull(customerId);\n        this.items = List.copyOf(items);\n    }\n\n    public BigDecimal subtotal() {\n        return items.stream()\n                .map(LineItem::amount)\n                .reduce(BigDecimal.ZERO, BigDecimal::add);\n    }\n\n    public BigDecimal total() {\n        BigDecimal tax = subtotal().multiply(TAX_RATE).setScale(0, RoundingMode.DOWN);\n        return subtotal().add(tax);\n    }\n\n    @Override\n    public String toString() {\n        return \"Invoice{customer=\" + customerId + \", total=\" + total() + \"}\";\n    }\n\n    public record LineItem(String name, int quantity, BigDecimal unitPrice) {\n        public BigDecimal amount() {\n            return unitPrice.multiply(BigDecimal.valueOf(quantity));\n        }\n    }\n}\n"
+ },
+ {
+  "name": "JavaScript",
+  "lang": "js",
+  "code": "// Count the words of a text.\nconst count = (text) =>\n  text.split(/\\s+/).filter(Boolean).reduce((m, w) => m.set(w, (m.get(w) ?? 0) + 1), new Map());\n\nconsole.log(count(`to be or not to be`));\n"
+ },
+ {
+  "name": "Kotlin",
+  "lang": "kotlin",
+  "code": "package com.example.tasku\n\nimport kotlinx.coroutines.flow.MutableStateFlow\nimport kotlinx.coroutines.flow.StateFlow\nimport kotlinx.coroutines.launch\n\ndata class Task(\n    val id: Long,\n    val title: String,\n    val done: Boolean = false,\n    val priority: Int = 2,\n)\n\nsealed interface UiState {\n    object Loading : UiState\n    data class Loaded(val tasks: List<Task>) : UiState\n    data class Failed(val message: String) : UiState\n}\n\nclass TaskViewModel(private val repo: TaskRepository) : ViewModel() {\n    private val _state = MutableStateFlow<UiState>(UiState.Loading)\n    val state: StateFlow<UiState> = _state\n\n    fun load(userId: Long) {\n        viewModelScope.launch {\n            _state.value = try {\n                val tasks = repo.list(userId).sortedBy { it.priority }\n                UiState.Loaded(tasks)\n            } catch (e: Exception) {\n                UiState.Failed(e.message ?: \"unknown error\")\n            }\n        }\n    }\n\n    fun toggle(task: Task) {\n        val current = (_state.value as? UiState.Loaded)?.tasks ?: return\n        _state.value = UiState.Loaded(current.map { if (it.id == task.id) it.copy(done = !it.done) else it })\n    }\n}\n"
+ },
+ {
+  "name": "Makefile",
+  "lang": "make",
+  "code": "CC := gcc\n\n.PHONY: all clean\nall: app\n\napp: main.o util.o\n\t$(CC) -o $@ $^\n\nclean:\n\trm -f app *.o\n"
+ },
+ {
+  "name": "PHP",
+  "lang": "php",
+  "code": "<?php\ndeclare(strict_types=1);\n\nnamespace Tasku\\Admin;\n\nuse PDO;\n\nfinal class UserController\n{\n    public function __construct(private PDO $db) {}\n\n    public function index(array $query): string\n    {\n        $page = max(1, (int)($query['page'] ?? 1));\n        $limit = 20;\n        $stmt = $this->db->prepare(\n            'SELECT id, email, name FROM users ORDER BY id DESC LIMIT :limit OFFSET :offset'\n        );\n        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);\n        $stmt->bindValue(':offset', ($page - 1) * $limit, PDO::PARAM_INT);\n        $stmt->execute();\n\n        $rows = '';\n        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $user) {\n            $name = htmlspecialchars($user['name'], ENT_QUOTES, 'UTF-8');\n            $rows .= \"<tr><td>{$user['id']}</td><td>{$name}</td></tr>\\n\";\n        }\n        return \"<table>{$rows}</table>\";\n    }\n}\n"
+ },
+ {
+  "name": "PowerShell",
+  "lang": "powershell",
+  "code": "# Copy new log files and report how many were copied.\nparam([string]$Source = \"C:\\logs\", [int]$Days = 7)\n\n$since = (Get-Date).AddDays(-$Days)\n$files = Get-ChildItem -Path $Source -Filter *.log |\n    Where-Object { $_.LastWriteTime -gt $since }\n\nforeach ($f in $files) {\n    Copy-Item $f.FullName -Destination \"D:\\backup\\$($f.Name)\" -Force\n}\nWrite-Host \"Copied $($files.Count) files since $since\"\n"
+ },
+ {
+  "name": "Protocol Buffer",
+  "lang": "protobuf",
+  "code": "syntax = \"proto3\";\n\npackage shop.v1;\n\nimport \"google/protobuf/timestamp.proto\";\n\n// An order placed by a customer.\nmessage Order {\n  string id = 1;\n  repeated Item items = 2;\n  google.protobuf.Timestamp placed_at = 3;\n  Status status = 4;\n\n  enum Status {\n    STATUS_UNSPECIFIED = 0;\n    PAID = 1;\n    SHIPPED = 2;\n  }\n}\n\nservice Orders {\n  rpc Get(GetRequest) returns (Order);\n}\n"
+ },
+ {
+  "name": "Python",
+  "lang": "python",
+  "code": "from dataclasses import dataclass\n\n\n@dataclass\nclass Point:\n    \"\"\"A point in the plane.\"\"\"\n    x: float\n    y: float\n\n    def norm(self) -> float:\n        return (self.x ** 2 + self.y ** 2) ** 0.5\n\n\nprint(Point(3, 4).norm())  # 5.0\n"
+ },
+ {
+  "name": "R",
+  "lang": "splus",
+  "code": "library(dplyr)\nlibrary(ggplot2)\n\nevents <- read.csv(\"events.csv\", stringsAsFactors = FALSE)\nevents$at <- as.POSIXct(events$at, format = \"%Y-%m-%dT%H:%M:%S\")\n\nmonthly <- events %>%\n  mutate(month = format(at, \"%Y-%m\")) %>%\n  group_by(month, kind) %>%\n  summarise(n = n(), users = n_distinct(user_id), .groups = \"drop\")\n\n# 完了の割合\ndone_rate <- function(df) {\n  total <- sum(df$n[df$kind == \"created\"])\n  if (total == 0) return(NA_real_)\n  sum(df$n[df$kind == \"completed\"]) / total\n}\n\nrates <- sapply(split(monthly, monthly$month), done_rate)\nprint(round(rates * 100, 1))\n\np <- ggplot(monthly, aes(x = month, y = users, fill = kind)) +\n  geom_col(position = \"dodge\") +\n  labs(title = \"月ごとの利用者数\", x = NULL, y = \"利用者\") +\n  theme_minimal()\nggsave(\"monthly.png\", p, width = 8, height = 4.5, dpi = 150)\n"
+ },
+ {
+  "name": "Ruby",
+  "lang": "rb",
+  "code": "require \"json\"\nrequire \"net/http\"\nrequire \"time\"\n\nmodule Tasku\n  class Reminder\n    DEFAULT_HOURS = 24\n\n    def initialize(api_url:, token:, hours: DEFAULT_HOURS)\n      @api_url = URI(api_url)\n      @token = token\n      @hours = hours\n    end\n\n    def due_soon\n      res = Net::HTTP.get_response(@api_url + \"/tasks?due_within=#{@hours}h\")\n      raise \"HTTP #{res.code}\" unless res.is_a?(Net::HTTPSuccess)\n\n      JSON.parse(res.body, symbolize_names: true)[:tasks]\n        .reject { |t| t[:status] == \"done\" }\n        .sort_by { |t| Time.parse(t[:due_at]) }\n    end\n\n    def run\n      tasks = due_soon\n      return puts(\"no tasks\") if tasks.empty?\n\n      tasks.each do |t|\n        puts format(\"%-30s %s\", t[:title], t[:due_at])\n      end\n    end\n  end\nend\n\nTasku::Reminder.new(api_url: ENV.fetch(\"TASKU_API\"), token: ENV[\"TASKU_TOKEN\"]).run if $PROGRAM_NAME == __FILE__\n"
+ },
+ {
+  "name": "Rust",
+  "lang": "rust",
+  "code": "fn main() {\n    let words = vec![\"fast\", \"highlight\"];\n    for (i, w) in words.iter().enumerate() {\n        println!(\"{i}: {w}\");\n    }\n}\n"
+ },
+ {
+  "name": "SCSS",
+  "lang": "scss",
+  "code": "$primary: #336699 !default;\n\n@mixin theme($bg: white) {\n  background: $bg;\n}\n\n.nav {\n  @include theme($primary);\n  &:hover { color: darken($primary, 10%); }\n}\n"
+ },
+ {
+  "name": "SQL",
+  "lang": "sql",
+  "code": "SELECT u.name, COUNT(o.id) AS orders\nFROM users u\nLEFT JOIN orders o ON o.user_id = u.id\nWHERE u.created_at > '2026-01-01'\nGROUP BY u.name\nORDER BY orders DESC;\n"
+ },
+ {
+  "name": "Swift",
+  "lang": "swift",
+  "code": "import SwiftUI\n\nstruct Task: Identifiable, Codable, Hashable {\n    let id: Int\n    var title: String\n    var done: Bool = false\n    var priority: Int = 2\n}\n\n@MainActor\nfinal class TaskStore: ObservableObject {\n    @Published private(set) var tasks: [Task] = []\n    @Published var errorMessage: String?\n\n    private let baseURL = URL(string: \"https://tasku.example.com/api\")!\n\n    func load(userID: Int) async {\n        do {\n            let url = baseURL.appendingPathComponent(\"tasks\")\n            let (data, _) = try await URLSession.shared.data(from: url)\n            tasks = try JSONDecoder().decode([Task].self, from: data)\n                .sorted { $0.priority < $1.priority }\n        } catch {\n            errorMessage = \"読み込みに失敗した: \\(error.localizedDescription)\"\n        }\n    }\n}\n\nstruct TaskListView: View {\n    @StateObject private var store = TaskStore()\n\n    var body: some View {\n        List(store.tasks) { task in\n            HStack {\n                Image(systemName: task.done ? \"checkmark.circle.fill\" : \"circle\")\n                Text(task.title)\n            }\n        }\n        .task { await store.load(userID: 1001) }\n    }\n}\n"
+ },
+ {
+  "name": "TOML",
+  "lang": "toml",
+  "code": "# config/tasku.toml\ntitle = \"Tasku\"\nversion = \"2.4.0\"\n\n[server]\nhost = \"0.0.0.0\"\nport = 8080\nread_timeout = \"5s\"\nwrite_timeout = \"10s\"\nallowed_origins = [\"https://tasku.example.com\", \"http://localhost:3000\"]\n\n[database]\nurl = \"postgres://tasku:tasku@localhost:5432/tasku\"\nmax_open_conns = 20\nmax_idle_conns = 5\n\n[features]\nrecurring_tasks = true\nai_summary = false\nbeta_users = [1001, 1002, 1003]\n\n[[notifications.channels]]\nname = \"email\"\nenabled = true\nrate_limit_per_minute = 120\n\n[[notifications.channels]]\nname = \"push\"\nenabled = true\nrate_limit_per_minute = 600\n"
+ },
+ {
+  "name": "TypeScript",
+  "lang": "ts",
+  "code": "interface User {\n  id: number;\n  name: string;\n}\n\nfunction byId(users: User[]): Map<number, User> {\n  return new Map(users.map((u) => [u.id, u]));\n}\n"
+ },
+ {
+  "name": "XML",
+  "lang": "xml",
+  "code": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<invoices xmlns=\"https://accounting.example.com/schema/v2\" generated=\"2026-11-01T09:00:00+09:00\">\n  <invoice id=\"INV-2026-1101\" currency=\"JPY\">\n    <customer code=\"C-1001\">株式会社サンプル</customer>\n    <!-- 明細 -->\n    <items>\n      <item sku=\"PLAN-PRO\" quantity=\"12\" unit-price=\"1200\"/>\n      <item sku=\"SEAT-ADD\" quantity=\"5\" unit-price=\"300\"/>\n    </items>\n    <note><![CDATA[支払いは月末締め、翌月末払い。]]></note>\n    <total tax-included=\"true\">17490</total>\n  </invoice>\n</invoices>\n"
+ },
+ {
+  "name": "YAML",
+  "lang": "yaml",
+  "code": "name: ci\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: go test ./...\n"
+ },
+ {
+  "name": "markdown",
+  "lang": "md",
+  "code": "# Release notes\n\nVersion **0.5** adds `NewDocument`. See the [library page](library.html).\n\n## Changes\n\n- Heading ids keep Japanese text\n- *Faster* parallel highlighting\n  1. measured on 43 pages\n  2. no new flags\n\n> Note: the default theme changed.\n\n```go\ndoc := markdown.NewDocument(\"page.md\", src, root)\n```\n"
+ },
+ {
+  "name": "react",
+  "lang": "jsx",
+  "code": "import { useState } from \"react\";\n\n// A counter with a reset button.\nexport function Counter({ start = 0 }) {\n  const [count, setCount] = useState(start);\n  return (\n    <div className=\"counter\">\n      <p>Clicked {count} times</p>\n      <button onClick={() => setCount(count + 1)}>+1</button>\n      <button onClick={() => setCount(start)} disabled={count === start}>\n        Reset\n      </button>\n    </div>\n  );\n}\n"
+ }
+]

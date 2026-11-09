@@ -8,6 +8,7 @@
 - [Use cases](use-cases.html): when the speed matters, and what to run for common jobs
 - [Themes and CSS](themes.html): color themes, CSS variables, token classes
 - [Chroma compatibility](compatibility.html): what matches Chroma, what was changed, why it is fast
+- [Demo](demo/): try it in your browser (WebAssembly, built only for the demo)
 
 ## Reference
 

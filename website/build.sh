@@ -18,6 +18,9 @@
 #     link to a page shows the image, the title and a description on social media.
 #     Then put the header common to every page (links, and the button that switches between light
 #     and dark) at the top of each page.
+#  7. Build the demo page (website/demo): fasthighlight compiled to WebAssembly, only for this page,
+#     with the CSS of every theme and one sample per language filled in, and add it to sitemap.xml.
+#     It is a page of its own, built after steps 4 to 6, which leave it alone.
 #
 # Light and dark: the site follows the viewer's device, and the button overrides it. The choice is
 # saved in localStorage ("theme") and set as data-theme="light" or "dark" on <html> before the page
@@ -246,6 +249,45 @@ for dirpath, _, files in os.walk(out):
         if not re.search(r'<link rel="stylesheet" href="[^"<>]*highlight\.css">\n<link rel="icon"', html):
             sys.exit(f"build.sh: the head of {path} came out broken")
         open(path, "w", encoding="utf-8").write(html)
+PY
+
+# 7. The demo: demo/index.html (the themes and samples filled in), demo/fasthighlight.wasm and Go's
+#    demo/wasm_exec.js, which loads it.
+mkdir -p "$out/demo"
+(cd "$root" && GOOS=js GOARCH=wasm go build -trimpath -ldflags "-s -w" -o "$out/demo/fasthighlight.wasm" ./website/demo/wasm)
+goroot="$(cd "$root" && go env GOROOT)"
+if [ -f "$goroot/lib/wasm/wasm_exec.js" ]; then
+	install -m 644 "$goroot/lib/wasm/wasm_exec.js" "$out/demo/"
+else
+	install -m 644 "$goroot/misc/wasm/wasm_exec.js" "$out/demo/"
+fi
+python3 - "$fhl" "$work/themes.json" "$root/website/demo" "$out" "$site_url" <<'PY'
+import json, subprocess, sys
+from xml.sax.saxutils import escape
+
+fhl, themes_json, src, out, base = sys.argv[1:6]
+run = lambda *args: subprocess.run([fhl, *args], check=True, capture_output=True, text=True).stdout
+themes = {}
+for t in json.load(open(themes_json)):
+    themes[t["name"]] = {"label": t["label"], "light": run("--print-css", "--theme", "light:" + t["name"]),
+                         "dark": run("--print-css", "--theme", "dark:" + t["name"])}
+samples = json.load(open(src + "/samples.json", encoding="utf-8"))
+missing = sorted({l["name"] for l in json.loads(run("--list-langs", "--json"))} - {s["name"] for s in samples})
+if missing:
+    sys.exit(f"build.sh: website/demo/samples.json has no sample for {missing}")
+page = open(src + "/index.html", encoding="utf-8").read()
+for name, value in (("THEMES", themes), ("SAMPLES", samples)):
+    marker = "/*" + name + "*/"
+    if page.count(marker) != 1:
+        sys.exit(f"build.sh: website/demo/index.html needs one {marker}")
+    # "</" is escaped so that nothing in the data can close the <script> it goes into.
+    page = page.replace(marker, json.dumps(value, ensure_ascii=False).replace("</", "<\\/"))
+open(out + "/demo/index.html", "w", encoding="utf-8").write(page)
+
+sitemap = out + "/sitemap.xml"
+xml = open(sitemap, encoding="utf-8").read()
+url = "  <url><loc>" + escape(base.rstrip("/") + "/demo/") + "</loc></url>\n"
+open(sitemap, "w", encoding="utf-8").write(xml.replace("</urlset>", url + "</urlset>", 1))
 PY
 
 echo "build.sh: wrote $out"

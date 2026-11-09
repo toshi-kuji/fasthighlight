@@ -4,6 +4,8 @@
 
 fasthighlight is fast syntax highlighting written in Go, without regular expressions: each supported language has its own hand-written tokenizer. The highlighting follows the language definitions of [Chroma](https://github.com/alecthomas/chroma) 2.27.0, with a few deliberate fixes. Add it to [goldmark](https://github.com/yuin/goldmark) to highlight the code blocks in Markdown, or use the command `fhl` from a terminal, a script or a program in another language to turn Markdown into HTML, up to a basic static site.
 
+✨ Try it in your browser: [the demo](https://toshi-kuji.github.io/fasthighlight/demo/) (a WebAssembly build made only for the demo; fasthighlight does not ship one).
+
 - **Fast.** In our measurements (before v0.1.0), converting a Markdown document was about 4.4 to 4.6 times as fast as Node with markdown-it and highlight.js, and about 7 to 20 times as fast as Chroma with all its languages ([numbers](#speed)).
 - **Two ways in.** Go packages for Go programs (`markdown` adds highlighting to goldmark; `fasthighlight` highlights code on its own), and the `fhl` command for everything else (static site builds in other languages, CI, AI agents).
 - **Small dependency footprint.** The highlighting package has no dependencies outside the standard library. The `markdown` package depends only on goldmark.

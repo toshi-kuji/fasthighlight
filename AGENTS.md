@@ -63,7 +63,7 @@ CI (`.github/workflows/ci.yml`) runs the tests, the checks, the comparison with 
 | `cmd/bench`, `cmd/prof` | Benchmarks and `pprof` |
 | `bench/` | Comparison implementations (Chroma, gotreesitter, Node). A separate Go module, so that they are not dependencies of the core |
 | `testdata/` | Documents used by the benchmarks and tests (`input.md`, `multilang.md`), and the expected HTML of `input.md` (`input.html`), made with Chroma's formatter with the outer class name changed to `highlight` |
-| `website/` | The documentation site: the pages in Markdown, `style.css`, `build.sh`, the icon (`favicon.png`, cut from the logo), the image shown with links on social media (`og.png`, 1200×630), and the Google Search Console verification file (`google*.html`, copied as it is; do not edit or remove it) |
+| `website/` | The documentation site: the pages in Markdown, `style.css`, `build.sh`, the icon (`favicon.png`, cut from the logo), the image shown with links on social media (`og.png`, 1200×630), the Google Search Console verification file (`google*.html`, copied as it is; do not edit or remove it), and the demo (`demo/`: the page, one sample per language in `samples.json`, and `wasm/main.go`, which `build.sh` builds with `GOOS=js GOARCH=wasm`; a new language needs a sample there, or the build fails) |
 | `docs/` | `benchmark.md`: how to run the benchmarks |
 
 ## Rules
