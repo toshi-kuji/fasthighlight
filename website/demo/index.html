@@ -216,7 +216,7 @@ footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line-s
   setMode(savedMode === "light" || savedMode === "dark" ? savedMode : (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
 
   // Samples: one per supported language.
-  function setDownloads(on) { $("dlHtml").disabled = !on; $("dlImg").disabled = !on; $("share").disabled = !on || !canShareFiles; $("dlnote").textContent = on ? "" : "Highlight the code first."; }
+  function setDownloads(on) { $("dlHtml").disabled = !on; $("dlImg").disabled = !on; $("share").disabled = !on || !canShareFiles; $("dlnote").textContent = !on ? "Highlight the code first." : canShareFiles ? "" : SHARE_NOTE; }
   function clearResult() { lastHTML = ""; $("extra").hidden = true; setDownloads(false); renderShot('<pre class="highlight"><code></code></pre>', true); }
   // Languages: choosing one shows its sample.
   var langSel = $("lang");
@@ -397,7 +397,9 @@ footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line-s
   // share only right after a tap.
   var canShareFiles = false, shareFile = null;
   try { canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [new File([new Uint8Array(1)], "x.png", { type: "image/png" })] })); } catch (e) {}
-  if (!canShareFiles) { $("share").disabled = true; $("share").title = "Mobile only"; $("share").textContent = "Share (mobile only)"; }
+  // Browsers built into apps (such as X's) and most desktop browsers cannot share files.
+  var SHARE_NOTE = "To share the image, copy it as PNG with the button on the preview below, or open this page in Safari or Chrome on a phone.";
+  if (!canShareFiles) { $("share").disabled = true; $("share").title = SHARE_NOTE; $("share").textContent = "Share (not available in this browser)"; }
   function prepareShare() {
     shareFile = null;
     if (!canShareFiles || !lastHTML) return;
