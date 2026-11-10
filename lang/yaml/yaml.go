@@ -25,8 +25,9 @@ func init() {
 
 func lex(src string, end int) []fh.Token {
 	x := lexkit.NewTokens(src)
+	var kc colonCache
 	for i := 0; i < end; {
-		i = step(x, src, i)
+		i = step(x, &kc, src, i)
 	}
 	return x.Result()
 }
@@ -36,7 +37,7 @@ func bol(src string, i int) bool { return i == 0 || src[i-1] == '\n' }
 
 // step tries the root rules in order at position i, appends the token of the matching rule, and
 // returns the next position.
-func step(x *lexkit.Tokens, src string, i int) int {
+func step(x *lexkit.Tokens, kc *colonCache, src string, i int) int {
 	emit := func(t fh.TokenType, e int) int { x.Emit(t, i, e); return e }
 
 	// whitespace: \s+
@@ -74,7 +75,7 @@ func step(x *lexkit.Tokens, src string, i int) int {
 			return emit(fh.CommentPreproc, e)
 		}
 	}
-	if e, ok := key(x, src, i); ok {
+	if e, ok := key(x, kc, src, i); ok {
 		return e
 	}
 	if e, ok := value(x, src, i); ok {
@@ -121,7 +122,7 @@ func includeEnd(src string, j int) int {
 }
 
 // key tries the rules of the key state in yaml.xml.
-func key(x *lexkit.Tokens, src string, i int) (int, bool) {
+func key(x *lexkit.Tokens, kc *colonCache, src string, i int) (int, bool) {
 	// "[^"\n#].*": (within a line, up to the last ": ")
 	if src[i] == '"' && i+1 < len(src) && strings.IndexByte("\"\n#", src[i+1]) < 0 {
 		_, w := lexkit.Rune(src, i+1)
@@ -136,8 +137,8 @@ func key(x *lexkit.Tokens, src string, i int) (int, bool) {
 	}
 	// (-)( )((?:(?!//)[^"\n{#])*?)(:)( ) never gets here, because the earlier [\n?]?\s*- always matches first.
 	// ((?:(?!//)[^"\n{#])*?)(:)( ) and ((?:(?!//)[^"\n{#])*?)(:)(\n)
-	for _, after := range [...]byte{' ', '\n'} {
-		if j := keyColon(src, i, after); j >= 0 {
+	for a, after := range [...]byte{' ', '\n'} {
+		if j := kc[a].find(src, i, after); j >= 0 {
 			x.Emit(fh.NameTag, i, j)
 			x.Emit(fh.Punctuation, j, j+1)
 			x.Emit(fh.TextWhitespace, j+1, j+2)
@@ -147,21 +148,40 @@ func key(x *lexkit.Tokens, src string, i int) (int, bool) {
 	return 0, false
 }
 
+// colonCache remembers the last keyColon scan for each of the two characters after the colon.
+type colonCache [2]colonScan
+
+// colonScan is one keyColon scan: it started at from and looked at every position up to upto, where
+// it found the colon (res >= 0) or stopped (res == -1). Every start in [from, upto] gives the same
+// result, because keyColon only stops at ASCII bytes, which never occur inside a multi-byte rune.
+// Remembering it keeps a long line from being scanned again at every position.
+type colonScan struct{ from, upto, res int }
+
+// find returns the first result of keyColon(src, i, after), from the remembered scan when i is inside it.
+func (c *colonScan) find(src string, i int, after byte) int {
+	if c.upto > 0 && c.from <= i && i <= c.upto {
+		return c.res
+	}
+	res, upto := keyColon(src, i, after)
+	*c = colonScan{from: i, upto: upto, res: res}
+	return res
+}
+
 // keyColon returns the position of the first ":" that follows (?:(?!//)[^"\n{#])*? from i and is
-// followed by after. It returns -1 if there is none.
-func keyColon(src string, i int, after byte) int {
+// followed by after, or -1 if there is none, and the position where the scan ended.
+func keyColon(src string, i int, after byte) (int, int) {
 	for j := i; j < len(src); {
 		if src[j] == ':' && j+1 < len(src) && src[j+1] == after {
-			return j
+			return j, j
 		}
 		c := src[j]
 		if c == '"' || c == '\n' || c == '{' || c == '#' || strings.HasPrefix(src[j:], "//") {
-			return -1
+			return -1, j
 		}
 		_, n := lexkit.Rune(src, j)
 		j += n
 	}
-	return -1
+	return -1, len(src)
 }
 
 // constants lists the candidates of (false|False|…|Y|y)\b in the same order as the regular

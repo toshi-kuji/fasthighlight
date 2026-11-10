@@ -31,9 +31,10 @@ func Lex(src string, end int) []fh.Token {
 // body of an HTTP message).
 func LexInto(x *lexkit.Tokens, src string, end int) {
 	stack := []state{root}
+	var entity lexkit.EntityCache // the last scan for &\S*?;
 	for i := 0; i < end && len(stack) > 0; {
 		st := stack[len(stack)-1]
-		n, t, push, pop := match(src, i, st)
+		n, t, push, pop := match(src, i, st, &entity)
 		if n == 0 {
 			if src[i] == '\n' && st != root {
 				stack = stack[:1]
@@ -57,7 +58,7 @@ func LexInto(x *lexkit.Tokens, src string, end int) {
 func isNameChar(r rune) bool { return lexkit.IsWord(r) || r == ':' || r == '.' || r == '-' }
 
 // match tries the rules of state st in order. If none matches, n is 0.
-func match(src string, i int, st state) (n int, t fh.TokenType, push state, pop bool) {
+func match(src string, i int, st state, entity *lexkit.EntityCache) (n int, t fh.TokenType, push state, pop bool) {
 	push = -1
 	c := src[i]
 	rest := src[i:]
@@ -67,15 +68,8 @@ func match(src string, i int, st state) (n int, t fh.TokenType, push state, pop 
 			return n, fh.Text, push, false
 		}
 		if c == '&' { // &\S*?;
-			for j := i + 1; j < len(src); {
-				r, w := lexkit.Rune(src, j)
-				if r == ';' {
-					return j + 1 - i, fh.NameEntity, push, false
-				}
-				if lexkit.IsSpace(r) {
-					break
-				}
-				j += w
+			if e := entity.End(src, i); e > 0 {
+				return e - i, fh.NameEntity, push, false
 			}
 			return 0, 0, push, false
 		}

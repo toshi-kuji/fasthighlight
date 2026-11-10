@@ -65,6 +65,22 @@ type lexer struct {
 	stack []state
 	words lexkit.FoldWordCache
 	end   int // end of Lex
+	// dollarFrom and dollarEnd are the last run of "$": any "$" inside it is answered without scanning
+	// the run again.
+	dollarFrom, dollarEnd int
+}
+
+// dollars returns the end of the run of "$" at i, remembering it so that a long run is scanned once.
+func (l *lexer) dollars(i int) int {
+	if l.dollarFrom <= i && i < l.dollarEnd {
+		return l.dollarEnd
+	}
+	j := i
+	for l.at(j) == '$' {
+		j++
+	}
+	l.dollarFrom, l.dollarEnd = i, j
+	return j
 }
 
 // Lex splits src into tokens (with the same contract as the Lex of fasthighlight.Language). compat/ uses it
@@ -459,10 +475,7 @@ func (l *lexer) root(i int) (int, bool) {
 			l.push(variablevariable)
 			return l.emit(fh.NameVariable, i, i+2)
 		}
-		j := i + 1
-		for l.at(j) == '$' {
-			j++
-		}
+		j := l.dollars(i)
 		if n := l.ident(j, true); n > 0 { // \$+ident
 			return l.emit(fh.NameVariable, i, j+n)
 		}

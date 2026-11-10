@@ -235,9 +235,7 @@ type WordCache struct {
 	pos   int
 	n     int
 	mask  uint32
-	// runFrom and runEnd are the last run of word characters measured: from any position inside it, the run
-	// ends at runEnd, so a long run is not measured again from each of its characters.
-	runFrom, runEnd int
+	run   SpanCache // the last run of word characters, so that a long run is measured once
 }
 
 // Match returns the length if a word of list k matches at position i of src (including the trailing \b), or 0
@@ -260,12 +258,7 @@ func (c *WordCache) Match(src string, i, k int) int {
 func (c *WordCache) Word(src string, i int) (int, uint32) {
 	if c.pos != i+1 { // pos is the position + 1 (so that the zero value means "not looked up yet")
 		c.pos, c.mask = i+1, 0
-		if c.runFrom <= i && i < c.runEnd {
-			c.n = c.runEnd - i
-		} else {
-			c.n = Span(src, i, IsWord)
-			c.runFrom, c.runEnd = i, i+c.n
-		}
+		c.n = c.run.Span(src, i, IsWord)
 		if c.n > 0 && c.n <= c.Lists.longest {
 			c.mask = c.Lists.words[src[i:i+c.n]]
 		}
@@ -343,8 +336,7 @@ type FoldWordCache struct {
 	n     int
 	mask  uint32
 	key   []byte
-	// runFrom and runEnd are the last run of word characters measured, as in WordCache.
-	runFrom, runEnd int
+	run   SpanCache // the last run of word characters, as in WordCache
 }
 
 // Match returns the length if a word of list k matches at position i of src (including the trailing \b),
@@ -369,12 +361,7 @@ func (c *FoldWordCache) Word(src string, i int) (int, uint32) {
 		return c.n, c.mask
 	}
 	c.pos, c.key, c.mask = i+1, c.key[:0], 0
-	if c.runFrom <= i && i < c.runEnd {
-		c.n = c.runEnd - i
-	} else {
-		c.n = Span(src, i, IsWord)
-		c.runFrom, c.runEnd = i, i+c.n
-	}
+	c.n = c.run.Span(src, i, IsWord)
 	// Only a run of at most longest characters can be a word; build its lowercased key.
 	ascii := true
 	for j, chars := i, 0; j < i+c.n; chars++ {
@@ -410,4 +397,50 @@ func FoldPrefix(src string, i int, word string) int {
 		j += n
 	}
 	return j - i
+}
+
+// EntityCache finds the end of an entity, &\S*?;, and remembers the last scan. Without it, a long run
+// of "&" with no ";" would be scanned to its end again from every "&". The zero value is ready to use.
+type EntityCache struct {
+	from, stop int  // the last scan started after the "&" at from and stopped at stop
+	found      bool // stop is the ";" that ends the entity
+}
+
+// End returns the end of &\S*?; at i (src[i] == '&'), or 0 if there is none. Every "&" between from and
+// stop gives the same answer: the scan stops only at ";" or whitespace, and an ASCII "&" always starts a
+// rune, so a scan from a later "&" reads the same runes up to stop.
+func (c *EntityCache) End(src string, i int) int {
+	if !(c.from <= i && i < c.stop) {
+		j := i + 1
+		for j < len(src) {
+			r, w := Rune(src, j)
+			if r == ';' || IsSpace(r) {
+				break
+			}
+			j += w
+		}
+		c.from, c.stop, c.found = i, j, j < len(src) && src[j] == ';'
+	}
+	if c.found {
+		return c.stop + 1
+	}
+	return 0
+}
+
+// SpanCache is Span that remembers the last run it found. Lexers ask for the run at every position of a run
+// they do not take as one token (a run of blank lines, for example), and scanning the rest of the run each time
+// would take time quadratic in its length. One SpanCache must always be used with the same src and f. The zero
+// value is ready to use.
+type SpanCache struct{ from, end int }
+
+// Span returns Span(src, i, f). i must start a rune.
+func (c *SpanCache) Span(src string, i int, f func(rune) bool) int {
+	if c.from <= i && i < c.end {
+		return c.end - i
+	}
+	n := Span(src, i, f)
+	if n > 0 {
+		c.from, c.end = i, i+n
+	}
+	return n
 }

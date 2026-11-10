@@ -74,6 +74,7 @@ type lexer struct {
 	o     Options
 	stack []frame
 	words lexkit.WordCache
+	mem   lexkit.SpanCache // the last run of [\w?.$]
 }
 
 // Lex splits src into tokens (the same contract as Lex of fasthighlight.Language). compat/ uses it
@@ -461,20 +462,20 @@ func (l *lexer) root(i int, in *frame) (int, bool) {
 	// (super)(\s*)(\([\w,?.$\s]+\s*\)) never matches, because the earlier rule super\b matches first.
 	// ([a-zA-Z_?.$][\w?.$]*)\(\) \{. The ? and . are matched first by earlier rules.
 	if c == '_' || c == '$' || c < 0x80 && unicode.IsLetter(rune(c)) {
-		e := i + 1 + lexkit.Span(src, i+1, isMember)
+		e := i + 1 + l.members(i+1)
 		if strings.HasPrefix(src[e:], "() {") {
 			l.push(slashRegex)
 			return l.emit(fh.NameOther, i, e+4)
 		}
 	}
 	// ([\w?.$][\w?.$]*)(\s*:\s*)([\w?.$][\w?.$]*)
-	if n := lexkit.Span(src, i, isMember); n > 0 {
+	if n := l.members(i); n > 0 {
 		e := i + n
 		k := e + lexkit.Span(src, e, lexkit.IsSpace)
 		if k < len(src) && src[k] == ':' {
 			k++
 			k += lexkit.Span(src, k, lexkit.IsSpace)
-			if m := lexkit.Span(src, k, isMember); m > 0 {
+			if m := l.members(k); m > 0 {
 				l.x.Emit(fh.NameOther, i, e)
 				l.x.Emit(fh.Text, e, k)
 				l.x.Emit(fh.KeywordType, k, k+m)
@@ -510,6 +511,9 @@ func (l *lexer) root(i int, in *frame) (int, bool) {
 }
 
 func isMember(r rune) bool { return r == '?' || r == '.' || r == '$' || lexkit.IsWord(r) }
+
+// members returns the length of the run of [\w?.$] at i.
+func (l *lexer) members(i int) int { return l.mem.Span(l.src, i, isMember) }
 
 // module tries \b(module)(\s+)("[\w\./@]+")(\s+) (the caller checks the preceding \b).
 func (l *lexer) module(i int) (int, bool) {

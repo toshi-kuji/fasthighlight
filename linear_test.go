@@ -32,6 +32,29 @@ func TestLinearTime(t *testing.T) {
 		{"csharp", "_"},
 		{"cpp", "_"},
 		{"protobuf", "_"},
+		// The whitespace run was rescanned at each line start.
+		{"java", "\n"},
+		{"csharp", "\n"},
+		{"kotlin", "\n"},
+		{"markdown", "\n"},
+		// A run of word characters that is not one token was rescanned from each of its characters.
+		{"c", "é"},
+		{"cpp", "é"},
+		{"protobuf", "é"},
+		// C++: each [[ looked for the last ]] of the line again.
+		{"cpp", "["},
+		// TypeScript: each position rescanned the run of [\w?.$].
+		{"typescript", "$"},
+		{"typescript", "a."},
+		// YAML: each position looked again for the ": " of a key to the line end.
+		{"yaml", "@"},
+		{"yaml", "-"},
+		{"yaml", "["},
+		// HTML and XML: each & looked again for the ; of an entity.
+		{"html", "&"},
+		{"xml", "&"},
+		// PHP: each $ rescanned the run of $.
+		{"php", "$"},
 	}
 	for _, c := range cases {
 		l := fasthighlight.LookupRegistered(c.lang)

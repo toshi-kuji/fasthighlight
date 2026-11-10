@@ -33,6 +33,8 @@ type lexer struct {
 	src   string
 	jsOpt js.Options
 	stack []state
+	// entity remembers the last scan for &\S*?;.
+	entity lexkit.EntityCache
 }
 
 // Prepare builds the tables of the language used inside (CSS).
@@ -237,15 +239,8 @@ func (l *lexer) root(i int) (int, bool) {
 		return l.emit(fh.Text, i, j)
 	}
 	if c == '&' { // &\S*?;
-		for j := i + 1; j < len(src); {
-			r, w := lexkit.Rune(src, j)
-			if r == ';' {
-				return l.emit(fh.NameEntity, i, j+1)
-			}
-			if lexkit.IsSpace(r) {
-				break
-			}
-			j += w
+		if e := l.entity.End(src, i); e > 0 {
+			return l.emit(fh.NameEntity, i, e)
 		}
 		return 0, false
 	}

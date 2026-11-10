@@ -47,6 +47,7 @@ type lexer struct {
 	o   Options
 	x   *lexkit.Tokens
 	src string
+	sp  lexkit.SpanCache // the last run of whitespace at a line start
 }
 
 // Lex splits src into tokens (the same contract as Lex of fasthighlight.Language). Markdown does not
@@ -163,7 +164,7 @@ func (l *lexer) root(i int) int {
 			return e
 		}
 	}
-	q := i + lexkit.Span(src, i, lexkit.IsSpace) // ^(\s*)
+	q := i + l.sp.Span(src, i, lexkit.IsSpace) // ^(\s*)
 	if q < len(src) && (src[q] == '*' || src[q] == '-') {
 		// ^(\s*)([*-] )(\[[ xX]\])( .+\n)
 		if q+6 <= len(src) && src[q+1] == ' ' && src[q+2] == '[' && strings.IndexByte(" xX", src[q+3]) >= 0 &&
