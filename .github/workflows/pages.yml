@@ -32,6 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-tags: true # the release tags, for the version on the demo (not the history)
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
