@@ -191,7 +191,7 @@ Flags:
   --json             print the result as JSON on standard output
   -j N               files converted at the same time (default: the number of CPUs)
   -q                 do not print the summary (errors only)
-  --version          print the version (and note a newer release) and exit
+  --version          print the version and exit
   --help             print this help and exit
 
 Existing files are overwritten only after asking [y/N/a] on a terminal; otherwise

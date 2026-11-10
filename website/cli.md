@@ -12,7 +12,7 @@ go install github.com/toshi-kuji/fasthighlight/cmd/fhl@latest
 
 Or download an archive for your system (Linux, macOS or Windows; amd64 or arm64) from the [releases page](https://github.com/toshi-kuji/fasthighlight/releases), and put `fhl` on your `PATH`. It is a single binary with no dependencies; Go is not needed.
 
-All the supported languages are built in. `fhl --version` prints the version; `fhl` and the library share one version. It also looks up the latest release on GitHub and notes it on standard error when it is newer; it says nothing if the lookup fails or takes over two seconds, and setting `FHL_NO_UPDATE_CHECK` to anything turns it off.
+All the supported languages are built in. `fhl --version` prints the version; `fhl` and the library share one version.
 
 ## Use
 
