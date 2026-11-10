@@ -116,13 +116,17 @@ type languageSet struct {
 
 // lookupCache remembers the results of a languageSet lookup. It is rebuilt when a language is added.
 type lookupCache struct {
-	m sync.Map // string → *Language
-	n atomic.Int32
+	m sync.Map     // string → *Language
+	n atomic.Int64 // names stored since the map was last emptied
 }
 
-// maxCache is the upper limit on the number of language names put in cache. Documents usually contain few
-// distinct language names.
-const maxCache = 4096
+// maxCache is the number of language names the cache holds before it is emptied and starts again, and
+// maxCachedName the longest name it holds. Documents usually contain few distinct language names, and short
+// ones; emptying (rather than no longer adding) keeps the names in use now cached in a long-running process.
+const (
+	maxCache      = 4096
+	maxCachedName = 64
+)
 
 // add adds l. If a name or alias collides with another language, it returns an error and changes nothing.
 func (s *languageSet) add(l *Language) error {
@@ -177,7 +181,11 @@ func (s *languageSet) lookup(name string) *Language {
 			break
 		}
 	}
-	if c != nil && c.n.Add(1) <= maxCache {
+	if c != nil && len(name) <= maxCachedName {
+		if c.n.Add(1) > maxCache {
+			c.m.Clear()
+			c.n.Store(1)
+		}
 		c.m.Store(name, found)
 	}
 	return found

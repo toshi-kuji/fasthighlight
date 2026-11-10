@@ -119,8 +119,21 @@ func checkCodeBlocks(o *options) string {
 		return "fhl: --code-blocks writes only the code blocks, as JSON Lines on standard output; " + other + " cannot be used with it"
 	case len(o.inputs) == 0:
 		return "fhl: no input; give Markdown files, folders or - (see fhl --help)"
+	case count(o.inputs, "-") > 1:
+		return "fhl: - (standard input) can be given only once" // as in a conversion: a second - would read nothing
 	}
 	return ""
+}
+
+// count returns how many times s is in list.
+func count(list []string, s string) int {
+	n := 0
+	for _, x := range list {
+		if x == s {
+			n++
+		}
+	}
+	return n
 }
 
 // codeBlockInputs returns the Markdown files of one input of --code-blocks: the input itself (or "-"), or the
