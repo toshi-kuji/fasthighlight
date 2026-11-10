@@ -31,6 +31,9 @@ func main() {
 		stderr:      os.Stderr,
 		interactive: isTerminal(os.Stdin.Fd()) && isTerminal(os.Stderr.Fd()),
 	}
+	if os.Getenv("FHL_NO_UPDATE_CHECK") == "" {
+		e.latestURL = latestReleaseURL
+	}
 	os.Exit(run(os.Args[1:], e))
 }
 
@@ -39,6 +42,8 @@ type env struct {
 	stdin          io.Reader
 	stdout, stderr io.Writer
 	interactive    bool // whether standard input and standard error are terminals
+	// latestURL is where --version looks up the latest release ("" for no lookup; see update.go).
+	latestURL string
 }
 
 // fileResult is one entry of files in --json.
@@ -93,6 +98,7 @@ func run(args []string, e env) int {
 		return 0
 	case o.version:
 		fmt.Fprintln(e.stdout, "fhl "+versionString())
+		noteNewerRelease(e.stderr, e.latestURL, versionString())
 		return 0
 	case o.listLangs:
 		return outputStatus(e, listLangs(e.stdout, o.json))
