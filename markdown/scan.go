@@ -49,7 +49,7 @@ func Scan(docs ...*Document) *ScanResult {
 	used := map[*fh.Language]bool{}
 	for _, d := range docs {
 		for _, b := range d.blocks {
-			name := string(b.Language(d.src))
+			name := LanguageName(b, d.src)
 			cb := CodeBlock{Document: d.Name, Line: fenceLine(d.src, b), Lang: name}
 			switch l := fh.LookupRegistered(name); {
 			case name == "":

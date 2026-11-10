@@ -90,7 +90,7 @@ fhl --static-site --theme light --html-lang ja -o dist/ docs/
 - **Pages.** Each Markdown file becomes a page that starts with `<!DOCTYPE html>`, `<html lang="en">` (change it with `--html-lang`), the charset, the viewport, a `<title>` (the first heading, or the file name) and a link to `highlight.css`.
 - **One style sheet.** `highlight.css` is written once, at the top of the output, and every page links to it with a relative path, so the site works in any folder (such as `https://user.github.io/project/`).
 - **Heading ids.** Headings get ids (with `--single-html` too), so you can link to sections: `## Results and exit status` becomes `results-and-exit-status`. A second heading with the same text gets `-1` added. Letters and digits of other scripts are kept, as on GitHub: `## インストール` becomes `インストール`. A heading with no letters or digits at all becomes `heading`.
-- **Links between pages.** Relative links to Markdown files are rewritten to the pages: `[setup](guide.md#setup)` becomes `guide.html#setup`. Links that start with a scheme (`https:`), `/` or `#` are left alone.
+- **Links between pages.** Relative links to the Markdown files of the site are rewritten to their pages: `[setup](guide.md#setup)` becomes `guide.html#setup`. Links that start with a scheme (`https:`), `/` or `#` are left alone, and so are links to Markdown files that do not become pages: outside the folder (`../README.md`), in a folder whose name starts with a dot, or missing.
 - **Other files.** Images and any other files in the folder are copied to the same place in the output. Files and folders whose names start with `.` are skipped.
 
 ### What it does not do

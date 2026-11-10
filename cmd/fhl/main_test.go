@@ -999,13 +999,44 @@ func TestStaticSiteErrors(t *testing.T) {
 }
 
 func TestRewriteMDLink(t *testing.T) {
+	pages := map[string]bool{"guide.md": true, "a/b.markdown": true, "c.MKD": true, "../index.md": true, "my page.md": true}
+	isPage := func(rel string) bool { return pages[rel] }
 	for in, want := range map[string]string{
 		"guide.md": "guide.html", "a/b.markdown#x": "a/b.html#x", "c.MKD?v=1#y": "c.html?v=1#y", "../index.md": "../index.html",
+		"my%20page.md":       "my%20page.html",
 		"https://x.org/a.md": "https://x.org/a.md", "mailto:a.md": "mailto:a.md", "/abs/a.md": "/abs/a.md", "#a.md": "#a.md",
 		"img.png": "img.png", "": "", "dir/": "dir/",
+		"other.md": "other.md", "bad%zz.md": "bad%zz.md", // not a page of the site
 	} {
-		if got := rewriteMDLink(in); got != want {
+		if got := rewriteMDLink(in, isPage); got != want {
 			t.Errorf("rewriteMDLink(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+// --static-site rewrites only the links to its own pages: a link to a Markdown file outside the folder, in a
+// dot folder (which the site skips) or that does not exist keeps pointing at the file.
+func TestStaticSiteLinks(t *testing.T) {
+	dir := t.TempDir()
+	writeFiles(t, dir, map[string]string{
+		"README.md":         "# R\n",
+		"site/index.md":     "[g](guide.md) [s](sub/s.md#x) [r](../README.md) [h](.hidden/x.md) [n](none.md)\n",
+		"site/guide.md":     "# G\n",
+		"site/sub/s.md":     "[up](../index.md) [self](s.md)\n",
+		"site/.hidden/x.md": "# X\n",
+	})
+	t.Chdir(dir)
+	if code, _, stderr := fhlRun(t, "", "", false, "--static-site", "-o", "dist/", "site"); code != 0 {
+		t.Fatalf("code %d, %s", code, stderr)
+	}
+	for _, want := range []string{`href="guide.html"`, `href="sub/s.html#x"`, `href="../README.md"`, `href=".hidden/x.md"`, `href="none.md"`} {
+		if got := readFile(t, "dist/index.html"); !strings.Contains(got, want) {
+			t.Errorf("index.html has no %s:\n%s", want, got)
+		}
+	}
+	for _, want := range []string{`href="../index.html"`, `href="s.html"`} {
+		if got := readFile(t, "dist/sub/s.html"); !strings.Contains(got, want) {
+			t.Errorf("sub/s.html has no %s:\n%s", want, got)
 		}
 	}
 }

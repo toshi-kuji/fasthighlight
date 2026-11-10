@@ -121,7 +121,7 @@ Blocks marked as plain text (`text`, `plaintext`, `plain` or `no-highlight`) are
 
 To check a single language name, use [`fasthighlight.LookupSupported`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight#LookupSupported). It searches all the supported languages, imported or not, and the result's `Package` is the package to import. [`LookupRegistered`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight#LookupRegistered) searches only the languages that can color now.
 
-Language names are matched as in Chroma: case does not matter, and a name that is not a language name or alias is tried as a file extension (`mts`) or file name (`app.ts`). Only the first word after the ``` is used (`ts title="app.ts"` is `ts`).
+Language names are matched as in Chroma: case does not matter, and a name that is not a language name or alias is tried as a file extension (`mts`) or file name (`app.ts`). Only the first word after the ``` is used, up to a space or tab (`ts title="app.ts"` is `ts`), with backslash escapes and entity references resolved as in CommonMark (`c\+\+` and `c&#43;&#43;` are `c++`). `markdown.LanguageName` returns it for a block.
 
 ## Only the code blocks
 
