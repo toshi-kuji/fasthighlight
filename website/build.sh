@@ -22,7 +22,7 @@
 #     Then put the header common to every page (links, and the button that switches between light
 #     and dark) at the top of each page.
 #  7. Build the demo page (website/demo): fasthighlight compiled to WebAssembly, only for this page,
-#     with the CSS of every theme, one sample per language and the version (git describe) filled in,
+#     with the CSS of every theme, one sample per language and the latest release tag filled in,
 #     and add it to sitemap.xml.
 #     It is a page of its own, built after steps 4 to 6, which leave it alone.
 #
@@ -273,8 +273,9 @@ if [ -f "$goroot/lib/wasm/wasm_exec.js" ]; then
 else
 	install -m 644 "$goroot/misc/wasm/wasm_exec.js" "$out/demo/"
 fi
-# The version shown on the demo: the latest tag, and how far main is past it (v0.6.0-2-g1a2b3c4).
-version="$(git -C "$root" describe --tags --always 2>/dev/null || echo unknown)"
+# The version shown on the demo: the latest release tag ("dev" when no tags were fetched).
+version="$(git -C "$root" tag --list 'v*' --sort=-version:refname 2>/dev/null | head -n 1)"
+version="${version:-dev}"
 python3 - "$work" "$root/website/demo" "$out" "$site_url" "$version" <<'PY'
 import json, sys
 from html import escape as hesc
