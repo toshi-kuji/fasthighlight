@@ -49,7 +49,7 @@ Other behavior worth knowing:
 
 - Existing files are overwritten only after asking `[y/N/a]` on a terminal. Without a terminal (CI, scripts, AI agents), `fhl` stops with an error unless `--force` is given. Files whose content would not change are left alone.
 - Raw HTML in Markdown is escaped by default, so it shows up as text. `--raw-html omit` drops it, and `--raw-html unsafe` passes it through (only for Markdown you trust).
-- Front matter (`---` … `---` at the top) is skipped.
+- Front matter (`---` … `---` at the top, starting with a YAML key such as `title:`) is skipped.
 - Code blocks that are not colored are listed on standard error as `file:line:`, up to three for each reason (no language name, unsupported language), followed by a count of the rest. `--check` lists them all.
 - Exit status: 0 for success, 1 for errors, 2 for uncolored code blocks with `--strict`.
 
