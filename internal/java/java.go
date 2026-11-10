@@ -57,6 +57,7 @@ type lexer struct {
 	// failFrom and failEnd are the position where the function rule did not match and the end of the
 	// word sequence examined then.
 	failFrom, failEnd int
+	sp                lexkit.SpanCache // the last run of whitespace
 }
 
 // Lex splits src into tokens (with the same contract as the Lex of fasthighlight.Language). compat/ uses it
@@ -108,7 +109,7 @@ func (l *lexer) runeAt(i int) (rune, int) {
 	return lexkit.Rune(l.src, i)
 }
 
-func (l *lexer) spaces(i int) int { return lexkit.Span(l.src, i, lexkit.IsSpace) }
+func (l *lexer) spaces(i int) int { return l.sp.Span(l.src, i, lexkit.IsSpace) }
 
 // wordStart is [^\W\d] (see Options.ChromaIdent).
 func (l *lexer) wordStart(r rune) bool {

@@ -51,6 +51,7 @@ type lexer struct {
 	src   string
 	stack []state
 	words lexkit.WordCache
+	sp    lexkit.SpanCache // the last run of whitespace
 }
 
 func lex(src string, end int) []fh.Token {
@@ -79,7 +80,7 @@ func (l *lexer) at(i int) byte {
 	return 0
 }
 
-func (l *lexer) spaces(i int) int { return lexkit.Span(l.src, i, lexkit.IsSpace) }
+func (l *lexer) spaces(i int) int { return l.sp.Span(l.src, i, lexkit.IsSpace) }
 
 func isNameStart(c byte) bool { return c == '_' || 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' }
 

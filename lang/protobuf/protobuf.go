@@ -66,6 +66,7 @@ const (
 func lex(src string, end int) []fh.Token {
 	x := lexkit.NewTokens(src)
 	ms := &misses{line: len(src) + 1, block: len(src) + 1}
+	var words lexkit.SpanCache // the last run of word characters, so that a long run is measured once
 	st := root
 	for i := 0; i < end; {
 		if st != root {
@@ -86,7 +87,7 @@ func lex(src string, end int) []fh.Token {
 			st = root
 			continue
 		}
-		n, next := match(x, ms, src, i)
+		n, next := match(x, ms, &words, src, i)
 		if n == 0 {
 			i += x.Error(i)
 			continue
@@ -110,7 +111,7 @@ func at(src string, i int) byte {
 
 // match tries the rules of root at i, emits the tokens, and returns the length (0 if no rule matches) and
 // the state to push.
-func match(x *lexkit.Tokens, ms *misses, src string, i int) (int, state) {
+func match(x *lexkit.Tokens, ms *misses, words *lexkit.SpanCache, src string, i int) (int, state) {
 	emit := func(t fh.TokenType, n int) (int, state) { x.Emit(t, i, i+n); return n, root }
 	c := src[i]
 	if n := lexkit.Span(src, i, lexkit.IsSpace); n > 0 { // \s+
@@ -124,8 +125,8 @@ func match(x *lexkit.Tokens, ms *misses, src string, i int) (int, state) {
 			return emit(t, n)
 		}
 	}
-	w := lexkit.Span(src, i, lexkit.IsWord)
-	if w > 0 {
+	// A run longer than the longest word ("extensions") is none of them, and is not hashed.
+	if w := words.Span(src, i, lexkit.IsWord); 0 < w && w <= len("extensions") {
 		word := src[i : i+w]
 		if lexkit.WordBoundary(src, i) {
 			if keywords[word] { // \b(ctype|…)\b

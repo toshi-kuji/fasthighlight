@@ -47,6 +47,7 @@ type lexer struct {
 	src   string
 	stack []state
 	words lexkit.WordCache
+	sp    lexkit.SpanCache // the last run of whitespace
 }
 
 func lex(src string, end int) []fh.Token {
@@ -84,7 +85,7 @@ func (l *lexer) runeAt(i int) (rune, int) {
 	return lexkit.Rune(l.src, i)
 }
 
-func (l *lexer) spaces(i int) int { return lexkit.Span(l.src, i, lexkit.IsSpace) }
+func (l *lexer) spaces(i int) int { return l.sp.Span(l.src, i, lexkit.IsSpace) }
 
 func isStart(r rune) bool { return r == '_' || unicode.IsLetter(r) }
 func isCont(r rune) bool  { return unicode.IsLetter(r) || unicode.IsNumber(r) }

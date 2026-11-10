@@ -46,6 +46,9 @@ const (
 
 var words map[string]uint16
 
+// longestWord is the length of the longest word in words: a longer run of word characters is in no list.
+var longestWord int
+
 // Prepare builds the word tables.
 func Prepare() {
 	m := map[string]uint16{}
@@ -53,6 +56,7 @@ func Prepare() {
 		cppKeywords, cppCKeywords, cppTypes, cppReserved, cppReservedM, cppReservedUnderscore, cppBuiltins} {
 		for _, w := range strings.Split(alts, "|") {
 			m[w] |= 1 << k
+			longestWord = max(longestWord, len(w))
 		}
 	}
 	words = m
@@ -82,9 +86,12 @@ type lexer struct {
 	wmask      uint16
 	// semiFrom and semiAt cache the position of the first ; at or after position semiFrom (len(src) if there is none).
 	semiFrom, semiAt int
-	// spFrom and spEnd are the last run of whitespace found by spaces: from any position inside it, the run
-	// ends at spEnd (each line start in a run of blank lines asks again).
-	spFrom, spEnd int
+	// sp, wordRun and funcRun remember the last run of whitespace, of word characters and of [\w*\s]:
+	// without them, a long run that is not taken as one token would be scanned again from each of its positions.
+	sp, wordRun, funcRun lexkit.SpanCache
+	// attrFrom, attrEnd and attrLast are the last line part searched by attribute and the position of its
+	// last ]] (-1 if there is none).
+	attrFrom, attrEnd, attrLast int
 }
 
 // Lex splits src into tokens (same contract as Lex in fasthighlight.Language).
@@ -95,7 +102,7 @@ func Lex(src string, end int, o Options) []fh.Token {
 }
 
 func lexInto(x *lexkit.Tokens, src string, end int, o Options) {
-	l := &lexer{o: o, x: x, src: src, stack: []state{root}, wpos: -1, semiFrom: -1}
+	l := &lexer{o: o, x: x, src: src, stack: []state{root}, wpos: -1, semiFrom: -1, attrFrom: -1, attrEnd: -2}
 	for i := 0; i < end; {
 		st := l.stack[len(l.stack)-1]
 		n, ok := l.step(st, i)
@@ -131,16 +138,7 @@ func (l *lexer) at(i int) byte {
 
 func (l *lexer) bol(i int) bool { return i == 0 || l.src[i-1] == '\n' }
 
-func (l *lexer) spaces(i int) int {
-	if l.spFrom <= i && i < l.spEnd {
-		return l.spEnd - i
-	}
-	n := lexkit.Span(l.src, i, lexkit.IsSpace)
-	if n > 0 {
-		l.spFrom, l.spEnd = i, i+n
-	}
-	return n
-}
+func (l *lexer) spaces(i int) int { return l.sp.Span(l.src, i, lexkit.IsSpace) }
 
 func (l *lexer) step(st state, i int) (int, bool) {
 	switch st {
@@ -352,7 +350,7 @@ func (l *lexer) semicolon(p int) int {
 // [\w*\s] that continues from i. The name is fixed as the last word of that run (followed only by whitespace).
 func (l *lexer) funcDef(i int) (int, bool) {
 	src := l.src
-	r := i + lexkit.Span(src, i, isFuncChar)
+	r := i + l.funcRun.Span(src, i, isFuncChar)
 	if l.at(r) != '(' {
 		return 0, false
 	}
@@ -409,8 +407,8 @@ func (l *lexer) funcDef(i int) (int, bool) {
 // word returns the length of the run of word characters starting at position i, and the lists that contain that word.
 func (l *lexer) word(i int) (int, uint16) {
 	if l.wpos != i {
-		l.wpos, l.wlen, l.wmask = i, lexkit.Span(l.src, i, lexkit.IsWord), 0
-		if l.wlen > 0 {
+		l.wpos, l.wlen, l.wmask = i, l.wordRun.Span(l.src, i, lexkit.IsWord), 0
+		if 0 < l.wlen && l.wlen <= longestWord {
 			l.wmask = words[l.src[i:i+l.wlen]]
 		}
 	}
@@ -555,12 +553,19 @@ func (l *lexer) attribute(i int) int {
 	if !strings.HasPrefix(l.src[i:], "[[") || i+3 > len(l.src) {
 		return 0
 	}
-	le := lexkit.LineEnd(l.src, i+2)
-	if i+3 > le {
-		return 0
+	// The last ]] of the line from attrFrom is also the last one from any later start in the line, so a long
+	// run of [ is not scanned again to the line end from each of them.
+	if s := i + 3; !(l.attrFrom <= s && s <= l.attrEnd) {
+		l.attrFrom, l.attrEnd = s, lexkit.LineEnd(l.src, i+2)
+		l.attrLast = -1
+		if s <= l.attrEnd {
+			if k := strings.LastIndex(l.src[s:l.attrEnd], "]]"); k >= 0 {
+				l.attrLast = s + k
+			}
+		}
 	}
-	if k := strings.LastIndex(l.src[i+3:le], "]]"); k >= 0 {
-		return i + 3 + k + 2
+	if l.attrLast >= i+3 {
+		return l.attrLast + 2
 	}
 	return 0
 }
