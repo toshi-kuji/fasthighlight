@@ -22,7 +22,8 @@
 #     Then put the header common to every page (links, and the button that switches between light
 #     and dark) at the top of each page.
 #  7. Build the demo page (website/demo): fasthighlight compiled to WebAssembly, only for this page,
-#     with the CSS of every theme and one sample per language filled in, and add it to sitemap.xml.
+#     with the CSS of every theme, one sample per language and the version (git describe) filled in,
+#     and add it to sitemap.xml.
 #     It is a page of its own, built after steps 4 to 6, which leave it alone.
 #
 # Light and dark: the site follows the viewer's device, and the button overrides it. The choice is
@@ -272,11 +273,14 @@ if [ -f "$goroot/lib/wasm/wasm_exec.js" ]; then
 else
 	install -m 644 "$goroot/misc/wasm/wasm_exec.js" "$out/demo/"
 fi
-python3 - "$work" "$root/website/demo" "$out" "$site_url" <<'PY'
+# The version shown on the demo: the latest tag, and how far main is past it (v0.6.0-2-g1a2b3c4).
+version="$(git -C "$root" describe --tags --always 2>/dev/null || echo unknown)"
+python3 - "$work" "$root/website/demo" "$out" "$site_url" "$version" <<'PY'
 import json, sys
+from html import escape as hesc
 from xml.sax.saxutils import escape
 
-work, src, out, base = sys.argv[1:5]
+work, src, out, base, version = sys.argv[1:6]
 read = lambda path: open(path, encoding="utf-8").read()
 
 # The CSS of every theme and the languages, as step 2 wrote them.
@@ -310,6 +314,9 @@ for marker, value in (("/*THEMES*/", themes), ("/*SAMPLES*/", samples)):
     js = json.dumps(value, ensure_ascii=False).replace("</", "<\\/").replace("<!--", "<\\!--")
     page = page.replace(marker, js)
 page = page.replace("__LANG_COUNT__", str(len(langs)))
+if page.count("__VERSION__") != 1:
+    sys.exit("build.sh: website/demo/index.html needs one __VERSION__")
+page = page.replace("__VERSION__", hesc(version))
 open(out + "/demo/index.html", "w", encoding="utf-8").write(page)
 
 sitemap = out + "/sitemap.xml"
