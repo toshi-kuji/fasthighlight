@@ -82,6 +82,9 @@ type lexer struct {
 	wmask      uint16
 	// semiFrom and semiAt cache the position of the first ; at or after position semiFrom (len(src) if there is none).
 	semiFrom, semiAt int
+	// spFrom and spEnd are the last run of whitespace found by spaces: from any position inside it, the run
+	// ends at spEnd (each line start in a run of blank lines asks again).
+	spFrom, spEnd int
 }
 
 // Lex splits src into tokens (same contract as Lex in fasthighlight.Language).
@@ -128,7 +131,16 @@ func (l *lexer) at(i int) byte {
 
 func (l *lexer) bol(i int) bool { return i == 0 || l.src[i-1] == '\n' }
 
-func (l *lexer) spaces(i int) int { return lexkit.Span(l.src, i, lexkit.IsSpace) }
+func (l *lexer) spaces(i int) int {
+	if l.spFrom <= i && i < l.spEnd {
+		return l.spEnd - i
+	}
+	n := lexkit.Span(l.src, i, lexkit.IsSpace)
+	if n > 0 {
+		l.spFrom, l.spEnd = i, i+n
+	}
+	return n
+}
 
 func (l *lexer) step(st state, i int) (int, bool) {
 	switch st {

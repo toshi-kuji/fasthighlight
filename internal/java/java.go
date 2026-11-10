@@ -424,7 +424,12 @@ func (l *lexer) function(i int) (int, bool) {
 			}
 		}
 	}
-	l.failFrom, l.failEnd = i, p
+	// Keep the memo of a scan that got further: a failure at a position with no word (such as each newline,
+	// which the whitespace rule leaves for later) must not replace the memo of a long failed scan, or every
+	// word of that scan is scanned again from its own start.
+	if p > l.failEnd {
+		l.failFrom, l.failEnd = i, p
+	}
 	return 0, false
 }
 
