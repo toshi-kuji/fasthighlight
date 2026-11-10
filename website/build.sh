@@ -3,6 +3,9 @@
 #
 # Usage: website/build.sh [OUT]   (OUT defaults to _site at the top of the repository)
 #
+# OUT is deleted and written again. So that a wrong OUT does not delete other files, an OUT that already
+# exists must be an empty folder, the default _site, or a folder that build.sh wrote (it holds .build-sh-site).
+#
 # Steps:
 #  1. Build fhl from this repository, so the site always uses the current engine.
 #  2. Copy only the Markdown of website/ and the logo into a temporary work folder, and replace the
@@ -29,6 +32,12 @@ set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 out="${1:-$root/_site}"
+marker=".build-sh-site"
+if [ -e "$out" ] && ! { [ -d "$out" ] && { [ -z "$(ls -A "$out")" ] || [ -f "$out/$marker" ] ||
+	[ "$(cd "$out" && pwd -P)" = "$(cd "$root" && pwd -P)/_site" ]; }; }; then
+	echo "build.sh: $out exists and was not written by build.sh; give a new or empty folder, or delete it first" >&2
+	exit 1
+fi
 site_url="${SITE_URL:-https://toshi-kuji.github.io/fasthighlight/}"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -146,6 +155,8 @@ PY
 # 3. Convert. --force, because the output is rebuilt every time. The code colors follow the device, and
 #    data-theme (set by the button) overrides it.
 rm -rf "$out"
+mkdir -p "$out"
+: >"$out/$marker"
 "$fhl" -q --static-site --raw-html unsafe --force -o "$out/" \
 	--theme both --theme-selector dark:':root[data-theme="dark"]' --theme-selector light:':root[data-theme="light"]' \
 	"$src"

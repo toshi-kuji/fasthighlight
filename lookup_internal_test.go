@@ -1,6 +1,10 @@
 package fasthighlight
 
-import "testing"
+import (
+	"fmt"
+	"strings"
+	"testing"
+)
 
 // withFakeLanguages adds test languages to the built-in catalog and the registered languages, runs f, and restores them.
 func withFakeLanguages(t *testing.T, builtin, registered []*Language, f func()) {
@@ -45,4 +49,30 @@ func TestLookupCacheIsResetOnRegister(t *testing.T) {
 			t.Errorf("after Register, LookupRegistered(x.fakeext) = %v, want the new language", got)
 		}
 	})
+}
+
+// The cache does not stay full: after maxCache names it is emptied, so later names are cached again, and long
+// names are not stored.
+func TestLookupCacheBounded(t *testing.T) {
+	s := languageSet{byKey: map[string]*Language{}, cache: new(lookupCache)}
+	count := func() int {
+		n := 0
+		s.cache.m.Range(func(_, _ any) bool { n++; return true })
+		return n
+	}
+	for i := range 3*maxCache + 10 {
+		s.lookup(fmt.Sprintf("bogus%d", i))
+		if n := count(); n > maxCache {
+			t.Fatalf("after %d names, the cache holds %d (limit %d)", i+1, n, maxCache)
+		}
+	}
+	s.lookup("late")
+	if _, ok := s.cache.m.Load("late"); !ok {
+		t.Error("a name looked up after the cache filled is not cached")
+	}
+	long := strings.Repeat("x", maxCachedName+1)
+	s.lookup(long)
+	if _, ok := s.cache.m.Load(long); ok {
+		t.Error("a name longer than maxCachedName is cached")
+	}
 }

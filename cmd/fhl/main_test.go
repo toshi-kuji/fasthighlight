@@ -1432,6 +1432,7 @@ func TestCodeBlocks(t *testing.T) {
 		{[]string{"--code-blocks", "--print-css"}, "--print-css cannot be used with it"},
 		{[]string{"--code-blocks", "--single-html", "doc.md"}, "--single-html cannot be used with it"},
 		{[]string{"--code-blocks", "--theme", "dark", "doc.md"}, "--theme cannot be used with it"},
+		{[]string{"--code-blocks", "-", "doc.md", "-"}, "fhl: - (standard input) can be given only once"},
 	} {
 		if code, _, stderr := fhlRun(t, "", "", false, tt.args...); code != 1 || !strings.Contains(stderr, tt.want) {
 			t.Errorf("%v: code %d, %q", tt.args, code, stderr)
