@@ -175,11 +175,16 @@ func convertCode(lang, code string) (*converted, error) {
 	return &converted{body: out.Bytes(), blocks: 1}, nil
 }
 
-// stripFrontMatter removes the front matter at the start of the document (the part that starts with a --- line and ends at the next --- line) and
-// returns the rest and the number of removed lines. Without a closing line, it is not treated as front matter.
+// stripFrontMatter removes the front matter at the start of the document and returns the rest and the number of
+// removed lines. Front matter starts with a --- line, ends at the next --- line, and its first line is a YAML
+// key ("title: x"). Anything else that starts with --- is Markdown (a thematic break, or the underline of a
+// heading after it) and is kept: so is a --- block with no closing line.
 func stripFrontMatter(src []byte) ([]byte, int) {
 	first, rest, ok := bytes.Cut(src, []byte("\n"))
 	if !ok || !isDashes(first) {
+		return src, 0
+	}
+	if key, _, _ := bytes.Cut(rest, []byte("\n")); !isYAMLKey(key) {
 		return src, 0
 	}
 	lines := 1
@@ -200,7 +205,18 @@ func stripFrontMatter(src []byte) ([]byte, int) {
 	return src, 0
 }
 
-// isDashes returns true if the line is only --- (trailing whitespace is allowed).
+// isYAMLKey reports whether line starts a YAML mapping entry: a key at the start of the line (not indented,
+// and not starting like a Markdown block or a YAML comment), then a colon at the end of the line or before a
+// space or tab.
+func isYAMLKey(line []byte) bool {
+	line = bytes.TrimRight(line, " \t\r")
+	if len(line) == 0 || bytes.IndexByte([]byte(" \t#-*+>|`=<[!{"), line[0]) >= 0 {
+		return false
+	}
+	i := bytes.IndexByte(line, ':')
+	return i > 0 && (i == len(line)-1 || line[i+1] == ' ' || line[i+1] == '\t')
+}
+
 func isDashes(line []byte) bool {
 	return string(bytes.TrimRight(line, " \t")) == "---"
 }

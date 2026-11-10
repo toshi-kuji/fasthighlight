@@ -460,6 +460,26 @@ func TestFrontMatter(t *testing.T) {
 	}
 }
 
+// TestFrontMatterOnlyYAML checks that a document starting with --- keeps its Markdown when what follows is not
+// YAML: a thematic break, then a paragraph and a setext heading (whose underline is the second --- line).
+func TestFrontMatterOnlyYAML(t *testing.T) {
+	for _, c := range []struct{ src, want string }{
+		{"---\n\nIntro paragraph that matters.\n\nSection\n---\n\nBody text.\n", "<hr>\n<p>Intro paragraph that matters.</p>\n<h2>Section</h2>\n<p>Body text.</p>\n"},
+		{"---\nNote that this is a heading\n---\n", "<hr>\n<h2>Note that this is a heading</h2>\n"},
+		{"---\n# Title\n---\n", "<hr>\n<h1>Title</h1>\n<hr>\n"},
+		{"---\n- a\n- b\n---\n", "<hr>\n<ul>\n<li>a</li>\n<li>b</li>\n</ul>\n<hr>\n"},
+		{"---\ntitle: Hello\ntags: [a, b]\n---\nBody\n", "<p>Body</p>\n"},
+		{"---\ndraft:\n---\nBody\n", "<p>Body</p>\n"},
+	} {
+		dir := t.TempDir()
+		writeFiles(t, dir, map[string]string{"p.md": c.src})
+		_, out, stderr := fhlRun(t, dir, "", false, "-o", "-", "p.md")
+		if out != c.want {
+			t.Errorf("%q:\n got %q\nwant %q (%s)", c.src, out, c.want, stderr)
+		}
+	}
+}
+
 const rawInput = "<div class=\"note\">\n注意\n</div>\n\n文中の<b>太字</b>\n"
 
 func TestRawHTML(t *testing.T) {

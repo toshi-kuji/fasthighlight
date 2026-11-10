@@ -131,7 +131,7 @@ Before converting, `fhl` compares every input and every file it would write.
 
 ## Other behavior
 
-- **Front matter:** a block between `---` lines at the top of a document is skipped. Without a closing `---`, it is converted as text.
+- **Front matter:** a block between `---` lines at the top of a document is skipped when its first line is a YAML key (`title: …`). Otherwise the `---` is Markdown (a thematic break) and everything is converted, as it is without a closing `---`.
 - **Newlines:** `\n`, `\r\n` and `\r` are all read; the output always uses `\n`.
 
 ## Flags you will use most
