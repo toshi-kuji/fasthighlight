@@ -202,6 +202,7 @@ func Run(src string, p, min int, f func(rune) bool, k func(int) bool) bool {
 type WordLists struct {
 	words     map[string]uint32 // word -> bits of the lists that contain it
 	irregular [][]string        // for each list, the words that contain non-word characters
+	longest   int               // the length of the longest word in words: a longer run is in no list
 }
 
 // NewWordLists builds a WordLists from lists of alternatives separated by "|" (up to 32 lists).
@@ -213,6 +214,7 @@ func NewWordLists(lists ...string) *WordLists {
 			n := Span(word, 0, IsWord)
 			if n == len(word) {
 				w.words[word] |= 1 << k
+				w.longest = max(w.longest, len(word))
 				continue
 			}
 			// If the word-character part (first) is in an earlier alternative, that one matches first,
@@ -233,6 +235,9 @@ type WordCache struct {
 	pos   int
 	n     int
 	mask  uint32
+	// runFrom and runEnd are the last run of word characters measured: from any position inside it, the run
+	// ends at runEnd, so a long run is not measured again from each of its characters.
+	runFrom, runEnd int
 }
 
 // Match returns the length if a word of list k matches at position i of src (including the trailing \b), or 0
@@ -254,8 +259,14 @@ func (c *WordCache) Match(src string, i, k int) int {
 // lists that contain that run.
 func (c *WordCache) Word(src string, i int) (int, uint32) {
 	if c.pos != i+1 { // pos is the position + 1 (so that the zero value means "not looked up yet")
-		c.pos, c.n, c.mask = i+1, Span(src, i, IsWord), 0
-		if c.n > 0 {
+		c.pos, c.mask = i+1, 0
+		if c.runFrom <= i && i < c.runEnd {
+			c.n = c.runEnd - i
+		} else {
+			c.n = Span(src, i, IsWord)
+			c.runFrom, c.runEnd = i, i+c.n
+		}
+		if c.n > 0 && c.n <= c.Lists.longest {
 			c.mask = c.Lists.words[src[i:i+c.n]]
 		}
 	}
@@ -302,6 +313,7 @@ func FoldASCII(r rune) rune {
 type FoldWordLists struct {
 	words     map[string]uint32 // lowercased word -> bits of the lists that contain it
 	irregular [][]string        // for each list, the words (lowercased) that contain non-word characters
+	longest   int               // the length of the longest word in words (ASCII, so also in characters)
 }
 
 // NewFoldWordLists builds a FoldWordLists from lists of alternatives separated by "|" (up to 32 lists).
@@ -313,6 +325,7 @@ func NewFoldWordLists(lists ...string) *FoldWordLists {
 			n := Span(word, 0, IsWord)
 			if n == len(word) {
 				w.words[word] |= 1 << k
+				w.longest = max(w.longest, len(word))
 				continue
 			}
 			if i := slices.Index(list, word[:n]); i < 0 || idx < i {
@@ -330,6 +343,8 @@ type FoldWordCache struct {
 	n     int
 	mask  uint32
 	key   []byte
+	// runFrom and runEnd are the last run of word characters measured, as in WordCache.
+	runFrom, runEnd int
 }
 
 // Match returns the length if a word of list k matches at position i of src (including the trailing \b),
@@ -354,13 +369,19 @@ func (c *FoldWordCache) Word(src string, i int) (int, uint32) {
 		return c.n, c.mask
 	}
 	c.pos, c.key, c.mask = i+1, c.key[:0], 0
+	if c.runFrom <= i && i < c.runEnd {
+		c.n = c.runEnd - i
+	} else {
+		c.n = Span(src, i, IsWord)
+		c.runFrom, c.runEnd = i, i+c.n
+	}
+	// Only a run of at most longest characters can be a word; build its lowercased key.
 	ascii := true
-	j := i
-	for j < len(src) {
-		r, w := Rune(src, j)
-		if !IsWord(r) {
-			break
+	for j, chars := i, 0; j < i+c.n; chars++ {
+		if chars == c.Lists.longest {
+			return c.n, 0
 		}
+		r, w := Rune(src, j)
 		if f := FoldASCII(r); f < utf8.RuneSelf {
 			c.key = append(c.key, byte(f))
 		} else {
@@ -368,7 +389,6 @@ func (c *FoldWordCache) Word(src string, i int) (int, uint32) {
 		}
 		j += w
 	}
-	c.n = j - i
 	if c.n > 0 && ascii {
 		c.mask = c.Lists.words[string(c.key)]
 	}
