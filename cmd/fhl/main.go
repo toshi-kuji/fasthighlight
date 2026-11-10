@@ -161,9 +161,16 @@ func run(args []string, e env) int {
 		c   *converted
 		err error
 	}
+	var pages map[string]bool // for --static-site, the Markdown files that become pages
+	if o.staticSite {
+		pages = map[string]bool{}
+		for _, j := range jobs {
+			pages[filepath.Clean(j.path)] = true
+		}
+	}
 	mds := make(chan goldmark.Markdown, o.jobs) // reused by the converting goroutines
 	for range o.jobs {
-		mds <- newMarkdown(o.rawHTML, parallel, o.single || o.staticSite, o.staticSite)
+		mds <- newMarkdown(o.rawHTML, parallel, o.single || o.staticSite, pages)
 	}
 	convert := func(j *job) result {
 		src := stdinData

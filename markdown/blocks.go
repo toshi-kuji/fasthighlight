@@ -47,7 +47,7 @@ func (c *Converter) CodeBlocks(d *Document) []HighlightedBlock {
 	}
 	out := make([]HighlightedBlock, 0, len(d.blocks))
 	for k, b := range d.blocks {
-		name := string(b.Language(d.src))
+		name := LanguageName(b, d.src)
 		var html []byte
 		if v, ok := b.Attribute(highlightedAttr); ok {
 			html, _ = v.([]byte)

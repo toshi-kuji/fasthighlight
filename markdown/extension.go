@@ -75,7 +75,7 @@ func highlightAll(p Parallelism, blocks []*ast.FencedCodeBlock, src []byte) [][]
 	colored, need, size := 0, 3, 0
 	for k, b := range blocks {
 		codes[k] = blockCode(b, src)
-		names[k] = string(b.Language(src))
+		names[k] = LanguageName(b, src)
 		if langs[k] = fh.LookupRegistered(names[k]); langs[k] != nil {
 			colored++
 			need = max(need, needBlocks(langs[k]))
@@ -149,7 +149,7 @@ func renderCode(w util.BufWriter, src []byte, node ast.Node, entering bool) (ast
 		}
 	}
 	b := node.(*ast.FencedCodeBlock)
-	name := string(b.Language(src))
+	name := LanguageName(b, src)
 	return ast.WalkContinue, fh.Highlight(w, name, blockCode(b, src))
 }
 
@@ -177,4 +177,43 @@ func needBlocks(l *fh.Language) int {
 		return 3
 	}
 	return 4
+}
+
+// LanguageName returns the language name of a fenced code block, as the extension reads it: the first word of
+// its info string, up to a space or tab, with backslash escapes and entity references resolved as CommonMark does (goldmark's
+// FencedCodeBlock.Language splits only at a space and leaves both as they are).
+func LanguageName(b *ast.FencedCodeBlock, src []byte) string {
+	if b.Info == nil {
+		return ""
+	}
+	info := bytes.TrimLeft(b.Info.Segment.Value(src), " \t")
+	if i := bytes.IndexAny(info, " \t"); i >= 0 {
+		info = info[:i]
+	}
+	if bytes.IndexAny(info, `\&`) < 0 {
+		return string(info)
+	}
+	// One pass, so that what one rule produces is not read again by the other (\&amp; is "&amp;").
+	var out []byte
+	for i := 0; i < len(info); {
+		switch c := info[i]; {
+		case c == '\\' && i+1 < len(info) && util.IsPunct(info[i+1]):
+			out = append(out, info[i+1])
+			i += 2
+			continue
+		case c == '&':
+			if j := bytes.IndexByte(info[i:], ';'); j > 0 {
+				ref := info[i : i+j+1]
+				r := util.ResolveEntityNames(util.ResolveNumericReferences(ref))
+				if !bytes.Equal(r, ref) {
+					out = append(out, r...)
+					i += j + 1
+					continue
+				}
+			}
+		}
+		out = append(out, info[i])
+		i++
+	}
+	return string(out)
 }

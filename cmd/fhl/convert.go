@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"html"
+	"net/url"
 	"path/filepath"
 	"strings"
 
@@ -37,14 +38,16 @@ type converted struct {
 // newMarkdown builds fhl's goldmark. It adds GFM and the fasthighlight extension and sets the handling of raw HTML to rawHTML.
 // For pages that open as they are (--single-html and --static-site, ids), it gives headings ids, so that links
 // within a page work. For --static-site (site), it also rewrites links to Markdown files to the .html pages.
-func newMarkdown(rawHTML string, p markdown.Parallelism, ids, site bool) goldmark.Markdown {
+// newMarkdown returns the goldmark that converts the pages. pages, for --static-site, holds the cleaned paths
+// of the Markdown files that the site converts, the only ones that links are rewritten to (nil otherwise).
+func newMarkdown(rawHTML string, p markdown.Parallelism, ids bool, pages map[string]bool) goldmark.Markdown {
 	opts := []goldmark.Option{goldmark.WithExtensions(extension.GFM, &markdown.Extension{Parallelism: p})}
 	if ids {
 		opts = append(opts, goldmark.WithParserOptions(parser.WithAutoHeadingID()))
 	}
-	if site {
+	if pages != nil {
 		opts = append(opts, goldmark.WithParserOptions(
-			parser.WithASTTransformers(util.Prioritized(mdLinkRewriter{}, 1000)),
+			parser.WithASTTransformers(util.Prioritized(mdLinkRewriter{pages: pages}, 1000)),
 		))
 	}
 	switch rawHTML {
@@ -59,20 +62,30 @@ func newMarkdown(rawHTML string, p markdown.Parallelism, ids, site bool) goldmar
 
 // mdLinkRewriter rewrites relative links to Markdown files (.md, .markdown, .mkd) to the .html pages that
 // --static-site writes for them, keeping any ?query and #fragment (guide.md#setup becomes guide.html#setup).
-type mdLinkRewriter struct{}
+// Only links to the pages of the site are rewritten: a link to a Markdown file outside the folder, in a folder
+// whose name starts with a dot, or that does not exist, keeps pointing at the file.
+type mdLinkRewriter struct {
+	pages map[string]bool // the cleaned paths of the Markdown files that the site converts
+}
 
-func (mdLinkRewriter) Transform(doc *ast.Document, _ text.Reader, _ parser.Context) {
+// pageKey holds, in the parser.Context, the path of the Markdown file being converted.
+var pageKey = parser.NewContextKey()
+
+func (r mdLinkRewriter) Transform(doc *ast.Document, _ text.Reader, pc parser.Context) {
+	page, _ := pc.Get(pageKey).(string)
+	isPage := func(rel string) bool { return r.pages[filepath.Join(filepath.Dir(page), filepath.FromSlash(rel))] }
 	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if l, ok := n.(*ast.Link); ok && entering {
-			l.Destination = []byte(rewriteMDLink(string(l.Destination)))
+			l.Destination = []byte(rewriteMDLink(string(l.Destination), isPage))
 		}
 		return ast.WalkContinue, nil
 	})
 }
 
-// rewriteMDLink returns dest with the extension of a relative link to a Markdown file changed to .html.
+// rewriteMDLink returns dest with the extension of a relative link to a Markdown file changed to .html, when
+// isPage reports that the file it names (relative to the page, with any %XX decoded) is a page of the site.
 // Other links (with a scheme such as https:, starting with / or #, or to other files) are returned as they are.
-func rewriteMDLink(dest string) string {
+func rewriteMDLink(dest string, isPage func(rel string) bool) string {
 	if dest == "" || strings.HasPrefix(dest, "/") || strings.HasPrefix(dest, "#") {
 		return dest
 	}
@@ -84,6 +97,10 @@ func rewriteMDLink(dest string) string {
 		return dest // a scheme (https:, mailto:, etc.)
 	}
 	if !isMarkdown(path) {
+		return dest
+	}
+	file, err := url.PathUnescape(path)
+	if err != nil || !isPage(file) {
 		return dest
 	}
 	return strings.TrimSuffix(path, filepath.Ext(path)) + ".html" + rest
@@ -131,7 +148,9 @@ func renderRawHTML(w util.BufWriter, src []byte, node ast.Node, entering bool) (
 // Leading front matter (the part enclosed in ---) is skipped. Line numbers are counted in the original src.
 func convertMarkdown(md goldmark.Markdown, name string, src []byte) (*converted, error) {
 	body, offset := stripFrontMatter(src)
-	doc := md.Parser().Parse(text.NewReader(body), parser.WithContext(parseContext()))
+	pc := parseContext()
+	pc.Set(pageKey, name)
+	doc := md.Parser().Parse(text.NewReader(body), parser.WithContext(pc))
 	c := &converted{}
 	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
@@ -144,7 +163,7 @@ func convertMarkdown(md goldmark.Markdown, name string, src []byte) (*converted,
 			}
 		case *ast.FencedCodeBlock:
 			c.blocks++
-			lang := string(n.Language(body))
+			lang := markdown.LanguageName(n, body)
 			line := fenceLine(body, n)
 			if line > 0 {
 				line += offset
