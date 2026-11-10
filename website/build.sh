@@ -273,7 +273,8 @@ if [ -f "$goroot/lib/wasm/wasm_exec.js" ]; then
 else
 	install -m 644 "$goroot/misc/wasm/wasm_exec.js" "$out/demo/"
 fi
-# The version shown on the demo: the latest release tag ("dev" when no tags were fetched).
+# The version shown on the demo, linked to its release page: the latest release tag ("dev" when no tags
+# were fetched).
 version="$(git -C "$root" tag --list 'v*' --sort=-version:refname 2>/dev/null | head -n 1)"
 version="${version:-dev}"
 python3 - "$work" "$root/website/demo" "$out" "$site_url" "$version" <<'PY'
@@ -317,7 +318,13 @@ for marker, value in (("/*THEMES*/", themes), ("/*SAMPLES*/", samples)):
 page = page.replace("__LANG_COUNT__", str(len(langs)))
 if page.count("__VERSION__") != 1:
     sys.exit("build.sh: website/demo/index.html needs one __VERSION__")
-page = page.replace("__VERSION__", hesc(version))
+# A release version links to its release page; "dev" (no tags fetched) has no page, so it stays plain text.
+if version.startswith("v"):
+    url = "https://github.com/toshi-kuji/fasthighlight/releases/tag/" + version
+    version_html = f'<a href="{hesc(url)}">{hesc(version)}</a>'
+else:
+    version_html = hesc(version)
+page = page.replace("__VERSION__", version_html)
 open(out + "/demo/index.html", "w", encoding="utf-8").write(page)
 
 sitemap = out + "/sitemap.xml"
