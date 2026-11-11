@@ -244,3 +244,128 @@ func typeExprEnd(src string, i int, turbofish bool) int {
 	}
 	return 0
 }
+
+// typeCtx tells whether a single ":" starts a type (let x: T, fn f(a: T), |x: T|, struct S { a: T },
+// T: Bound) or a value, above all the value of a field in a struct literal (P { a: x }), which keeps
+// Chroma's coloring. It follows the brackets in one pass. A "{" opens a declaration body when struct,
+// enum, union, trait, impl, mod or extern came since the last ";", "{" or "}", or when it is a variant
+// inside an enum body; in a declaration body (and at the top level) every ":" starts a type. Any other
+// "{" (a struct literal, a block, a match) annotates only after let, or after static or const at the start
+// of a statement. Directly inside ( ) a ":" is a parameter, inside [ ] it is never a type, and inside the
+// |…| of closure parameters it is a type. When unsure it does not mark: a missed type keeps Chroma's
+// coloring, a value colored as a type is wrong.
+type typeCtx struct {
+	frames      []frame // open brackets; frames[0] is the top level
+	declPending bool    // struct/enum/... since the last boundary
+	enumPending bool
+	stmtStart   bool // nothing but pub since the last boundary
+	closure     bool // inside the |…| of closure parameters
+	prev        byte // the last byte of the previous non-space token ('a' for a word)
+}
+
+// frame is an open bracket.
+type frame struct {
+	open      byte // '{', '(' or '['
+	decl      bool // a declaration body
+	enum      bool // an enum body: a "{" in it is a variant
+	letActive bool // let (or a statement static/const) since the last boundary in this frame
+}
+
+func (c *typeCtx) top() *frame {
+	if len(c.frames) == 0 {
+		c.frames = append(c.frames, frame{open: '{', decl: true})
+		c.stmtStart = true
+	}
+	return &c.frames[len(c.frames)-1]
+}
+
+// annotation reports whether the single ":" being read starts a type.
+func (c *typeCtx) annotation() bool {
+	if c.closure {
+		return true
+	}
+	switch f := c.top(); f.open {
+	case '(':
+		return true
+	case '[':
+		return false
+	default:
+		return f.decl || f.letActive
+	}
+}
+
+func (c *typeCtx) boundary() {
+	c.declPending, c.enumPending, c.stmtStart, c.closure = false, false, true, false
+}
+
+// track updates the context with the token(s) of n bytes that the base state read at i.
+func (l *lexer) track(i, n int) {
+	c := &l.ctx
+	src := l.src
+	b := src[i]
+	if lexkit.IsSpace(rune(b)) {
+		return
+	}
+	f := c.top()
+	if isIdentStart(b) && l.ident(i) == n {
+		w := src[i : i+n]
+		switch w {
+		case "struct", "union", "trait", "impl", "mod", "extern":
+			c.declPending = true
+		case "enum":
+			c.declPending, c.enumPending = true, true
+		case "let":
+			f.letActive = true
+		case "static", "const":
+			if c.stmtStart {
+				f.letActive = true
+			}
+		}
+		c.stmtStart = c.stmtStart && w == "pub"
+		c.prev = 'a'
+		if w == "move" {
+			c.prev = '=' // move |x: T| starts a closure like = |x: T|
+		}
+		return
+	}
+	if n > 1 {
+		// a macro call that ends in its opening bracket (m!( ), or any other longer token
+		if last := src[i+n-1]; last == '(' || last == '[' || last == '{' {
+			c.frames = append(c.frames, frame{open: last})
+		}
+		c.stmtStart = false
+		c.prev = src[i+n-1]
+		return
+	}
+	c.stmtStart = false
+	switch b {
+	case ';':
+		f.letActive = false
+		c.boundary()
+	case '{', '(', '[':
+		nf := frame{open: b}
+		if b == '{' {
+			nf.decl = c.declPending || f.enum
+			nf.enum = c.enumPending
+			c.boundary()
+		}
+		c.frames = append(c.frames, nf)
+	case '}', ')', ']':
+		if len(c.frames) > 1 {
+			c.frames = c.frames[:len(c.frames)-1]
+		}
+		if b == '}' {
+			c.boundary()
+		}
+	case '|':
+		if c.closure {
+			c.closure = false
+		} else {
+			switch c.prev {
+			case 0, '(', '=', ',', '{', ';', '[':
+				c.closure = true
+			}
+		}
+	}
+	c.prev = b
+}

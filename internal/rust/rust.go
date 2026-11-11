@@ -63,6 +63,7 @@ type lexer struct {
 	// typeEnd is the end of the type being read (production only): before it, a name is NameClass, or
 	// NameNamespace when "::" follows it.
 	typeEnd int
+	ctx     typeCtx // where a ":" starts a type (production only, types.go)
 }
 
 // Lex splits src into tokens (with the same contract as the Lex of fasthighlight.Language). compat/ uses it
@@ -78,6 +79,9 @@ func Lex(src string, end int, o Options) []fh.Token {
 				continue
 			}
 			n = l.x.Error(i)
+		}
+		if st == base && n > 0 && !o.ChromaTypes {
+			l.track(i, n)
 		}
 		i += n
 	}
@@ -569,7 +573,9 @@ func (l *lexer) base(i int) (int, bool) {
 		if c == '-' {
 			e++
 		}
-		l.markType(i, e-i)
+		if c == '-' || l.ctx.annotation() {
+			l.markType(i, e-i)
+		}
 		l.push(typename)
 		return l.emit(fh.Text, i, e)
 	}

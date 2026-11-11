@@ -77,6 +77,89 @@ func TestTypePositions(t *testing.T) {
 	}
 }
 
+// The values of fields in struct literals are not types: they keep exactly Chroma's coloring (what
+// ChromaTypes gives), at the top level and inside function bodies.
+func TestStructLiteralValues(t *testing.T) {
+	Prepare()
+	for _, lit := range []string{
+		"P { a: *x + 1 }",
+		"P { a: (lo, hi), b: [lo; N] }",
+		"P { a: [a, b, c] }",
+		"P { a: (x) }",
+		"P { a: &mut buf }",
+		"P { a: *ptr }",
+		"P { a: A + B }",
+		"Config { mode: Mode::Fast }",
+		"P { a: Q { b: x }, c: &y }",
+	} {
+		for _, src := range []string{
+			"let p = " + lit + ";\n",
+			"fn f() {\n    let p = " + lit + ";\n    g(" + lit + ");\n}\n",
+			"static X: P = " + lit + ";\n",
+			"fn f() -> P {\n    " + lit + "\n}\n",
+			"match v {\n    " + lit + " => 1,\n}\n",
+		} {
+			// The part after the first type (let p =, X: P =, -> P) must match ChromaTypes.
+			got := Lex(src, len(src), Options{})
+			want := Lex(src, len(src), Options{ChromaTypes: true})
+			k := strings.Index(src, lit)
+			var gb, wb strings.Builder
+			for _, x := range []struct {
+				toks []fh.Token
+				b    *strings.Builder
+			}{{got, &gb}, {want, &wb}} {
+				off := 0
+				for _, tok := range x.toks {
+					if off >= k {
+						fmt.Fprintf(x.b, "%v %q;", tok.Type, tok.Value)
+					}
+					off += len(tok.Value)
+				}
+			}
+			if gb.String() != wb.String() {
+				t.Errorf("%q:\n got %s\nwant %s", src, gb.String(), wb.String())
+			}
+		}
+	}
+}
+
+// Real type positions keep the whole type colored: declaration fields, statics, closures, lets in
+// function bodies, bounds.
+func TestTypePositionsInBodies(t *testing.T) {
+	Prepare()
+	for _, c := range []struct{ src, class string }{
+		{"struct S { a: Vec<User> }", "User"},
+		{"pub struct S<T> where T: Into<Name> { pub a: Option<User>, b: T }", "User"},
+		{"struct S<T> where T: Into<Name> { a: T }", "Name"},
+		{"union U { a: Wrap<User> }", "User"},
+		{"enum E { V { a: Vec<User> }, W(X) }", "User"},
+		{"trait Tr { type Item: Into<User>; fn f(&self) -> Vec<User>; }", "User"},
+		{"impl S { fn f(a: Vec<User>) { let x: Vec<Item> = g(); } }", "Item"},
+		{"fn f() { let x: Vec<Item> = P { a: b }; }", "Item"},
+		{"fn f() { const N: Wrap<Item> = w; }", "Item"},
+		{"fn f() { static N: Wrap<Item> = w; }", "Item"},
+		{"fn f() { let g = |x: Vec<Item>, y: Box<User>| x; }", "User"},
+		{"fn f() { let g = move |x: Vec<Item>| x; }", "Item"},
+		{"static X: Vec<User> = v;", "User"},
+		{"mod m { struct S { a: Vec<User> } }", "User"},
+		{"fn f<T: Into<User>>(t: T) {}", "User"},
+	} {
+		src := c.src + "\n"
+		found := false
+		for _, tok := range Lex(src, len(src), Options{}) {
+			if tok.Value == c.class {
+				found = true
+				if tok.Type != fh.NameClass {
+					t.Errorf("%s: %s is %v, want NameClass", c.src, c.class, tok.Type)
+				}
+			}
+		}
+		if !found {
+			t.Errorf("%s: no %s", c.src, c.class)
+		}
+	}
+}
+
 // Long runs of ":" and "::<" stay linear (each scan is bounded by maxType).
 func TestTypeScanBounded(t *testing.T) {
 	Prepare()
