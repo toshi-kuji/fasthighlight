@@ -19,7 +19,7 @@ Fuzz tests compare the two on large numbers of generated inputs. They are a chec
 
 ## What was changed
 
-Chroma is the reference, not something to copy exactly. Where Chroma has a bug, or behaves in a way that gets in the way of readers, fasthighlight differs. Changes are limited to places where the colors would clearly go wrong (an error color, or a string or tag color running on past where it should end), and to places where Chroma leaves out a color in a way that is plainly inconsistent (type names in Go code).
+Chroma is the reference, not something to copy exactly. Where Chroma has a bug, or behaves in a way that gets in the way of readers, fasthighlight differs. Changes are limited to places where the colors would clearly go wrong (an error color, or a string or tag color running on past where it should end), and to places where Chroma leaves out a color in a way that is plainly inconsistent (the names of types you define, in type positions).
 
 <div class="changes">
 
@@ -28,13 +28,13 @@ Chroma is the reference, not something to copy exactly. Where Chroma has a bug, 
 | `{}` inside `${ … }` of a template literal (TypeScript, JavaScript, react (JSX), `<script>` in HTML) | the first `}` ends the `${ … }`, so what follows looks like a string | counts the braces |
 | TypeScript JSX (`<div …>`) | `<` followed by a letter is a tag, so `Map<string, number>` and `a<b` become tags, sometimes followed by errors | not treated as tags (`<` is an operator) |
 | Escapes such as `\n` in TypeScript and react (JSX) template literals | `\` is an error | string color, as in JavaScript |
-| Names in TypeScript type arguments and return types (`Map<string, User>`, `f<User>()`, `(): User`) | only built-in types such as `string` get the type color; `User` gets the name color | type color, like a type after `name:` |
+| Names of types in type positions (Go, TypeScript, Java, C#, Kotlin, Rust, Swift, Python, PHP) | only built-in types such as `string` or `int` get the type color; a type you define (`User`) gets the name color, so `Map<string, User>` shows one type colored and one not | the type color, the same one the language already uses for its types: Go struct fields and embedded fields, `var`, `const` and `type` declarations, parameters, results and receivers (`ctx context.Context`; the package as a namespace); TypeScript type arguments and return types (`Map<string, User>`, `f<User>()`, `(): User`); Java and C# type arguments, declared types, parameter and return types (`List<User> xs`, `User get(…)`, C# also after `new` and `as`); Kotlin types after `:` and in type arguments (`val xs: List<User>`, `): User`); Rust types after `:` and `->` and in `::<…>` (`Vec<User>`, a path before `::` as a namespace); Swift types after `:`, `->`, `as` and `is`, in `[User]`, `User?`, generics and inheritance lists; Python type hints (`m: dict[str, User]`, `-> User`, `xs: list[User]` at the start of a line); PHP parameter, return and property types (`?User $u`, `): A\|B`). Expressions are left as they are: comparisons (`a < b && c > d`), conditionals (`c ? a : b`), calls, dictionary and struct literals, and Go's single name in a parameter list (`func(T)`, which can be a name or a type). When a position is unclear, it is left without the type color |
+| A Rust keyword right after `:` or `->` (`mut` in `x: &mut T`, `loop` in `'a: loop`) | the type color | the keyword color |
 | Names starting with a non-ASCII letter in TypeScript, Swift and Ruby | error color | name color |
 | Ruby strings of the form `% abc ` | the delimiter is output twice | output once |
 | Ruby `defined?` | not a keyword in `defined? x` or `defined?(x)` | a keyword |
 | The start of an R name | `[`, `\`, `]`, `^` and `` ` `` can start a name (a typo for `[a-zA-Z]` in the rule), so `x[[1]]` and `n^2` are names | letters only |
 | The start of a Go name | digits other than ASCII, and numbers in templates (`{{ 1 }}`), can start a name | digits cannot start a name |
-| Names in Go type positions: struct fields and embedded fields, `var`, `const` and `type` declarations, parameters, results and receivers (`Context` in `ctx context.Context`, `Client` in `var c *http.Client`) | only built-in types such as `string` get the type color; other names get the text color | the type color (the package name `context` too, as a namespace). Expressions (`http.Get(u)`, `Foo(y)`) and a single name in a parameter list (the `T` of `func(T)`, which can be a name or a type) are left as they are |
 | Java numbers (`42`, `1.5`, `0x1F`) | name color | number color |
 | C++ raw strings (`R"(…)"`) | the rule almost never matches, so `R` is a name and the rest a normal string | raw strings |
 | Python docstrings (`"""…"""` at the start of a line) | the rule almost never matches, so they get the normal string color | docstring color |
@@ -43,10 +43,9 @@ Chroma is the reference, not something to copy exactly. Where Chroma has a bug, 
 | Emphasis at the start of a line or a list item in Markdown (`**Note**: …`, `- **a** b`) | not emphasis | emphasis |
 | Code blocks inside Markdown | colored with any of Chroma's languages | colored with the registered languages only |
 | Front matter in Markdown with `\r` alone as newlines | found before newlines are normalized | found after, like everything else |
-| Very long tokens of the same kind in Markdown code blocks and front matter (8,192 bytes or more) | split at one place | split at another place (looks the same) |
+| Very long tokens of the same kind (8,192 bytes or more) in Markdown code blocks and front matter, and in HTTP message bodies read by a registered language | split at one place | split at another place (looks the same) |
 | The body of an HTTP message in a language with a trailing-newline rule (JavaScript, C, PHP and others), when the message does not end with a newline | a newline is added to the body | nothing is added; the tokens join back into the input |
 | The body of an HTTP message whose content type is in a language fasthighlight does not support (`text/plain` is Nu in Chroma) | colored with that language | not colored |
-| Very long tokens of the same kind in HTTP message bodies read by a registered language (8,192 bytes or more) | split at one place | split at another place (looks the same) |
 | Rules whose regular expression takes more than 250 ms on an input | treated as not matching, so the result depends on how fast the machine is | always the same result |
 
 </div>
