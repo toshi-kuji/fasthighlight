@@ -8,7 +8,9 @@ import "strings"
 //     followed by "$name", "&$name" or "...$name" ("&" touching the variable). This covers parameters (User $u, ?User $u, A|B $u,
 //     A&B &$u, User ...$us), typed properties (private User $u;) and catch (Exception $e). A ternary
 //     ($a ? B : $c), a case label (case X:), a named argument (f(x: 1)) and a constant are not followed by
-//     a variable, so they stay NameOther.
+//     a variable, so they stay NameOther. The name must also be in a declaration (declContext): directly
+//     after the "(" or "," of a parameter list or catch, or after a property modifier, so that constants in
+//     expressions such as FLAG &$x or X . $y stay NameOther.
 //   - A return type: the name (with ?, | and &) after a ":" that follows the ")" of a parameter list whose
 //     "(" comes after function, fn, function name, or use.
 //
@@ -39,6 +41,9 @@ func (l *lexer) isType(s, e int) bool {
 		return true
 	}
 	if s < l.noTypeEnd {
+		return false
+	}
+	if !l.declContext(s) {
 		return false
 	}
 	end, ok := l.typeChain(e, s+maxType)
@@ -84,6 +89,94 @@ func (l *lexer) typeChain(i, limit int) (int, bool) {
 		}
 	}
 	return j, false
+}
+
+// declContext reports whether a type starting at s is in a declaration: walking back over the names
+// joined by | or & and a leading ?, it finds the "(" or "," of a parameter list (of function, fn, a
+// function name or catch), or a property modifier (public, private, protected, static, readonly, var).
+// It looks back at most maxType bytes.
+func (l *lexer) declContext(s int) bool {
+	src := l.src
+	stop := max(s-maxType, 0)
+	k := l.skipBack(s, stop)
+	for k > stop {
+		c := src[k-1]
+		if c == '?' {
+			k = l.skipBack(k-1, stop)
+			continue
+		}
+		if (c == '|' || c == '&') && (k < 2 || src[k-2] != c) {
+			k = l.skipBack(k-1, stop)
+			w := k
+			for w > stop && (isWordByte(src[w-1]) || src[w-1] == '\\') {
+				w--
+			}
+			if w == k {
+				return false
+			}
+			k = l.skipBack(w, stop)
+			continue
+		}
+		break
+	}
+	if k <= stop {
+		return false
+	}
+	switch src[k-1] {
+	case '(':
+		return l.paramsOpen(k-1, true)
+	case ',':
+		depth := 0
+		for j := k - 2; j >= stop; j-- {
+			switch src[j] {
+			case ')':
+				depth++
+			case '(':
+				if depth == 0 {
+					return l.paramsOpen(j, false)
+				}
+				depth--
+			case ';', '{', '}':
+				return false
+			}
+		}
+		return false
+	}
+	w := l.wordBefore(k)
+	switch strings.ToLower(strings.TrimSpace(src[w:k])) {
+	case "public", "private", "protected", "static", "readonly", "var":
+		return true
+	}
+	return false
+}
+
+// skipBack returns k moved back over spaces, not before stop.
+func (l *lexer) skipBack(k, stop int) int {
+	for k > stop && isSpaceByte(l.src[k-1]) {
+		k--
+	}
+	return k
+}
+
+// paramsOpen reports whether the "(" at k opens a parameter list: after function, fn, function and a
+// name (with an optional &), or, when catch is set, catch.
+func (l *lexer) paramsOpen(k int, catch bool) bool {
+	src := l.src
+	w := l.wordBefore(k)
+	switch strings.ToLower(strings.TrimSpace(src[w:k])) {
+	case "function", "fn":
+		return true
+	case "catch":
+		return catch
+	case "":
+		return false
+	}
+	k = l.skipBack(w, 0)
+	if k > 0 && src[k-1] == '&' {
+		k--
+	}
+	w = l.wordBefore(k)
+	return strings.EqualFold(strings.TrimSpace(src[w:k]), "function")
 }
 
 // returnType sets typeEnd when the ":" at i starts a return type.

@@ -32,6 +32,19 @@ func TestTypePositions(t *testing.T) {
 		{"$m = FLAG & $x | OTHER;", nil, []string{"FLAG", "OTHER"}},
 		{"$m = A || $x && B;", nil, []string{"A", "B"}},
 		{"if (f($x) : Bar) {}", nil, []string{"f", "Bar"}},
+		{"$a = FOO &$b;", nil, []string{"FOO"}},
+		{"$m = FLAG_A &$flags;", nil, []string{"FLAG_A"}},
+		{"$a = A|B &$x;", nil, []string{"A", "B"}},
+		{"echo X . $y;", nil, []string{"X"}},
+		{"if (X && $y) {}", nil, []string{"X"}},
+		{"return Y ?: $z;", nil, []string{"Y"}},
+		{"f(Z, W $v);", nil, []string{"Z", "W"}},
+		// Types in declarations.
+		{"function f(User &$u, ?A $a, A|B $v, C&D $w, E ...$xs) {}", []string{"User", "A", "B", "C", "D", "E"}, []string{"f"}},
+		{"$h = fn(Foo $f) => 1;", []string{"Foo"}, nil},
+		{"$h = function (Foo $f) use ($x): Bar {};", []string{"Foo", "Bar"}, nil},
+		{"class C { private ?User $u; public readonly Repo $r; }", []string{"User", "Repo"}, nil},
+		{"function f(int $a = g(1, 2), Foo $b) {}", []string{"Foo"}, nil},
 	} {
 		for _, chroma := range []bool{false, true} {
 			got := map[string]fh.TokenType{}
