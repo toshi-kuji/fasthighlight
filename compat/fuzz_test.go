@@ -22,6 +22,7 @@ import (
 	"github.com/toshi-kuji/fasthighlight/internal/python"
 	"github.com/toshi-kuji/fasthighlight/internal/r"
 	"github.com/toshi-kuji/fasthighlight/internal/ruby"
+	"github.com/toshi-kuji/fasthighlight/internal/rust"
 	"github.com/toshi-kuji/fasthighlight/internal/swift"
 	"github.com/toshi-kuji/fasthighlight/internal/testcases"
 	"github.com/toshi-kuji/fasthighlight/internal/typescript"
@@ -126,6 +127,9 @@ func chromaMode(l *fh.Language) func(string) []fh.Token {
 		lex = func(text string, end int) []fh.Token {
 			return typescript.Lex(text, end, typescript.Options{Chroma: true})
 		}
+	case "Rust":
+		l.Tokenise("") // preparation (word lists)
+		lex = func(text string, end int) []fh.Token { return rust.Lex(text, end, rust.Options{ChromaTypes: true}) }
 	case "markdown":
 		// Code blocks and front matter are also read with the version that matches Chroma (whether the language is
 		// looked up the same way as in Chroma is checked by comparable).

@@ -8,7 +8,7 @@
 //	go run ./cmd/genlists kotlin > ../lang/kotlin/lists.go
 //	go run ./cmd/genlists swift > ../internal/swift/lists.go
 //	go run ./cmd/genlists go > ../internal/golang/lists.go
-//	go run ./cmd/genlists rust > ../lang/rust/lists.go
+//	go run ./cmd/genlists rust > ../internal/rust/lists.go
 //	go run ./cmd/genlists sql > ../lang/sql/lists.go
 //	go run ./cmd/genlists r > ../internal/r/lists.go
 //	go run ./cmd/genlists php > ../internal/php/lists.go

@@ -79,6 +79,10 @@ func TestLinearTime(t *testing.T) {
 		{"swift", "a<"},
 		{"swift", "f(a:"},
 		{"swift", "let a: ["},
+		// Rust: each ":" or "::<" scans the type after it (bounded by maxType).
+		{"rust", "a: "},
+		{"rust", "x::<"},
+		{"rust", ": Vec<"},
 	}
 	for _, c := range cases {
 		l := fasthighlight.LookupRegistered(c.lang)

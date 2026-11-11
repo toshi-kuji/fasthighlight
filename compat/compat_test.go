@@ -261,6 +261,11 @@ const goTypeNames = "Names in Go type positions get the type color (Chroma color
 // generics of fun, or when it is uppercase and followed by a dot, so in val xs: List<User> both names are
 // Name. Ours colors the names after a ":" and in type arguments right after a name.
 const kotlinTypes = "Names in Kotlin type positions (after a \":\" and in type arguments) get the type color (Chroma colors only declarations)"
+// rustTypes: Chroma's Rust rules make only the one name right after ":" or "->" NameClass (even a keyword, as
+// in &mut T or 'a: loop), so in `xs: Vec<User>` the User is Name. Ours reads the whole type after ":" and
+// "->" and the type arguments of ::<…>: names are NameClass, a name before "::" is NameNamespace, and
+// keywords stay keywords.
+const rustTypes = "Names in Rust types after \":\" and \"->\" and in ::<…> get the type color (Chroma colors only the first name)"
 
 // rNames: the [a-zA-z] at the start of an R name is a typo, and [ ] ^ and so on also become names. Ours
 // uses [a-zA-Z].
@@ -326,6 +331,12 @@ var intendedDiffs = []intendedDiff{
 	{"Kotlin", "T", fh.NameClass, fh.Name, kotlinTypes},
 	{"Kotlin", "R", fh.NameClass, fh.Name, kotlinTypes},
 	{"Kotlin", "Runnable", fh.NameClass, fh.Name, kotlinTypes},
+	{"Rust", "User", fh.NameClass, fh.Name, rustTypes},
+	{"Rust", "mut", fh.Keyword, fh.NameClass, rustTypes},
+	{"Rust", "Point", fh.NameClass, fh.Name, rustTypes},
+	{"Rust", "loop", fh.Keyword, fh.NameClass, rustTypes},
+	{"Rust", "std", fh.NameNamespace, fh.NameClass, rustTypes},
+	{"Rust", "io", fh.NameNamespace, fh.Name, rustTypes},
 	{"Go", "context", fh.NameNamespace, fh.NameOther, goTypeNames},
 	{"Go", "Context", fh.NameClass, fh.NameOther, goTypeNames},
 	{"Go", "io", fh.NameNamespace, fh.NameOther, goTypeNames},
