@@ -82,6 +82,8 @@ type lexer struct {
 	// typeEnd is the end of the type being read (type arguments or a return type; production only):
 	// before it, a name is a type (KeywordType) instead of NameOther.
 	typeEnd int
+	// argsFrom and argsStop are the start and stop of the last failed type-argument scan.
+	argsFrom, argsStop int
 }
 
 // Lex splits src into tokens (the same contract as Lex of fasthighlight.Language). compat/ uses it
@@ -662,8 +664,15 @@ func (l *lexer) markType(i, n int) {
 	src := l.src
 	switch {
 	case n == 1 && src[i] == '<' && isNameEnd(src[:i]):
-		if e := typeArgsEnd(src, i); e > 0 {
+		// A "<" inside a failed scan fails the same way (or would find shorter type arguments in an unclosed
+		// run, left as names), so it is not scanned again: each "<" of a<a<a<… would scan maxType bytes.
+		if l.argsFrom < i && i < l.argsStop {
+			return
+		}
+		if e, stop := typeArgsEnd(src, i); e > 0 {
 			l.typeEnd = e
+		} else {
+			l.argsFrom, l.argsStop = i, stop
 		}
 	case n == 1 && src[i] == ':' && returnTypeColon(src, i):
 		if e := returnTypeEnd(src, i+1); e > 0 {
@@ -678,13 +687,15 @@ func isNameEnd(s string) bool {
 	return s != "" && (r == '$' || lexkit.IsWord(r))
 }
 
-// typeArgsEnd returns the end of the type arguments that start at the "<" at i, or 0 if what follows
+// typeArgsEnd returns the end of the type arguments that start at the "<" at i and 0, or 0 and where the
+// scan stopped if what follows
 // does not look like type arguments: names, ".", ",", "[", "]", "|", "&", "?", whitespace and nested
 // "< >", closed by ">" within maxType bytes. Anything else (an operator such as && or =, a number, a
 // parenthesis) means that "<" is a comparison, as in a < b && c > d.
-func typeArgsEnd(src string, i int) int {
+func typeArgsEnd(src string, i int) (int, int) {
 	depth := 0
-	for j := i; j < len(src) && j < i+maxType; {
+	j := i
+	for j < len(src) && j < i+maxType {
 		r, w := lexkit.Rune(src, j)
 		switch {
 		case r == '<':
@@ -692,18 +703,18 @@ func typeArgsEnd(src string, i int) int {
 		case r == '>':
 			depth--
 			if depth == 0 {
-				return j + 1
+				return j + 1, 0
 			}
 		case r == '&' && j+1 < len(src) && src[j+1] == '&':
-			return 0
+			return 0, j
 		case r == '$' || lexkit.IsWord(r) && !(j == i+1 && lexkit.IsDigit(r)), lexkit.IsSpace(r),
 			strings.ContainsRune(".,[]|&?", r):
 		default:
-			return 0
+			return 0, j
 		}
 		j += w
 	}
-	return 0
+	return 0, j
 }
 
 // returnTypeColon reports whether the ":" at i follows the ")" of a parameter list (spaces may come

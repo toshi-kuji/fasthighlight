@@ -2,11 +2,11 @@
 // The supported languages are in configs. After upgrading Chroma, run the following in compat/.
 //
 //	go run ./cmd/genlists java > ../internal/java/lists.go
-//	go run ./cmd/genlists csharp > ../lang/csharp/lists.go
-//	go run ./cmd/genlists kotlin > ../lang/kotlin/lists.go
+//	go run ./cmd/genlists kotlin > ../internal/kotlin/lists.go
+//	go run ./cmd/genlists csharp > ../internal/csharp/lists.go
 //	go run ./cmd/genlists swift > ../internal/swift/lists.go
 //	go run ./cmd/genlists go > ../internal/golang/lists.go
-//	go run ./cmd/genlists rust > ../lang/rust/lists.go
+//	go run ./cmd/genlists rust > ../internal/rust/lists.go
 //	go run ./cmd/genlists sql > ../lang/sql/lists.go
 //	go run ./cmd/genlists r > ../internal/r/lists.go
 //	go run ./cmd/genlists php > ../internal/php/lists.go

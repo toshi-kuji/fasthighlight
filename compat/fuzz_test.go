@@ -9,17 +9,20 @@ import (
 
 	fh "github.com/toshi-kuji/fasthighlight"
 	"github.com/toshi-kuji/fasthighlight/internal/c"
+	"github.com/toshi-kuji/fasthighlight/internal/csharp"
 	"github.com/toshi-kuji/fasthighlight/internal/golang"
 	"github.com/toshi-kuji/fasthighlight/internal/html"
 	"github.com/toshi-kuji/fasthighlight/internal/http"
 	"github.com/toshi-kuji/fasthighlight/internal/java"
 	"github.com/toshi-kuji/fasthighlight/internal/js"
+	"github.com/toshi-kuji/fasthighlight/internal/kotlin"
 	"github.com/toshi-kuji/fasthighlight/internal/lexkit"
 	"github.com/toshi-kuji/fasthighlight/internal/markdown"
 	"github.com/toshi-kuji/fasthighlight/internal/php"
 	"github.com/toshi-kuji/fasthighlight/internal/python"
 	"github.com/toshi-kuji/fasthighlight/internal/r"
 	"github.com/toshi-kuji/fasthighlight/internal/ruby"
+	"github.com/toshi-kuji/fasthighlight/internal/rust"
 	"github.com/toshi-kuji/fasthighlight/internal/swift"
 	"github.com/toshi-kuji/fasthighlight/internal/testcases"
 	"github.com/toshi-kuji/fasthighlight/internal/typescript"
@@ -84,15 +87,27 @@ func chromaMode(l *fh.Language) func(string) []fh.Token {
 		lex = func(text string, end int) []fh.Token {
 			return c.Lex(text, end, c.Options{CPP: true, ChromaRawString: true})
 		}
+	case "C#":
+		l.Tokenise("") // preparation (word lists)
+		lex = func(text string, end int) []fh.Token { return csharp.Lex(text, end, csharp.Options{ChromaTypes: true}) }
 	case "Java":
 		l.Tokenise("") // preparation (word lists)
-		lex = func(text string, end int) []fh.Token { return java.Lex(text, end, java.Options{ChromaIdent: true}) }
+		lex = func(text string, end int) []fh.Token {
+			return java.Lex(text, end, java.Options{ChromaIdent: true, ChromaTypes: true})
+		}
+	case "Kotlin":
+		l.Tokenise("") // preparation (word lists)
+		lex = func(text string, end int) []fh.Token { return kotlin.Lex(text, end, kotlin.Options{ChromaTypes: true}) }
 	case "PHP":
 		l.Tokenise("") // preparation (word lists)
-		lex = func(text string, end int) []fh.Token { return php.Lex(text, end, php.Options{ChromaTags: true}) }
+		lex = func(text string, end int) []fh.Token {
+			return php.Lex(text, end, php.Options{ChromaTags: true, ChromaTypes: true})
+		}
 	case "Swift":
 		l.Tokenise("")
-		lex = func(text string, end int) []fh.Token { return swift.Lex(text, end, swift.Options{ChromaNames: true}) }
+		lex = func(text string, end int) []fh.Token {
+			return swift.Lex(text, end, swift.Options{ChromaNames: true, ChromaTypes: true})
+		}
 	case "R":
 		l.Tokenise("")
 		lex = func(text string, end int) []fh.Token { return r.Lex(text, end, r.Options{ChromaNames: true}) }
@@ -107,13 +122,16 @@ func chromaMode(l *fh.Language) func(string) []fh.Token {
 	case "Python":
 		l.Tokenise("") // preparation (word lists)
 		lex = func(text string, end int) []fh.Token {
-			return python.Lex(text, end, python.Options{ChromaDocstring: true})
+			return python.Lex(text, end, python.Options{ChromaDocstring: true, ChromaTypes: true})
 		}
 	case "TypeScript":
 		l.Tokenise("") // preparation (word lists)
 		lex = func(text string, end int) []fh.Token {
 			return typescript.Lex(text, end, typescript.Options{Chroma: true})
 		}
+	case "Rust":
+		l.Tokenise("") // preparation (word lists)
+		lex = func(text string, end int) []fh.Token { return rust.Lex(text, end, rust.Options{ChromaTypes: true}) }
 	case "markdown":
 		// Code blocks and front matter are also read with the version that matches Chroma (whether the language is
 		// looked up the same way as in Chroma is checked by comparable).
