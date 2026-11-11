@@ -37,7 +37,7 @@ func TestTypePositions(t *testing.T) {
 		{"var body: some View {", "View"},
 		{"func f(y: any Proto) -> any Bar {}", "Proto Bar"},
 		{"func f(y: inout User, z: borrowing Item, w: consuming Box) {}", "User Item Box"},
-		{"func f(y: sending User, z: isolated Actor) {}", "User Actor"},
+		{"func f(y: sending User, z: isolated Worker) {}", "User Worker"},
 		{"let g: (inout User) -> some View", "User View"},
 		{"class A: B, C where T: D {}", "A B C"},
 		// Negative cases: values stay names.
@@ -60,6 +60,35 @@ func TestTypePositions(t *testing.T) {
 		}
 		if got := typesOf(c.src, Options{ChromaTypes: true}); got != want {
 			t.Errorf("%q with ChromaTypes: types %q, want %q", c.src, got, want)
+		}
+	}
+}
+
+// Standard library names of current Swift (Codable, Identifiable) are built-ins like Hashable and Int; a
+// user type of the same shape (Task) is not. With ChromaBuiltins set, only Chroma's list counts.
+func TestModernBuiltins(t *testing.T) {
+	Prepare()
+	src := "struct Task: Identifiable, Codable, Hashable, Sendable {\n    let id: Int\n    var e: (any Error)?\n}\n"
+	types := func(o Options) map[string]fh.TokenType {
+		got := map[string]fh.TokenType{}
+		for _, tok := range Lex(src, len(src), o) {
+			got[tok.Value] = tok.Type
+		}
+		return got
+	}
+	got := types(Options{})
+	for _, w := range []string{"Identifiable", "Codable", "Hashable", "Sendable", "Int", "Error"} {
+		if got[w] != fh.NameBuiltin {
+			t.Errorf("%s is %v, want NameBuiltin", w, got[w])
+		}
+	}
+	if got["Task"] != fh.NameClass {
+		t.Errorf("Task is %v, want NameClass", got["Task"])
+	}
+	chroma := types(Options{ChromaBuiltins: true})
+	for _, w := range []string{"Identifiable", "Codable", "Sendable"} {
+		if chroma[w] == fh.NameBuiltin {
+			t.Errorf("with ChromaBuiltins, %s is NameBuiltin", w)
 		}
 	}
 }

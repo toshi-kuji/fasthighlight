@@ -21,13 +21,14 @@ const (
 	lDeclarations
 	lBuiltins
 	lBuiltinPseudo
+	lModernBuiltins
 )
 
 var lists *lexkit.WordLists
 
 // Prepare builds the word tables and the like (the Prepare of fasthighlight.Language).
 func Prepare() {
-	lists = lexkit.NewWordLists(keywords, reserved, constants, declarations, builtins, builtinPseudo)
+	lists = lexkit.NewWordLists(keywords, reserved, constants, declarations, builtins, builtinPseudo, modernBuiltins)
 }
 
 type state uint8
@@ -53,6 +54,10 @@ type Options struct {
 	// ":" of let/var and of func parameters, after "->", as and is, inheritance lists, [T], [K: V], T?, and
 	// generic arguments such as Array<User>) become NameClass, as after class and struct (types.go).
 	ChromaTypes bool
+	// ChromaBuiltins, if true, keeps Chroma's list of built-in names, which is from Swift 1 and 2 (Hashable
+	// and Int are in it, Codable and Identifiable are not). If false, the standard library names of current
+	// Swift in modernBuiltins (modern.go) are NameBuiltin too.
+	ChromaBuiltins bool
 }
 
 type lexer struct {
@@ -423,6 +428,11 @@ func (l *lexer) root(i int) (int, bool) {
 	}
 	if n := l.words.Match(src, i, lBuiltins); n > 0 {
 		return l.emit(fh.NameBuiltin, i, i+n)
+	}
+	if !l.o.ChromaBuiltins {
+		if n := l.words.Match(src, i, lModernBuiltins); n > 0 {
+			return l.emit(fh.NameBuiltin, i, i+n)
+		}
 	}
 	if n := l.words.Match(src, i, lBuiltinPseudo); n > 0 {
 		return l.emit(fh.NameBuiltinPseudo, i, i+n)
