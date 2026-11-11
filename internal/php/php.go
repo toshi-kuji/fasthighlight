@@ -10,6 +10,9 @@
 // Intended difference from Chroma: in Chroma, the <? of <?php becomes an operator, and once ?> leaves no state,
 // the rest becomes all Error. In fasthighlight, <?php and ?> are CommentPreproc, and the text from ?> to the
 // next <? is read as HTML (as in PHTML). Setting Options.ChromaTags to true makes it the same as Chroma.
+//
+// Intended difference from Chroma: user-defined class names in type declarations (parameter types, return
+// types and typed properties) are NameClass instead of NameOther (types.go). Options.ChromaTypes turns it off.
 package php
 
 import (
@@ -44,6 +47,11 @@ type Options struct {
 	// ChromaTags, if true, reads <?php and ?> the same as Chroma (<? is an operator, and everything after
 	// ?> is Error).
 	ChromaTags bool
+	// ChromaTypes, if true, colors names in type declarations the same as Chroma (NameOther). In
+	// production, a user-defined name in a parameter type (User $u, ?User $u, A|B $u, A&B $u), a return
+	// type (): User, ): ?A|B) or a typed property (private User $u;) is NameClass. Built-in types (int,
+	// string, ...) and keywords keep their own types.
+	ChromaTypes bool
 }
 
 type state uint8
@@ -68,6 +76,9 @@ type lexer struct {
 	// dollarFrom and dollarEnd are the last run of "$": any "$" inside it is answered without scanning
 	// the run again.
 	dollarFrom, dollarEnd int
+	// typeEnd is the end of the type being read (production only): before it, a name is NameClass.
+	// noTypeEnd is the end of the last scan that found no type, so names before it are not scanned again.
+	typeEnd, noTypeEnd int
 }
 
 // dollars returns the end of the run of "$" at i, remembering it so that a long run is scanned once.
@@ -396,6 +407,9 @@ func (l *lexer) root(i int) (int, bool) {
 		for j < len(src) && isOp(src[j]) {
 			j++
 		}
+		if !l.o.ChromaTypes && j == i+1 && c == ':' {
+			l.returnType(i)
+		}
 		return l.emit(fh.Operator, i, j)
 	}
 	if c == '?' {
@@ -481,6 +495,9 @@ func (l *lexer) root(i int) (int, bool) {
 		}
 	}
 	if n := l.ident(i, true); n > 0 {
+		if !l.o.ChromaTypes && l.isType(i, i+n) {
+			return l.emit(fh.NameClass, i, i+n)
+		}
 		return l.emit(fh.NameOther, i, i+n)
 	}
 	if e, t := l.number(i); e > 0 {

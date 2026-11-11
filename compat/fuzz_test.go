@@ -89,7 +89,9 @@ func chromaMode(l *fh.Language) func(string) []fh.Token {
 		lex = func(text string, end int) []fh.Token { return java.Lex(text, end, java.Options{ChromaIdent: true}) }
 	case "PHP":
 		l.Tokenise("") // preparation (word lists)
-		lex = func(text string, end int) []fh.Token { return php.Lex(text, end, php.Options{ChromaTags: true}) }
+		lex = func(text string, end int) []fh.Token {
+			return php.Lex(text, end, php.Options{ChromaTags: true, ChromaTypes: true})
+		}
 	case "Swift":
 		l.Tokenise("")
 		lex = func(text string, end int) []fh.Token { return swift.Lex(text, end, swift.Options{ChromaNames: true}) }

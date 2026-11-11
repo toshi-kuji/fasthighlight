@@ -55,6 +55,11 @@ func TestLinearTime(t *testing.T) {
 		{"xml", "&"},
 		// PHP: each $ rescanned the run of $.
 		{"php", "$"},
+		// PHP: type scans (a name before a variable, a return type after "):") look at most 512 bytes.
+		{"php", "A|"},
+		{"php", "A &"},
+		{"php", "(a):"},
+		{"php", "function("},
 	}
 	for _, c := range cases {
 		l := fasthighlight.LookupRegistered(c.lang)
