@@ -469,7 +469,7 @@ func (l *lexer) root(i int) (int, bool) {
 	}
 	if n := l.name(i); n > 0 {
 		if !l.o.ChromaTypes {
-			if i < l.typeEnd {
+			if i < l.typeEnd && !(isTypePrefix(src[i:i+n]) && (l.at(i+n) == ' ' || l.at(i+n) == '\t')) {
 				return l.emit(fh.NameClass, i, i+n)
 			}
 			if l.at(i+n) == '<' {

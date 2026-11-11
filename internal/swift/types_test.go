@@ -34,6 +34,12 @@ func TestTypePositions(t *testing.T) {
 		{"let u = x as? User", "User"},
 		{"if x is User {}", "User"},
 		{"let f: (User) -> Item", "User Item"},
+		{"var body: some View {", "View"},
+		{"func f(y: any Proto) -> any Bar {}", "Proto Bar"},
+		{"func f(y: inout User, z: borrowing Item, w: consuming Box) {}", "User Item Box"},
+		{"func f(y: sending User, z: isolated Actor) {}", "User Actor"},
+		{"let g: (inout User) -> some View", "User View"},
+		{"class A: B, C where T: D {}", "A B C"},
 		// Negative cases: values stay names.
 		{"let v = c ? a : b", ""},
 		{"let d = [k: v]", ""},

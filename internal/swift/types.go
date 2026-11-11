@@ -54,17 +54,50 @@ func (l *lexer) typeScan(i int, list bool) int {
 			k++
 			continue // spaces and separators do not extend the end
 		default:
-			r, w := lexkit.Rune(src, k)
-			if !(r == '_' || lexkit.IsWord(r)) {
+			w := l.nameEnd(k) - k
+			if w == 0 {
 				return end
 			}
+			word := src[k : k+w]
 			k += w
+			if depth == 0 && list && word == "where" {
+				return end // a generic where clause ends the inheritance list
+			}
+			if isTypePrefix(word) && (l.at(k) == ' ' || l.at(k) == '\t') {
+				// some View, any Proto, inout T: the word keeps its color, the type follows it.
+				for k < len(src) && k < i+maxType && (src[k] == ' ' || src[k] == '\t') {
+					k++
+				}
+				continue
+			}
 		}
 		if depth == 0 {
 			end = k
 		}
 	}
 	return end
+}
+
+// isTypePrefix reports whether w is a word that may precede a type in a type position (some View,
+// any Proto, inout T); such a word is not itself a type.
+func isTypePrefix(w string) bool {
+	switch w {
+	case "some", "any", "inout", "borrowing", "consuming", "isolated", "sending":
+		return true
+	}
+	return false
+}
+
+// nameEnd returns the end of the run of word characters at k (k if there is none).
+func (l *lexer) nameEnd(k int) int {
+	for k < len(l.src) {
+		r, w := lexkit.Rune(l.src, k)
+		if !(r == '_' || lexkit.IsWord(r)) {
+			break
+		}
+		k += w
+	}
+	return k
 }
 
 // typeArgsEnd returns the end of the type arguments that start with the "<" at i (after a name), or 0: only
