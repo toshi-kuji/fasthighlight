@@ -252,6 +252,9 @@ const goIdent = "Go names do not start with a digit (Chroma's [^\\W\\d] is the s
 // goTypeNames: Chroma makes every Go name other than the built-in types NameOther, so `data string` colors the
 // type but `ctx context.Context` does not. Ours colors the names in type positions (struct fields, declarations,
 // parameters, results and receivers).
+// csTypes: Chroma makes only C#'s built-in types KeywordType, so List<User> colors neither List nor User.
+const csTypes = "Names in C# type positions (type arguments, declarations, new and as) get the type color (Chroma colors only built-in types such as string)"
+
 const goTypeNames = "Names in Go type positions get the type color (Chroma colors only built-in types such as string)"
 
 // kotlinTypes: Chroma's Kotlin rules make a name NameClass only after class, interface or object, in the
@@ -315,6 +318,7 @@ var intendedDiffs = []intendedDiff{
 	{"PHP", "<?", fh.CommentPreproc, fh.Operator, phpTags},
 	{"PHP", "php", fh.CommentPreproc, fh.NameOther, phpTags},
 	{"PHP", "\n", fh.Text, fh.Error, phpTags},
+	{"C#", "Task", fh.KeywordType, fh.Name, csTypes},
 	{"Go", "1", fh.LiteralNumberInteger, fh.NameOther, goIdent},
 	{"Kotlin", "String", fh.NameClass, fh.Name, kotlinTypes},
 	{"Kotlin", "Int", fh.NameClass, fh.Name, kotlinTypes},

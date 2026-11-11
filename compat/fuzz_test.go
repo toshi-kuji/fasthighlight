@@ -9,6 +9,7 @@ import (
 
 	fh "github.com/toshi-kuji/fasthighlight"
 	"github.com/toshi-kuji/fasthighlight/internal/c"
+	"github.com/toshi-kuji/fasthighlight/internal/csharp"
 	"github.com/toshi-kuji/fasthighlight/internal/golang"
 	"github.com/toshi-kuji/fasthighlight/internal/html"
 	"github.com/toshi-kuji/fasthighlight/internal/http"
@@ -85,6 +86,9 @@ func chromaMode(l *fh.Language) func(string) []fh.Token {
 		lex = func(text string, end int) []fh.Token {
 			return c.Lex(text, end, c.Options{CPP: true, ChromaRawString: true})
 		}
+	case "C#":
+		l.Tokenise("") // preparation (word lists)
+		lex = func(text string, end int) []fh.Token { return csharp.Lex(text, end, csharp.Options{ChromaTypes: true}) }
 	case "Java":
 		l.Tokenise("") // preparation (word lists)
 		lex = func(text string, end int) []fh.Token { return java.Lex(text, end, java.Options{ChromaIdent: true}) }

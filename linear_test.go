@@ -43,6 +43,11 @@ func TestLinearTime(t *testing.T) {
 		{"protobuf", "é"},
 		// C++: each [[ looked for the last ]] of the line again.
 		{"cpp", "["},
+		// C#: the scans for a type (type arguments after each <, a declaration after each name) are bounded.
+		{"csharp", "a<"},
+		{"csharp", "a "},
+		{"csharp", "a.<"},
+		{"csharp", "new a<"},
 		// TypeScript: each position rescanned the run of [\w?.$].
 		{"typescript", "$"},
 		{"typescript", "a."},
