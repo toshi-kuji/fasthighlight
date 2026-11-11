@@ -28,6 +28,7 @@ Chroma is the reference, not something to copy exactly. Where Chroma has a bug, 
 | `{}` inside `${ … }` of a template literal (TypeScript, JavaScript, react (JSX), `<script>` in HTML) | the first `}` ends the `${ … }`, so what follows looks like a string | counts the braces |
 | TypeScript JSX (`<div …>`) | `<` followed by a letter is a tag, so `Map<string, number>` and `a<b` become tags, sometimes followed by errors | not treated as tags (`<` is an operator) |
 | Escapes such as `\n` in TypeScript and react (JSX) template literals | `\` is an error | string color, as in JavaScript |
+| Names in TypeScript type arguments and return types (`Map<string, User>`, `f<User>()`, `(): User`) | only built-in types such as `string` get the type color; `User` gets the name color | type color, like a type after `name:` |
 | Names starting with a non-ASCII letter in TypeScript, Swift and Ruby | error color | name color |
 | Ruby strings of the form `% abc ` | the delimiter is output twice | output once |
 | Ruby `defined?` | not a keyword in `defined? x` or `defined?(x)` | a keyword |

@@ -9,6 +9,7 @@ package typescript
 import (
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	fh "github.com/toshi-kuji/fasthighlight"
 	"github.com/toshi-kuji/fasthighlight/internal/lexkit"
@@ -26,6 +27,9 @@ type Options struct {
 	//  - A name (NameOther) can start only with [$a-zA-Z_] (a name that starts with a non-ASCII
 	//    letter becomes Error).
 	//  - In a template literal, the \ of an escape such as \n (other than \\ and \`) becomes Error.
+	//  - Only a name right after "name:" or in the list of built-in types is a type (KeywordType). In
+	//    production, names in type arguments (Map<string, User>, f<User>()) and in a return type
+	//    (): User) are types too.
 	Chroma bool
 }
 
@@ -75,6 +79,9 @@ type lexer struct {
 	stack []frame
 	words lexkit.WordCache
 	mem   lexkit.SpanCache // the last run of [\w?.$]
+	// typeEnd is the end of the type being read (type arguments or a return type; production only):
+	// before it, a name is a type (KeywordType) instead of NameOther.
+	typeEnd int
 }
 
 // Lex splits src into tokens (the same contract as Lex of fasthighlight.Language). compat/ uses it
@@ -417,6 +424,9 @@ func (l *lexer) root(i int, in *frame) (int, bool) {
 		return n, ok
 	}
 	if n := operatorLen(src, i); n > 0 {
+		if !l.o.Chroma && i >= l.typeEnd {
+			l.markType(i, n)
+		}
 		l.push(slashRegex)
 		return l.emit(fh.Operator, i, i+n)
 	}
@@ -483,9 +493,14 @@ func (l *lexer) root(i int, in *frame) (int, bool) {
 			}
 		}
 	}
-	// [$a-zA-Z_]\w*. In production, it can also start with a Unicode letter.
+	// [$a-zA-Z_]\w*. In production, it can also start with a Unicode letter, and it is a type inside
+	// type arguments or a return type.
 	if r, n := lexkit.Rune(src, i); r == '$' || r == '_' || r < 0x80 && unicode.IsLetter(r) || !l.o.Chroma && unicode.IsLetter(r) {
-		return l.emit(fh.NameOther, i, i+n+lexkit.Span(src, i+n, lexkit.IsWord))
+		t := fh.NameOther
+		if i < l.typeEnd {
+			t = fh.KeywordType
+		}
+		return l.emit(t, i, i+n+lexkit.Span(src, i+n, lexkit.IsWord))
 	}
 	if e := numberEnd(src, i); e > 0 {
 		return l.emit(numberType(src, i, e), i, e)
@@ -634,4 +649,128 @@ func operatorLen(src string, i int) int {
 		n++
 	}
 	return n
+}
+
+// maxType is how far typeArgsEnd and returnTypeEnd look. A type is short; the limit keeps a long run
+// of "<" or "):" from being scanned again from each of them.
+const maxType = 512
+
+// markType sets typeEnd when the operator of n bytes at i starts a type (production only): "<" right
+// after a name starts type arguments, and ":" right after the ")" of a parameter list starts a return
+// type.
+func (l *lexer) markType(i, n int) {
+	src := l.src
+	switch {
+	case n == 1 && src[i] == '<' && isNameEnd(src[:i]):
+		if e := typeArgsEnd(src, i); e > 0 {
+			l.typeEnd = e
+		}
+	case n == 1 && src[i] == ':' && returnTypeColon(src, i):
+		if e := returnTypeEnd(src, i+1); e > 0 {
+			l.typeEnd = e
+		}
+	}
+}
+
+// isNameEnd reports whether s ends with a character of a name ($ or \w).
+func isNameEnd(s string) bool {
+	r, _ := utf8.DecodeLastRuneInString(s)
+	return s != "" && (r == '$' || lexkit.IsWord(r))
+}
+
+// typeArgsEnd returns the end of the type arguments that start at the "<" at i, or 0 if what follows
+// does not look like type arguments: names, ".", ",", "[", "]", "|", "&", "?", whitespace and nested
+// "< >", closed by ">" within maxType bytes. Anything else (an operator such as && or =, a number, a
+// parenthesis) means that "<" is a comparison, as in a < b && c > d.
+func typeArgsEnd(src string, i int) int {
+	depth := 0
+	for j := i; j < len(src) && j < i+maxType; {
+		r, w := lexkit.Rune(src, j)
+		switch {
+		case r == '<':
+			depth++
+		case r == '>':
+			depth--
+			if depth == 0 {
+				return j + 1
+			}
+		case r == '&' && j+1 < len(src) && src[j+1] == '&':
+			return 0
+		case r == '$' || lexkit.IsWord(r) && !(j == i+1 && lexkit.IsDigit(r)), lexkit.IsSpace(r),
+			strings.ContainsRune(".,[]|&?", r):
+		default:
+			return 0
+		}
+		j += w
+	}
+	return 0
+}
+
+// returnTypeColon reports whether the ":" at i follows the ")" of a parameter list (spaces may come
+// between), and not a ")" in the branches of a conditional (c ? (a) : b, c ? f(a) : b) or after case.
+func returnTypeColon(src string, i int) bool {
+	j := i
+	for j > 0 && (src[j-1] == ' ' || src[j-1] == '\t') {
+		j--
+	}
+	if j == 0 || src[j-1] != ')' {
+		return false
+	}
+	// Find the matching "(" (only within maxType bytes).
+	depth := 0
+	k := j - 1
+	for ; k >= 0 && k > j-maxType; k-- {
+		if src[k] == ')' {
+			depth++
+		} else if src[k] == '(' {
+			depth--
+			if depth == 0 {
+				break
+			}
+		}
+	}
+	if k < 0 || k <= j-maxType {
+		return false
+	}
+	// Before "(": spaces, an optional name (with dots), spaces, then what comes before.
+	k--
+	for k >= 0 && (src[k] == ' ' || src[k] == '\t') {
+		k--
+	}
+	e := k + 1
+	for k >= 0 {
+		r, w := utf8.DecodeLastRuneInString(src[:k+1])
+		if !(r == '$' || r == '.' || lexkit.IsWord(r)) {
+			break
+		}
+		k -= w
+	}
+	if name := src[k+1 : e]; name == "case" || name == "return" {
+		return false
+	}
+	for k >= 0 && (src[k] == ' ' || src[k] == '\t') {
+		k--
+	}
+	return k < 0 || src[k] != '?' && src[k] != ':'
+}
+
+// returnTypeEnd returns the end of the type name (with dots) that starts after spaces at i, or 0.
+// Type arguments after it are found by typeArgsEnd when the lexer reaches their "<".
+func returnTypeEnd(src string, i int) int {
+	j := i
+	for j < len(src) && (src[j] == ' ' || src[j] == '\t') {
+		j++
+	}
+	k := j
+	for k < len(src) && k < i+maxType {
+		r, w := lexkit.Rune(src, k)
+		if !(r == '$' || r == '.' || lexkit.IsWord(r)) {
+			break
+		}
+		k += w
+	}
+	if k == j {
+		return 0
+	}
+	return k
 }
