@@ -8,14 +8,14 @@ import (
 	"github.com/toshi-kuji/fasthighlight/lang/typescript"
 )
 
-// Intended differences from Chroma: type arguments are not treated as tags, escapes in template
-// literals, { } inside ${ … }, and names that start with a non-letter.
+// Intended differences from Chroma: type arguments are not treated as tags and their names are types,
+// escapes in template literals, { } inside ${ … }, and names that start with a non-letter.
 func TestIntendedDifferences(t *testing.T) {
 	code := "a<b>(名前, `x\\n${f({})}`)\n"
 	want := []fh.Token{
 		{Type: fh.NameOther, Value: "a"},
 		{Type: fh.Operator, Value: "<"},
-		{Type: fh.NameOther, Value: "b"},
+		{Type: fh.KeywordType, Value: "b"},
 		{Type: fh.Operator, Value: ">"},
 		{Type: fh.Punctuation, Value: "("},
 		{Type: fh.NameOther, Value: "名前"},
