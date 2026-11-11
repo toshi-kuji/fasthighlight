@@ -96,6 +96,9 @@ func chromaMode(l *fh.Language) func(string) []fh.Token {
 	case "Kotlin":
 		l.Tokenise("") // preparation (word lists)
 		lex = func(text string, end int) []fh.Token { return kotlin.Lex(text, end, kotlin.Options{ChromaTypes: true}) }
+		lex = func(text string, end int) []fh.Token {
+			return java.Lex(text, end, java.Options{ChromaIdent: true, ChromaTypes: true})
+		}
 	case "PHP":
 		l.Tokenise("") // preparation (word lists)
 		lex = func(text string, end int) []fh.Token {

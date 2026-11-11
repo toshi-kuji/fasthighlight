@@ -266,6 +266,9 @@ const kotlinTypes = "Names in Kotlin type positions (after a \":\" and in type a
 // "->" and the type arguments of ::<…>: names are NameClass, a name before "::" is NameNamespace, and
 // keywords stay keywords.
 const rustTypes = "Names in Rust types after \":\" and \"->\" and in ::<…> get the type color (Chroma colors only the first name)"
+// javaTypeNames: Chroma makes every Java name other than the built-in types (int, void, ...) Name. Ours colors
+// capitalized names in type positions (type arguments, declared types, parameter and return types) as types.
+const javaTypeNames = "Names in Java type positions get the type color (Chroma colors only built-in types such as int)"
 
 // rNames: the [a-zA-z] at the start of an R name is a typo, and [ ] ^ and so on also become names. Ours
 // uses [a-zA-Z].
@@ -320,6 +323,13 @@ var intendedDiffs = []intendedDiff{
 	{"Java", "1", fh.LiteralNumberFloat, fh.Name, javaNumbers},
 	{"Java", ".", fh.LiteralNumberFloat, fh.Punctuation, javaNumbers},
 	{"Java", "5", fh.LiteralNumberFloat, fh.NameAttribute, javaNumbers},
+	{"Java", "Comparable", fh.KeywordType, fh.Name, javaTypeNames},
+	{"Java", "T", fh.KeywordType, fh.Name, javaTypeNames},
+	{"Java", "List", fh.KeywordType, fh.Name, javaTypeNames},
+	{"Java", "String", fh.KeywordType, fh.Name, javaTypeNames},
+	{"Java", "ArrayList", fh.KeywordType, fh.Name, javaTypeNames},
+	{"Java", "App", fh.KeywordType, fh.Name, javaTypeNames},
+	{"Java", "Integer", fh.KeywordType, fh.Name, javaTypeNames},
 	{"PHP", "<?", fh.CommentPreproc, fh.Operator, phpTags},
 	{"PHP", "php", fh.CommentPreproc, fh.NameOther, phpTags},
 	{"PHP", "\n", fh.Text, fh.Error, phpTags},

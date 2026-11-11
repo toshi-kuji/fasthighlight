@@ -7,6 +7,7 @@ package java
 
 import (
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	fh "github.com/toshi-kuji/fasthighlight"
@@ -46,6 +47,12 @@ type Options struct {
 	// a name (a number does not get the number color). If false, it is a word character other than digits,
 	// as the rule intends.
 	ChromaIdent bool
+	// ChromaTypes, if true, makes a user-defined type name a plain name (Name), as in Chroma, where only
+	// the built-in types (int, void, ...) are types. If false (production), a name in a type position is
+	// KeywordType too: a capitalized name with type arguments (List<User>, new ArrayList<User>()) and the
+	// names inside them, a capitalized name followed by a variable name (User u = ..., User u) as a
+	// field, local variable or parameter, and the return type right before a method name (User get().
+	ChromaTypes bool
 }
 
 type lexer struct {
@@ -58,18 +65,23 @@ type lexer struct {
 	// word sequence examined then.
 	failFrom, failEnd int
 	sp                lexkit.SpanCache // the last run of whitespace
+	// typeEnd is the end of the type arguments being read (production only): before it, a name is a type.
+	typeEnd int
+	// prefix is set for the text before a method name that the function rule reads again (its last word
+	// is the return type).
+	prefix bool
 }
 
 // Lex splits src into tokens (with the same contract as the Lex of fasthighlight.Language). compat/ uses it
 // to compare with Chroma, switching o.
 func Lex(src string, end int, o Options) []fh.Token {
 	x := lexkit.NewTokens(src)
-	lexInto(x, src, end, o)
+	lexInto(x, src, end, o, false)
 	return x.Result()
 }
 
-func lexInto(x *lexkit.Tokens, src string, end int, o Options) {
-	l := &lexer{o: o, x: x, src: src, stack: []state{root}, words: lexkit.WordCache{Lists: lists}, failFrom: -1}
+func lexInto(x *lexkit.Tokens, src string, end int, o Options, prefix bool) {
+	l := &lexer{o: o, x: x, src: src, stack: []state{root}, words: lexkit.WordCache{Lists: lists}, failFrom: -1, prefix: prefix}
 	for i := 0; i < end; {
 		st := l.stack[len(l.stack)-1]
 		n, ok := l.step(st, i)
@@ -84,10 +96,11 @@ func lexInto(x *lexkit.Tokens, src string, end int, o Options) {
 	}
 }
 
-// nested reads src[s:e] from root as new input, the same as Chroma's usingself.
-func (l *lexer) nested(s, e int) {
+// nested reads src[s:e] from root as new input, the same as Chroma's usingself. prefix tells that it is
+// the text before a method name.
+func (l *lexer) nested(s, e int, prefix bool) {
 	if s < e {
-		lexInto(l.x.Sub(l.src[s:e], s), l.src[s:e], e-s, l.o)
+		lexInto(l.x.Sub(l.src[s:e], s), l.src[s:e], e-s, l.o, prefix)
 	}
 }
 
@@ -227,7 +240,7 @@ func (l *lexer) root(i int) (int, bool) {
 		}
 		if strings.HasPrefix(src[m:], "record") && lexkit.WordBoundary(src, m+6) {
 			l.x.Emit(fh.TextWhitespace, i, j)
-			l.nested(j, m)
+			l.nested(j, m, false)
 			l.x.Emit(fh.KeywordDeclaration, m, m+6)
 			l.push(class)
 			return m + 6 - i, true
@@ -371,6 +384,9 @@ func (l *lexer) root(i int) (int, bool) {
 		}
 	}
 	if n := l.ident(i); n > 0 {
+		if !l.o.ChromaTypes && (i < l.typeEnd || l.isType(i, i+n)) {
+			return l.emit(fh.KeywordType, i, i+n)
+		}
 		return l.emit(fh.Name, i, i+n)
 	}
 	if e, t := l.number(i); e > 0 {
@@ -417,7 +433,7 @@ func (l *lexer) function(i int) (int, bool) {
 			e := p + m
 			s := l.spaces(e)
 			if l.at(e+s) == '(' {
-				l.nested(i, p)
+				l.nested(i, p, true)
 				l.x.Emit(fh.NameFunction, p, e)
 				l.x.Emit(fh.TextWhitespace, e, e+s)
 				l.x.Emit(fh.Punctuation, e+s, e+s+1)
@@ -572,4 +588,99 @@ func (l *lexer) suffixL(j int) int {
 		return j + 1
 	}
 	return j
+}
+
+// maxType is how far the type scans look. A type is short; the limit keeps the time linear.
+const maxType = 512
+
+// hspaces returns the end of the run of spaces and tabs at j.
+func (l *lexer) hspaces(j int) int {
+	for j < len(l.src) && (l.src[j] == ' ' || l.src[j] == '\t') {
+		j++
+	}
+	return j
+}
+
+// isType reports whether the name src[i:e] is in a type position (production only). Only a capitalized
+// name is taken (Java's naming convention), so a comparison of variables (a < b) or a lowercase word is
+// never a type. It is a type when it is
+//   - followed directly by type arguments (List<User>); it then sets typeEnd so the names inside are types,
+//   - the last word before a method name (the return type), or
+//   - followed by [] pairs or ... and a variable name, then = ; , ) or : (User u = x;, f(User u)).
+func (l *lexer) isType(i, e int) bool {
+	src := l.src
+	if r, _ := lexkit.Rune(src, i); !unicode.IsUpper(r) {
+		return false
+	}
+	if l.at(e) == '<' {
+		if a := l.typeArgsEnd(e); a > 0 {
+			l.typeEnd = a
+			return true
+		}
+		return false
+	}
+	if l.prefix && e+l.spaces(e) == len(src) {
+		return true
+	}
+	j := l.hspaces(e)
+	for j < e+maxType {
+		if l.at(j) == '[' {
+			if k := l.hspaces(j + 1); l.at(k) == ']' {
+				j = l.hspaces(k + 1)
+				continue
+			}
+			return false
+		}
+		if strings.HasPrefix(src[j:], "...") {
+			j = l.hspaces(j + 3)
+		}
+		break
+	}
+	if j == e || j >= e+maxType {
+		return false
+	}
+	n := l.ident(j)
+	if n == 0 || l.word(j, lKeywords) > 0 || l.word(j, lDeclarations) > 0 || l.word(j, lTypes) > 0 || l.word(j, lConstants) > 0 {
+		return false
+	}
+	k := l.hspaces(j + n)
+	return k < len(src) && strings.IndexByte("=;,):", src[k]) >= 0
+}
+
+// typeArgsEnd returns the end of the type arguments that start at the "<" at i, or 0 if what follows
+// does not look like type arguments: names, ".", ",", "[", "]", "?", a single "&", whitespace and nested
+// "< >", closed by ">" within maxType bytes. Anything else (&&, <<, another operator, a number, a
+// parenthesis) means that "<" is a comparison or a shift.
+func (l *lexer) typeArgsEnd(i int) int {
+	src := l.src
+	depth := 0
+	for j := i; j < len(src) && j < i+maxType; {
+		r, w := lexkit.Rune(src, j)
+		switch {
+		case r == '<':
+			if j > i && src[j-1] == '<' {
+				return 0
+			}
+			depth++
+		case r == '>':
+			depth--
+			if depth == 0 {
+				return j + 1
+			}
+		case r == '&' && l.at(j+1) == '&':
+			return 0
+		case lexkit.IsDigit(r) && !isNameChar(prevRune(src, j)):
+			return 0
+		case isNameChar(r), lexkit.IsSpace(r), strings.ContainsRune(".,[]&?", r):
+		default:
+			return 0
+		}
+		j += w
+	}
+	return 0
+}
+
+func prevRune(s string, j int) rune {
+	r, _ := utf8.DecodeLastRuneInString(s[:j])
+	return r
 }

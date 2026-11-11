@@ -63,6 +63,9 @@ func TestLinearTime(t *testing.T) {
 		{"kotlin", "a<b"},
 		{"kotlin", "a:"},
 		{"kotlin", "a<b<c>  "},
+		// Java: each capitalized name looks for [] pairs and a variable name after it (bounded scans).
+		{"java", "A "},
+		{"java", "A [] "},
 		// PHP: each $ rescanned the run of $.
 		{"php", "$"},
 		// PHP: type scans (a name before a variable, a return type after "):") look at most 512 bytes.
