@@ -129,7 +129,7 @@ The numbers below come from our own measurements. Where the difference shows, an
 
 ### Converting a whole Markdown document
 
-| Implementation | `input.md` (30 KB, 6 code blocks) | `multilang.md` (25 KB, 25 code blocks: one in each of the 24 languages supported then, and one plain text) |
+| Implementation | `input.md` (30 KB, 6 code blocks) | `multilang.md` (25 KB, 25 code blocks: one in each of 24 languages, and one plain text) |
 | --- | --- | --- |
 | fasthighlight | 0.58–0.63 ms | 1.3–1.5 ms |
 | Chroma (all languages) | 3.9–4.3 ms | 38.1–40.7 ms |
@@ -137,7 +137,7 @@ The numbers below come from our own measurements. Where the difference shows, an
 | Node: markdown-it + Shiki | 7.7–8.2 ms | 58.2–64.9 ms |
 
 - **What:** the time to turn a Markdown document into HTML with highlighted code blocks, warm (after initialization), median time per conversion; each cell is the range over two runs of the measurement.
-- **Input:** [`input.md`](https://github.com/toshi-kuji/fasthighlight/blob/main/testdata/input.md) and [`multilang.md`](https://github.com/toshi-kuji/fasthighlight/blob/main/testdata/multilang.md).
+- **Input:** [`input.md`](https://github.com/toshi-kuji/fasthighlight/blob/main/testdata/input.md) and [`multilang.md`](https://github.com/toshi-kuji/fasthighlight/blob/main/testdata/multilang.md). They are kept as they were made (Nov 4, 2026), so that the numbers can be compared over time: `multilang.md` has the 24 languages supported then, not the 10 added since (Bash Session, Docker, GraphQL, HTTP, INI, Makefile, PowerShell, Protocol Buffer, SCSS and react).
 - **Environment:** Nov 11, 2026, v0.6.4, a 4-core cloud machine, Go 1.25.0, Node 22.23.4.
 - **Note:** the implementations color code at different levels of detail, so this compares whole conversions, not identical output. How to measure it yourself: [docs/benchmark.md](https://github.com/toshi-kuji/fasthighlight/blob/main/docs/benchmark.md).
 
@@ -151,7 +151,7 @@ The numbers below come from our own measurements. Where the difference shows, an
 | First use of each language (total) | about 2.4 ms | about 92 ms | about 720 ms |
 
 - **What:** one code snippet to HTML with classes (highlighting and writing HTML), without Markdown parsing, on one thread. syntect and giallo are highlighting libraries written in Rust.
-- **Input:** the 27 code blocks of `multilang.md` and `input.md` (except `text`), about 350 to 1,350 bytes each.
+- **Input:** the 27 code blocks of `multilang.md` and `input.md` (except `text`), about 350 to 1,350 bytes each, in the same 24 languages.
 - **Output:** fasthighlight `Highlight`; syntect `ClassedHTMLGenerator` (`ClassStyle::Spaced`); giallo `HtmlRenderer` with `css_class_prefix`. All three write classes.
 - **Environment:** Nov 11, 2026, v0.6.4, a 4-core cloud machine, Go 1.25.0, Rust 1.97.0 (release build), syntect 5.3.0, giallo 0.5.2. Median of 9 rounds of 200 runs per snippet; the three were run in turn, three times each, in the same session, and the whole measurement was done twice.
 - **Note:** the output differs in detail (the number of `<span>`s goes either way depending on the language, and the three color differently). syntect's default grammars have no TypeScript, TOML, Kotlin or Swift. giallo supports more than 220 languages, many more than fasthighlight. Only small snippets were measured. We wrote the measurement ourselves and have not checked that it uses each library the way its authors recommend.

@@ -175,14 +175,14 @@ The changes fix Chroma bugs and behavior that gets in the way of readers, such a
 
 Warm conversion of a whole Markdown document (median time per conversion, after initialization; the range over two runs of the measurement), measured on Nov 11, 2026, with v0.6.4, on a 4-core cloud machine with Go 1.25.0 and Node 22.23.4:
 
-| Implementation | `input.md` (30 KB, 6 code blocks) | `multilang.md` (25 KB, 25 code blocks: one in each of the 24 languages supported then, and one plain text) |
+| Implementation | `input.md` (30 KB, 6 code blocks) | `multilang.md` (25 KB, 25 code blocks: one in each of 24 languages, and one plain text) |
 | --- | --- | --- |
 | fasthighlight | 0.58–0.63 ms | 1.3–1.5 ms |
 | Chroma (all languages) | 3.9–4.3 ms | 38.1–40.7 ms |
 | Node: markdown-it + highlight.js | 2.5–2.8 ms | 8.7–9.6 ms |
 | Node: markdown-it + Shiki | 7.7–8.2 ms | 58.2–64.9 ms |
 
-Both documents are in [`testdata/`](testdata/). The implementations color code at different levels of detail, so the numbers compare whole conversions, not identical output. To measure them yourself, including cold starts and a 270 KB document, see [docs/benchmark.md](docs/benchmark.md).
+Both documents are in [`testdata/`](testdata/). They are kept as they were made (Nov 4, 2026), so that the numbers can be compared over time: `multilang.md` has the 24 languages supported then, not the 10 added since (Bash Session, Docker, GraphQL, HTTP, INI, Makefile, PowerShell, Protocol Buffer, SCSS and react). The implementations color code at different levels of detail, so the numbers compare whole conversions, not identical output. To measure them yourself, including cold starts and a 270 KB document, see [docs/benchmark.md](docs/benchmark.md).
 
 ## Documentation
 

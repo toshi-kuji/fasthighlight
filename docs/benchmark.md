@@ -8,7 +8,7 @@ How the speed numbers in the README and on the documentation site were measured,
 - To measure the comparison implementations too: Node 22 or later, and npm.
 - An input Markdown document. There are three:
   - `testdata/input.md` (the default): about 30 KB, 350 lines, 6 code blocks (2 TypeScript, 1 JavaScript, 3 plain text).
-  - `testdata/multilang.md`: about 25 KB, 25 code blocks (one in each of the 24 languages supported when it was made, and one plain text).
+  - `testdata/multilang.md`: about 25 KB, 25 code blocks (one in each of the 24 languages supported when it was made, on Nov 4, 2026, and one plain text). It is kept as it is, so that the numbers can be compared over time; the 10 languages added since (Bash Session, Docker, GraphQL, HTTP, INI, Makefile, PowerShell, Protocol Buffer, SCSS and react) are not in it.
   - A large document: `scripts/make-large.sh > bench-bin/large.md` concatenates the two above, alternately, 5 times (about 270 KB, 155 code blocks).
 
 ## Measure everything at once
