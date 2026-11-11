@@ -261,11 +261,13 @@ const goTypeNames = "Names in Go type positions get the type color (Chroma color
 // generics of fun, or when it is uppercase and followed by a dot, so in val xs: List<User> both names are
 // Name. Ours colors the names after a ":" and in type arguments right after a name.
 const kotlinTypes = "Names in Kotlin type positions (after a \":\" and in type arguments) get the type color (Chroma colors only declarations)"
+
 // rustTypes: Chroma's Rust rules make only the one name right after ":" or "->" NameClass (even a keyword, as
 // in &mut T or 'a: loop), so in `xs: Vec<User>` the User is Name. Ours reads the whole type after ":" and
 // "->" and the type arguments of ::<…>: names are NameClass, a name before "::" is NameNamespace, and
 // keywords stay keywords.
 const rustTypes = "Names in Rust types after \":\" and \"->\" and in ::<…> get the type color (Chroma colors only the first name)"
+
 // javaTypeNames: Chroma makes every Java name other than the built-in types (int, void, ...) Name. Ours colors
 // capitalized names in type positions (type arguments, declared types, parameter and return types) as types.
 const javaTypeNames = "Names in Java type positions get the type color (Chroma colors only built-in types such as int)"

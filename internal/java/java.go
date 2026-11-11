@@ -65,6 +65,9 @@ type lexer struct {
 	// word sequence examined then.
 	failFrom, failEnd int
 	sp                lexkit.SpanCache // the last run of whitespace
+	// tc is the last run of type characters measured by the function rule, so that a long run that is not
+	// followed by whitespace (such as A<A<A<…) is measured once, not again from each of its positions.
+	tc lexkit.SpanCache
 	// typeEnd is the end of the type arguments being read (production only): before it, a name is a type.
 	typeEnd int
 	// prefix is set for the text before a method name that the function rule reads again (its last word
@@ -408,14 +411,14 @@ func (l *lexer) root(i int) (int, bool) {
 //
 // One repetition of the first part is fixed as "a word (a run of type characters) and the whitespace
 // after it" (backtracking does not make it match). So it advances one word at a time and checks whether
-// a name and ( follow. On a mismatch, it remembers the end of the word sequence examined. Trying from a
-// word in the middle of the sequence fails for the same reason.
+// a name and ( follow. On a mismatch, it remembers the end of the word sequence examined. Trying from any
+// position in the middle of the sequence fails for the same reason.
 func (l *lexer) function(i int) (int, bool) {
 	src := l.src
-	if l.failFrom < i && i <= l.failEnd {
-		if r, _ := utf8.DecodeLastRuneInString(src[:i]); lexkit.IsSpace(r) {
-			return 0, false
-		}
+	// A start inside the failed sequence, after a space or in the middle of a word (such as the B of A<B),
+	// reaches the same words: the run of type characters from there ends where that word ends.
+	if 0 <= l.failFrom && l.failFrom < i && i <= l.failEnd {
+		return 0, false
 	}
 	p := i
 	for {
@@ -423,7 +426,7 @@ func (l *lexer) function(i int) (int, bool) {
 		if n == 0 || !l.isIdentStart(r) {
 			break
 		}
-		t := p + n + lexkit.Span(src, p+n, isTypeChar)
+		t := p + n + l.tc.Span(src, p+n, isTypeChar)
 		w := l.spaces(t)
 		if w == 0 {
 			break

@@ -66,6 +66,10 @@ func TestLinearTime(t *testing.T) {
 		// Java: each capitalized name looks for [] pairs and a variable name after it (bounded scans).
 		{"java", "A "},
 		{"java", "A [] "},
+		// Java: the method-name rule measured A<A<… to its end again from each position, and rescanned a
+		// failed word sequence from the middle of a word (the B of A<B).
+		{"java", "A<"},
+		{"java", "A<B "},
 		// PHP: each $ rescanned the run of $.
 		{"php", "$"},
 		// PHP: type scans (a name before a variable, a return type after "):") look at most 512 bytes.
