@@ -274,6 +274,11 @@ func FoldEq(r, w rune) bool {
 	if r == w {
 		return true
 	}
+	// Two ASCII characters match only as the two cases of one letter: the other members of an ASCII letter's
+	// fold orbit (the Kelvin sign, ſ) are not ASCII. This skips unicode.SimpleFold for most comparisons.
+	if r < utf8.RuneSelf && w < utf8.RuneSelf {
+		return r|0x20 == w|0x20 && 'a' <= r|0x20 && r|0x20 <= 'z'
+	}
 	for f := unicode.SimpleFold(w); f != w; f = unicode.SimpleFold(f) {
 		if f == r {
 			return true

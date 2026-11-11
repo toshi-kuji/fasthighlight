@@ -16,6 +16,7 @@ package js
 
 import (
 	"strings"
+	"sync"
 	"unicode"
 
 	fh "github.com/toshi-kuji/fasthighlight"
@@ -67,6 +68,7 @@ type lexer struct {
 	src   string
 	o     Options
 	stack []frame
+	words lexkit.WordCache
 }
 
 // Lex splits src into tokens (same contract as Lex in fasthighlight.Language).
@@ -79,7 +81,8 @@ func Lex(src string, end int, o Options) []fh.Token {
 // LexInto splits src into tokens and adds them to x. x's src is either the same as src or was made with
 // x.Sub.
 func LexInto(x *lexkit.Tokens, src string, end int, o Options) {
-	l := &lexer{x: x, src: src, o: o, stack: []frame{{st: root}}}
+	prepareLists()
+	l := &lexer{x: x, src: src, o: o, stack: []frame{{st: root}}, words: lexkit.WordCache{Lists: lists}}
 	for i := 0; i < end && len(l.stack) > 0; {
 		top := &l.stack[len(l.stack)-1]
 		n, ok := l.step(top, i)
@@ -384,14 +387,29 @@ var (
 	}
 )
 
-// word returns the length of the first word in words that matches the start of src[i:] and is followed by a \b.
-func word(src string, i int, words []string) int {
-	for _, w := range words {
-		if strings.HasPrefix(src[i:], w) && lexkit.WordBoundary(src, i+len(w)) {
-			return len(w)
-		}
-	}
-	return 0
+// Indexes of the word lists in lists.
+const (
+	lKeywords = iota
+	lDeclarations
+	lReserved
+	lConstants
+	lBuiltins
+)
+
+var (
+	lists     *lexkit.WordLists
+	listsOnce sync.Once
+)
+
+// prepareLists builds lists, once, on first use (JavaScript is also read inside HTML, HTTP bodies and react,
+// which have their own Prepare). Every word is made of word characters only, so "the first word that starts
+// src[i:] and is followed by \b" is the word equal to the whole run of word characters at i, whatever the
+// order of the alternatives: one map lookup per run instead of a prefix comparison per word.
+func prepareLists() {
+	listsOnce.Do(func() {
+		j := func(ws []string) string { return strings.Join(ws, "|") }
+		lists = lexkit.NewWordLists(j(keywords[:]), j(declarations[:]), j(reserved[:]), j(constants[:]), j(builtins[:]))
+	})
 }
 
 // root tries the rules of the root state. in is the stack level when called from interpInside (it counts
@@ -453,21 +471,21 @@ func (l *lexer) root(i int, in *frame) (int, bool) {
 	case '}', ')', ']', '.':
 		return l.emit(fh.Punctuation, i, i+1)
 	}
-	if n := word(src, i, keywords[:]); n > 0 {
+	if n := l.words.Match(src, i, lKeywords); n > 0 {
 		l.push(slashRegex)
 		return l.emit(fh.Keyword, i, i+n)
 	}
-	if n := word(src, i, declarations[:]); n > 0 {
+	if n := l.words.Match(src, i, lDeclarations); n > 0 {
 		l.push(slashRegex)
 		return l.emit(fh.KeywordDeclaration, i, i+n)
 	}
-	if n := word(src, i, reserved[:]); n > 0 && !(l.o.react && src[i:i+n] == "using") { // react.xml has no "using"
+	if n := l.words.Match(src, i, lReserved); n > 0 && !(l.o.react && src[i:i+n] == "using") { // react.xml has no "using"
 		return l.emit(fh.KeywordReserved, i, i+n)
 	}
-	if n := word(src, i, constants[:]); n > 0 {
+	if n := l.words.Match(src, i, lConstants); n > 0 {
 		return l.emit(fh.KeywordConstant, i, i+n)
 	}
-	if n := word(src, i, builtins[:]); n > 0 {
+	if n := l.words.Match(src, i, lBuiltins); n > 0 {
 		return l.emit(fh.NameBuiltin, i, i+n)
 	}
 	if e := nameEnd(src, i); e > i {
