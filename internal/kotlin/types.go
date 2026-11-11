@@ -132,22 +132,26 @@ func (l *lexer) argsFailed(i, stop int) int {
 	return 0
 }
 
-// followsType reports whether what comes at i can follow type arguments: not a name or a number,
-// except the keywords by and where after a space.
+// followsType reports whether what comes at i can follow type arguments: one of ( . ? ) , > : { } ] ;,
+// a newline or the end of input, possibly after spaces, or = (not ==), by and where after a space.
+// Anything else (an operator such as - + ! = or >=, a name, a number, a string) means the "<" and ">"
+// were comparisons, as in f(a<b, c>-1).
 func (l *lexer) followsType(i int) bool {
 	j := i
 	for j < len(l.src) && j < i+maxType && (l.src[j] == ' ' || l.src[j] == '\t') {
 		j++
 	}
-	r, _ := l.runeAt(j)
-	if r == '"' || r == '\'' {
-		return false
+	if j >= len(l.src) {
+		return true
 	}
-	if r < 0 || !isNameChar(r) {
+	if strings.IndexByte("(.?),>:{}];\n\r", l.src[j]) >= 0 {
 		return true
 	}
 	if j == i {
 		return false
+	}
+	if l.src[j] == '=' && l.at(j+1) != '=' {
+		return true // val xs: List<User> = …
 	}
 	for _, w := range [...]string{"by", "where"} {
 		if strings.HasPrefix(l.src[j:], w) {

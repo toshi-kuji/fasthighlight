@@ -616,7 +616,7 @@ func (l *lexer) isType(i, e int) bool {
 		return false
 	}
 	if l.at(e) == '<' {
-		if a := l.typeArgsEnd(e); a > 0 {
+		if a := l.typeArgsEnd(e); a > 0 && l.followsTypeArgs(a) {
 			l.typeEnd = a
 			return true
 		}
@@ -644,6 +644,30 @@ func (l *lexer) isType(i, e int) bool {
 	}
 	n := l.ident(j)
 	if n == 0 || l.word(j, lKeywords) > 0 || l.word(j, lDeclarations) > 0 || l.word(j, lTypes) > 0 || l.word(j, lConstants) > 0 {
+		return false
+	}
+	k := l.hspaces(j + n)
+	return k < len(src) && strings.IndexByte("=;,):", src[k]) >= 0
+}
+
+// followsTypeArgs reports whether what comes at i, after the closing ">" of type arguments, can follow
+// them: a declared name (after at least one space) followed by = ; , ) or :, or one of ( . [ ... > , ) {
+// :: or the end of input, possibly after spaces. Otherwise (foo(A<B, C>D), A<B>-1) the "<" and ">" are
+// comparisons.
+func (l *lexer) followsTypeArgs(i int) bool {
+	src := l.src
+	j := l.hspaces(i)
+	if j >= len(src) {
+		return true
+	}
+	if strings.IndexByte("(.[>,){:\n\r", src[j]) >= 0 {
+		return src[j] != ':' || l.at(j+1) == ':'
+	}
+	if j == i {
+		return false
+	}
+	n := l.ident(j)
+	if n == 0 {
 		return false
 	}
 	k := l.hspaces(j + n)

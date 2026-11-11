@@ -22,6 +22,14 @@ func TestTypePositions(t *testing.T) {
 		{"class A<T : Base<T>> : Parent()", []string{"T", "Base", "Parent"}, nil},
 		{"val m: Map<K, List<V>> by lazy { x }", []string{"Map", "K", "List", "V"}, []string{"x"}},
 		{"object : Runnable by impl", []string{"Runnable"}, []string{"impl"}},
+		{"val xs: List<User> = emptyList()", []string{"List", "User"}, []string{"emptyList"}},
+		{"x = Foo<Bar>.baz()", []string{"Bar"}, []string{"x", "baz"}},
+		{"fun f(): List<User>? = null", []string{"List", "User"}, nil},
+		// What follows ">" decides: an operator or a name after it makes "<" and ">" comparisons.
+		{"print(a<b, c>-1)", nil, []string{"print", "a", "b", "c"}},
+		{"foo(a<b, c>!d)", nil, []string{"foo", "a", "b", "c", "d"}},
+		{"val q = a<b>=c", nil, []string{"a", "b", "c"}},
+		{"foo(a<b, c>+d)", nil, []string{"foo", "a", "b", "c", "d"}},
 		{"xs.forEach { u: User -> u }", []string{"User"}, []string{"xs", "forEach"}},
 		// Not types.
 		{"if (a<b && c>d) run()", nil, []string{"a", "b", "c", "d", "run"}},
