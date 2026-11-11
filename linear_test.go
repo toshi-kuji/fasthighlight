@@ -53,6 +53,11 @@ func TestLinearTime(t *testing.T) {
 		// HTML and XML: each & looked again for the ; of an entity.
 		{"html", "&"},
 		{"xml", "&"},
+		// Kotlin: each "<" or ":" scans ahead for a type (bounded).
+		{"kotlin", "a<"},
+		{"kotlin", "a<b"},
+		{"kotlin", "a:"},
+		{"kotlin", "a<b<c>  "},
 		// PHP: each $ rescanned the run of $.
 		{"php", "$"},
 		// PHP: type scans (a name before a variable, a return type after "):") look at most 512 bytes.

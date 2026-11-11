@@ -3,7 +3,7 @@
 //
 //	go run ./cmd/genlists java > ../internal/java/lists.go
 //	go run ./cmd/genlists csharp > ../lang/csharp/lists.go
-//	go run ./cmd/genlists kotlin > ../lang/kotlin/lists.go
+//	go run ./cmd/genlists kotlin > ../internal/kotlin/lists.go
 //	go run ./cmd/genlists swift > ../internal/swift/lists.go
 //	go run ./cmd/genlists go > ../internal/golang/lists.go
 //	go run ./cmd/genlists rust > ../lang/rust/lists.go

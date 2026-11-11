@@ -14,6 +14,7 @@ import (
 	"github.com/toshi-kuji/fasthighlight/internal/http"
 	"github.com/toshi-kuji/fasthighlight/internal/java"
 	"github.com/toshi-kuji/fasthighlight/internal/js"
+	"github.com/toshi-kuji/fasthighlight/internal/kotlin"
 	"github.com/toshi-kuji/fasthighlight/internal/lexkit"
 	"github.com/toshi-kuji/fasthighlight/internal/markdown"
 	"github.com/toshi-kuji/fasthighlight/internal/php"
@@ -87,6 +88,9 @@ func chromaMode(l *fh.Language) func(string) []fh.Token {
 	case "Java":
 		l.Tokenise("") // preparation (word lists)
 		lex = func(text string, end int) []fh.Token { return java.Lex(text, end, java.Options{ChromaIdent: true}) }
+	case "Kotlin":
+		l.Tokenise("") // preparation (word lists)
+		lex = func(text string, end int) []fh.Token { return kotlin.Lex(text, end, kotlin.Options{ChromaTypes: true}) }
 	case "PHP":
 		l.Tokenise("") // preparation (word lists)
 		lex = func(text string, end int) []fh.Token {

@@ -254,6 +254,11 @@ const goIdent = "Go names do not start with a digit (Chroma's [^\\W\\d] is the s
 // parameters, results and receivers).
 const goTypeNames = "Names in Go type positions get the type color (Chroma colors only built-in types such as string)"
 
+// kotlinTypes: Chroma's Kotlin rules make a name NameClass only after class, interface or object, in the
+// generics of fun, or when it is uppercase and followed by a dot, so in val xs: List<User> both names are
+// Name. Ours colors the names after a ":" and in type arguments right after a name.
+const kotlinTypes = "Names in Kotlin type positions (after a \":\" and in type arguments) get the type color (Chroma colors only declarations)"
+
 // rNames: the [a-zA-z] at the start of an R name is a typo, and [ ] ^ and so on also become names. Ours
 // uses [a-zA-Z].
 const rNames = "R names start with [a-zA-Z] (Chroma's [a-zA-z] also includes [ \\ ] ^ _ `)"
@@ -311,6 +316,12 @@ var intendedDiffs = []intendedDiff{
 	{"PHP", "php", fh.CommentPreproc, fh.NameOther, phpTags},
 	{"PHP", "\n", fh.Text, fh.Error, phpTags},
 	{"Go", "1", fh.LiteralNumberInteger, fh.NameOther, goIdent},
+	{"Kotlin", "String", fh.NameClass, fh.Name, kotlinTypes},
+	{"Kotlin", "Int", fh.NameClass, fh.Name, kotlinTypes},
+	{"Kotlin", "Base", fh.NameClass, fh.Name, kotlinTypes},
+	{"Kotlin", "T", fh.NameClass, fh.Name, kotlinTypes},
+	{"Kotlin", "R", fh.NameClass, fh.Name, kotlinTypes},
+	{"Kotlin", "Runnable", fh.NameClass, fh.Name, kotlinTypes},
 	{"Go", "context", fh.NameNamespace, fh.NameOther, goTypeNames},
 	{"Go", "Context", fh.NameClass, fh.NameOther, goTypeNames},
 	{"Go", "io", fh.NameNamespace, fh.NameOther, goTypeNames},
