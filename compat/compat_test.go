@@ -285,6 +285,10 @@ const tsJSX = "A TypeScript < is not a JSX tag (Chroma also makes the type argum
 // tsTemplateEscape: Chroma's TypeScript template literal has no rule for escapes such as \n.
 const tsTemplateEscape = "\\n and so on in a TypeScript template literal are part of the string (Chroma makes \\ an Error)"
 
+// swiftTypes: Chroma's Swift rules color only built-in types such as String, so a user-defined type in a
+// type position is Name. Ours makes it NameClass, as after class and struct.
+const swiftTypes = "Swift names in type positions (after : of let/var and parameters, ->, as, is, inheritance, [T], T?, Array<T>) are NameClass (Chroma: Name)"
+
 var intendedDiffs = []intendedDiff{
 	{"TypeScript", "}", fh.Punctuation, fh.LiteralStringInterpol, templateBraces},
 	{"TypeScript", ")", fh.Punctuation, fh.LiteralStringBacktick, templateBraces},
@@ -324,6 +328,8 @@ var intendedDiffs = []intendedDiff{
 	{"R", "]]", fh.Punctuation, fh.Name, rNames},
 	{"R", "^", fh.Operator, fh.Name, rNames},
 	{"Swift", "日本", fh.Name, fh.Error, unicodeNames},
+	{"Swift", "UIViewController", fh.NameClass, fh.Name, swiftTypes},
+	{"Swift", "Shape", fh.NameClass, fh.Name, swiftTypes},
 	{"TypeScript", "名前", fh.NameOther, fh.Error, unicodeNames},
 	{"TypeScript", "<", fh.Operator, fh.Punctuation, tsJSX},
 	{"TypeScript", "string", fh.KeywordType, fh.NameTag, tsJSX},

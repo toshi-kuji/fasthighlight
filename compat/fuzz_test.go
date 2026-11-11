@@ -94,7 +94,9 @@ func chromaMode(l *fh.Language) func(string) []fh.Token {
 		}
 	case "Swift":
 		l.Tokenise("")
-		lex = func(text string, end int) []fh.Token { return swift.Lex(text, end, swift.Options{ChromaNames: true}) }
+		lex = func(text string, end int) []fh.Token {
+			return swift.Lex(text, end, swift.Options{ChromaNames: true, ChromaTypes: true})
+		}
 	case "R":
 		l.Tokenise("")
 		lex = func(text string, end int) []fh.Token { return r.Lex(text, end, r.Options{ChromaNames: true}) }

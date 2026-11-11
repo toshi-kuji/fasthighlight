@@ -65,6 +65,10 @@ func TestLinearTime(t *testing.T) {
 		{"python", "a.:"},
 		{"python", "->a"},
 		{"python", "def f(a:"},
+		// Swift: each type position or "<" after a name scans at most 512 bytes.
+		{"swift", "a<"},
+		{"swift", "f(a:"},
+		{"swift", "let a: ["},
 	}
 	for _, c := range cases {
 		l := fasthighlight.LookupRegistered(c.lang)

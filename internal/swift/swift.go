@@ -48,6 +48,11 @@ type Options struct {
 	// ChromaNames, if true, makes the start of a name the same as Chroma's [a-zA-Z_] (a name starting with a
 	// non-letter character becomes Error). If false, a name can also start with a Unicode letter.
 	ChromaNames bool
+	// ChromaTypes, if true, keeps Chroma's rules for names in type positions: only built-in types such as
+	// String get a type color, and a user-defined type is Name. If false, names in type positions (after the
+	// ":" of let/var and of func parameters, after "->", as and is, inheritance lists, [T], [K: V], T?, and
+	// generic arguments such as Array<User>) become NameClass, as after class and struct (types.go).
+	ChromaTypes bool
 }
 
 type lexer struct {
@@ -56,6 +61,9 @@ type lexer struct {
 	src   string
 	stack []state
 	words lexkit.WordCache
+	// typeEnd: names before it are in a type position (types.go). declEnd: the end of the last name after
+	// class, struct, enum, protocol or extension.
+	typeEnd, declEnd int
 }
 
 // Lex splits src into tokens (with the same contract as the Lex of fasthighlight.Language). compat/ uses it
@@ -274,6 +282,9 @@ func (l *lexer) keywords(i int) (int, bool) {
 					l.x.Emit(fh.KeywordDeclaration, i, k)
 					l.x.Emit(fh.Text, k, k+n)
 					l.x.Emit(r.t, k+n, k+n+m)
+					if r.t == fh.NameClass {
+						l.declEnd = k + n + m
+					}
 					return k + n + m - i, true
 				}
 			}
@@ -397,6 +408,15 @@ func (l *lexer) root(i int) (int, bool) {
 		}
 	}
 	if n, ok := l.keywords(i); ok {
+		if !l.o.ChromaTypes {
+			if w := src[i : i+n]; w == "as" || w == "is" {
+				e := i + n
+				if c := l.at(e); w == "as" && (c == '?' || c == '!') {
+					e++
+				}
+				l.setType(l.typeScan(e, false))
+			}
+		}
 		return n, true
 	}
 	if n := l.words.Match(src, i, lBuiltins); n > 0 {
@@ -419,6 +439,18 @@ func (l *lexer) root(i int) (int, bool) {
 		return l.emit(fh.LiteralString, i, i+1)
 	}
 	// [(){}\[\].,:;=@#`?]|->|[<&?](?=\w)|(?<=\w)[>!?]
+	if !l.o.ChromaTypes {
+		switch {
+		case c == ':' && l.skipBack(i) == l.declEnd && l.declEnd > 0:
+			l.setType(l.typeScan(i+1, true))
+		case c == ':' && l.typeColon(i):
+			l.setType(l.typeScan(i+1, false))
+		case c == '-' && l.at(i+1) == '>':
+			l.setType(l.typeScan(i+2, false))
+		case c == '<' && l.wordBefore(i):
+			l.setType(l.typeArgsEnd(i))
+		}
+	}
 	switch {
 	case strings.IndexByte("(){}[].,:;=@#`?", c) >= 0:
 		return l.emit(fh.Punctuation, i, i+1)
@@ -434,7 +466,24 @@ func (l *lexer) root(i int) (int, bool) {
 		return l.emit(fh.Operator, i, i+n)
 	}
 	if n := l.name(i); n > 0 {
+		if !l.o.ChromaTypes {
+			if i < l.typeEnd {
+				return l.emit(fh.NameClass, i, i+n)
+			}
+			if l.at(i+n) == '<' {
+				if e := l.typeArgsEnd(i + n); e > 0 {
+					l.setType(e)
+					return l.emit(fh.NameClass, i, i+n)
+				}
+			}
+		}
 		return l.emit(fh.Name, i, i+n)
 	}
 	return 0, false
+}
+
+func (l *lexer) setType(e int) {
+	if e > l.typeEnd {
+		l.typeEnd = e
+	}
 }
