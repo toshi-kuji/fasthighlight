@@ -132,11 +132,11 @@ The numbers below come from our own measurements. Where the difference shows, an
 | Implementation | `input.md` (30 KB, 6 code blocks) | `multilang.md` (25 KB, 25 code blocks: one in each of the 24 languages supported then, and one plain text) |
 | --- | --- | --- |
 | fasthighlight | 0.58–0.63 ms | 1.3–1.5 ms |
-| Chroma (all languages) | 4.0–4.1 ms | 38.1–38.7 ms |
-| Node: markdown-it + highlight.js | 2.5–2.8 ms | 8.7–8.9 ms |
-| Node: markdown-it + Shiki | 7.7–7.9 ms | 58.2–61.2 ms |
+| Chroma (all languages) | 3.9–4.3 ms | 38.1–40.7 ms |
+| Node: markdown-it + highlight.js | 2.5–2.8 ms | 8.7–9.6 ms |
+| Node: markdown-it + Shiki | 7.7–8.2 ms | 58.2–64.9 ms |
 
-- **What:** the time to turn a Markdown document into HTML with highlighted code blocks, warm (after initialization), median time per conversion.
+- **What:** the time to turn a Markdown document into HTML with highlighted code blocks, warm (after initialization), median time per conversion; each cell is the range over two runs of the measurement.
 - **Input:** [`input.md`](https://github.com/toshi-kuji/fasthighlight/blob/main/testdata/input.md) and [`multilang.md`](https://github.com/toshi-kuji/fasthighlight/blob/main/testdata/multilang.md).
 - **Environment:** Nov 11, 2026, v0.6.4, a 4-core cloud machine, Go 1.25.0, Node 22.23.4.
 - **Note:** the implementations color code at different levels of detail, so this compares whole conversions, not identical output. How to measure it yourself: [docs/benchmark.md](https://github.com/toshi-kuji/fasthighlight/blob/main/docs/benchmark.md).
@@ -145,15 +145,15 @@ The numbers below come from our own measurements. Where the difference shows, an
 
 | | fasthighlight | syntect | giallo |
 | --- | --- | --- | --- |
-| 21 snippets all three support (warm, total) | about 0.68 ms | about 19.8 ms | about 34.8 ms |
-| 27 snippets fasthighlight and giallo support (warm, total) | about 0.90 ms | - | about 43.5 ms |
-| Initialization | - | about 1 ms | about 38 ms |
-| First use of each language (total) | about 2.5 ms | about 93 ms | about 719 ms |
+| 21 snippets all three support (warm, total) | about 0.68 ms | about 20 ms | about 35 ms |
+| 27 snippets fasthighlight and giallo support (warm, total) | about 0.91 ms | - | about 44 ms |
+| Initialization | - | about 1 ms | about 40 ms |
+| First use of each language (total) | about 2.4 ms | about 92 ms | about 720 ms |
 
 - **What:** one code snippet to HTML with classes (highlighting and writing HTML), without Markdown parsing, on one thread. syntect and giallo are highlighting libraries written in Rust.
 - **Input:** the 27 code blocks of `multilang.md` and `input.md` (except `text`), about 350 to 1,350 bytes each.
 - **Output:** fasthighlight `Highlight`; syntect `ClassedHTMLGenerator` (`ClassStyle::Spaced`); giallo `HtmlRenderer` with `css_class_prefix`. All three write classes.
-- **Environment:** Nov 11, 2026, v0.6.4, a 4-core cloud machine, Go 1.25.0, Rust 1.97.0 (release build), syntect 5.3.0, giallo 0.5.2. Median of 9 rounds of 200 runs per snippet; the three were run in turn, three times each, in the same session.
+- **Environment:** Nov 11, 2026, v0.6.4, a 4-core cloud machine, Go 1.25.0, Rust 1.97.0 (release build), syntect 5.3.0, giallo 0.5.2. Median of 9 rounds of 200 runs per snippet; the three were run in turn, three times each, in the same session, and the whole measurement was done twice.
 - **Note:** the output differs in detail (the number of `<span>`s goes either way depending on the language, and the three color differently). syntect's default grammars have no TypeScript, TOML, Kotlin or Swift. giallo supports more than 220 languages, many more than fasthighlight. Only small snippets were measured. We wrote the measurement ourselves and have not checked that it uses each library the way its authors recommend.
 
 </div>
