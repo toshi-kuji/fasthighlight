@@ -64,6 +64,8 @@ type lexer struct {
 	// typeEnd: names before it are in a type position (types.go). declEnd: the end of the last name after
 	// class, struct, enum, protocol or extension.
 	typeEnd, declEnd int
+	// argsFrom and argsStop are the start and stop of the last failed type-argument scan (types.go).
+	argsFrom, argsStop int
 }
 
 // Lex splits src into tokens (with the same contract as the Lex of fasthighlight.Language). compat/ uses it

@@ -83,10 +83,14 @@ func (l *lexer) colonTypeEnd(i int) int {
 // parenthesis, a string) means that "<" is a comparison, as in a<b && c>d. After the closing ">", a
 // name or number (other than by and where) also means a comparison, as in f(a<b, c>d).
 func (l *lexer) typeArgsEnd(i int) int {
+	if l.argsFrom < i && i < l.argsStop {
+		return 0
+	}
 	src := l.src
 	depth := 0
 	inName := false
-	for j := i; j < len(src) && j < i+maxType; {
+	j := i
+	for j < len(src) && j < i+maxType {
 		r, w := lexkit.Rune(src, j)
 		word := false
 		switch {
@@ -98,21 +102,32 @@ func (l *lexer) typeArgsEnd(i int) int {
 				if l.followsType(j + 1) {
 					return j + 1
 				}
-				return 0
+				return l.argsFailed(i, j)
 			}
 		case r == '&' && l.at(j+1) == '&':
-			return 0
+			return l.argsFailed(i, j)
 		case isNameChar(r):
 			if !inName && lexkit.IsDigit(r) {
-				return 0
+				return l.argsFailed(i, j)
 			}
 			word = true
 		case lexkit.IsSpace(r), r == '.', r == ',', r == ':', r == '?', r == '*', r == '&':
 		default:
-			return 0
+			return l.argsFailed(i, j)
 		}
 		inName = word
 		j += w
+	}
+	return l.argsFailed(i, j)
+}
+
+// argsFailed remembers that the type-argument scan from i failed at stop and returns 0. A later "<" before
+// stop scans the same characters to the same place and fails too (or, inside an unclosed run, would at
+// most find shorter type arguments, which are left as names), so it is not scanned again: without this,
+// each "<" of a long run such as a<a<a<… would scan maxType bytes.
+func (l *lexer) argsFailed(i, stop int) int {
+	if stop > l.argsStop {
+		l.argsFrom, l.argsStop = i, stop
 	}
 	return 0
 }
