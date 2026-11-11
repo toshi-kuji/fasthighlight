@@ -808,7 +808,7 @@ func (l *lexer) root(i int) (int, bool) {
 		return l.emit(fh.CommentSingle, i, lexkit.LineEnd(src, i)) // #.*?$
 	}
 	// =begin\s.*?\n=end.*?$
-	if strings.HasPrefix(src[i:], "=begin") {
+	if c == '=' && strings.HasPrefix(src[i:], "=begin") {
 		if r, n := l.runeAt(i + 6); n > 0 && lexkit.IsSpace(r) {
 			if k := strings.Index(src[i+6+n:], "\n=end"); k >= 0 {
 				return l.emit(fh.CommentMultiline, i, lexkit.LineEnd(src, i+6+n+k+5))
@@ -816,7 +816,7 @@ func (l *lexer) root(i int) (int, bool) {
 		}
 	}
 	// keywords (defined? requires a \b after it in Chroma)
-	if !l.o.Chroma && strings.HasPrefix(src[i:], "defined?") {
+	if c == 'd' && !l.o.Chroma && strings.HasPrefix(src[i:], "defined?") {
 		if n, _ := l.words.Word(src, i); n == 7 {
 			return l.emit(fh.Keyword, i, i+8)
 		}
@@ -825,7 +825,7 @@ func (l *lexer) root(i int) (int, bool) {
 		return l.emit(fh.Keyword, i, i+n)
 	}
 	// (module)(\s+)([a-zA-Z_]\w*(?:::[a-zA-Z_]\w*)*)
-	if strings.HasPrefix(src[i:], "module") {
+	if c == 'm' && strings.HasPrefix(src[i:], "module") {
 		if s := l.spaces(i + 6); s > 0 {
 			k := i + 6 + s
 			if n := l.ident(k); n > 0 {
@@ -844,7 +844,7 @@ func (l *lexer) root(i int) (int, bool) {
 			}
 		}
 	}
-	if strings.HasPrefix(src[i:], "def") {
+	if c == 'd' && strings.HasPrefix(src[i:], "def") {
 		if s := l.spaces(i + 3); s > 0 { // (def)(\s+)
 			l.x.Emit(fh.Keyword, i, i+3)
 			l.x.Emit(fh.Text, i+3, i+3+s)
@@ -857,7 +857,7 @@ func (l *lexer) root(i int) (int, bool) {
 			return l.emit(fh.Keyword, i, i+3)
 		}
 	}
-	if strings.HasPrefix(src[i:], "class") {
+	if c == 'c' && strings.HasPrefix(src[i:], "class") {
 		if s := l.spaces(i + 5); s > 0 {
 			l.x.Emit(fh.Keyword, i, i+5)
 			l.x.Emit(fh.Text, i+5, i+5+s)
@@ -875,7 +875,7 @@ func (l *lexer) root(i int) (int, bool) {
 		return l.emit(fh.NameBuiltin, i, i+n+1)
 	}
 	for _, w := range [...]string{"chomp", "chop", "exit", "gsub", "sub"} { // (chomp|chop|exit|gsub|sub)!
-		if strings.HasPrefix(src[i:], w) && l.at(i+len(w)) == '!' {
+		if c == w[0] && strings.HasPrefix(src[i:], w) && l.at(i+len(w)) == '!' {
 			return l.emit(fh.NameBuiltin, i, i+len(w)+1)
 		}
 	}
@@ -885,27 +885,26 @@ func (l *lexer) root(i int) (int, bool) {
 		}
 	}
 	for _, w := range [...]string{"__FILE__", "__LINE__"} { // __(FILE|LINE)__\b
-		if strings.HasPrefix(src[i:], w) && lexkit.WordBoundary(src, i+len(w)) {
+		if c == '_' && strings.HasPrefix(src[i:], w) && lexkit.WordBoundary(src, i+len(w)) {
 			return l.emit(fh.NameBuiltinPseudo, i, i+len(w))
 		}
 	}
-	if strings.HasPrefix(src[i:], "<<") {
+	if c == '<' && strings.HasPrefix(src[i:], "<<") {
 		if e := l.heredoc(i); e > 0 {
 			return l.emit(fh.LiteralString, i, e)
 		}
 	}
-	if strings.HasPrefix(src[i:], "__END__") {
+	if c == '_' && strings.HasPrefix(src[i:], "__END__") {
 		l.push(frame{kind: endPart})
 		return l.emit(fh.CommentPreproc, i, i+7)
 	}
-	// (lookbehind)(\s*)(/)
-	if l.regexStart(i) {
-		if s := l.spaces(i); l.at(i+s) == '/' {
-			l.x.Emit(fh.Text, i, i+s)
-			l.x.Emit(fh.LiteralStringRegex, i+s, i+s+1)
-			l.push(frame{kind: multilineRegex})
-			return s + 1, true
-		}
+	// (lookbehind)(\s*)(/). The lookbehind (regexStart) compares the text before i with many words, so it is
+	// checked only when a "/" follows.
+	if s := l.spaces(i); l.at(i+s) == '/' && l.regexStart(i) {
+		l.x.Emit(fh.Text, i, i+s)
+		l.x.Emit(fh.LiteralStringRegex, i+s, i+s+1)
+		l.push(frame{kind: multilineRegex})
+		return s + 1, true
 	}
 	if c == '/' && i > 0 && (src[i-1] == '(' || src[i-1] == ',' || src[i-1] == '[') { // (?<=\(|,|\[)/
 		l.push(frame{kind: multilineRegex})
@@ -1027,7 +1026,7 @@ func (l *lexer) root(i int) (int, bool) {
 		return l.emit(fh.Operator, i, e)
 	}
 	for _, op := range [...]string{"**", "=~", "===", "!~", "&&", "&", "||"} {
-		if strings.HasPrefix(src[i:], op) {
+		if c == op[0] && strings.HasPrefix(src[i:], op) {
 			return l.emit(fh.Operator, i, i+len(op))
 		}
 	}

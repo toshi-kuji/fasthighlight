@@ -6,6 +6,7 @@ package bash
 
 import (
 	"strings"
+	"sync"
 
 	fh "github.com/toshi-kuji/fasthighlight"
 	"github.com/toshi-kuji/fasthighlight/internal/lexkit"
@@ -22,6 +23,25 @@ const (
 	backticks       // ` … `
 	curly           // ${ … }
 )
+
+// keywordSet and builtinSet hold keywords and builtins, built once on first use (Bash is also read by Bash
+// Session, Docker and Makefile).
+var (
+	keywordSet, builtinSet map[string]bool
+	setsOnce               sync.Once
+)
+
+func prepareSets() {
+	setsOnce.Do(func() {
+		keywordSet, builtinSet = map[string]bool{}, map[string]bool{}
+		for _, w := range keywords {
+			keywordSet[w] = true
+		}
+		for _, w := range builtins {
+			builtinSet[w] = true
+		}
+	})
+}
 
 // keywords holds the candidates of the first rule of basic, in the same order as the regular
 // expression.
@@ -59,6 +79,7 @@ func Lex(src string, end int) []fh.Token {
 // x.Sub for src (Bash embedded in another language, as with Chroma's using: src is the whole embedded text,
 // so \A and the lookaheads see only that text).
 func LexInto(x *lexkit.Tokens, src string, end int) {
+	prepareSets()
 	l := &lexer{x: x, src: src, stack: []state{root}}
 	for i := 0; i < end && len(l.stack) > 0; {
 		st := l.stack[len(l.stack)-1]
@@ -169,13 +190,15 @@ func (l *lexer) basic(i int) int {
 	src := l.src
 	c := src[i]
 	if isASCIILetter(c) && lexkit.WordBoundary(src, i) {
+		// Every keyword and builtin is made of letters only. Each rule needs a word end right after the word
+		// (\b, or one of \s ) ` for builtins), so the only word that can match is the whole run of word
+		// characters at i: one map lookup instead of a prefix comparison per word.
+		n := lexkit.Span(src, i, lexkit.IsWord)
+		w := src[i : i+n]
 		// \b(if|fi|…|elif)(\s*)\b
-		for _, w := range keywords {
-			if !strings.HasPrefix(src[i:], w) {
-				continue
-			}
+		if keywordSet[w] {
 			e := -1
-			lexkit.Run(src, i+len(w), 0, lexkit.IsSpace, func(k int) bool {
+			lexkit.Run(src, i+n, 0, lexkit.IsSpace, func(k int) bool {
 				if lexkit.WordBoundary(src, k) {
 					e = k
 					return true
@@ -183,17 +206,15 @@ func (l *lexer) basic(i int) int {
 				return false
 			})
 			if e >= 0 {
-				l.emit(fh.Keyword, i, i+len(w))
-				l.emit(fh.Text, i+len(w), e)
+				l.emit(fh.Keyword, i, i+n)
+				l.emit(fh.Text, i+n, e)
 				return e - i
 			}
 		}
 		// \b(alias|…|wait)(?=[\s)`])
-		for _, w := range builtins {
-			if strings.HasPrefix(src[i:], w) && i+len(w) < len(src) {
-				if r, _ := lexkit.Rune(src, i+len(w)); lexkit.IsSpace(r) || r == ')' || r == '`' {
-					return l.emit(fh.NameBuiltin, i, i+len(w))
-				}
+		if builtinSet[w] && i+n < len(src) {
+			if r, _ := lexkit.Rune(src, i+n); lexkit.IsSpace(r) || r == ')' || r == '`' {
+				return l.emit(fh.NameBuiltin, i, i+n)
 			}
 		}
 	}

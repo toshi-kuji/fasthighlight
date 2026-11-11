@@ -119,7 +119,7 @@ func value(src string, i int) (n int, t fh.TokenType, push state) {
 // simpleValue tries (true|false|null)\b, a decimal, an integer, and a string, in this order.
 func simpleValue(src string, i int) (int, fh.TokenType) {
 	for _, w := range [...]string{"true", "false", "null"} {
-		if strings.HasPrefix(src[i:], w) && lexkit.WordBoundary(src, i+len(w)) {
+		if src[i] == w[0] && strings.HasPrefix(src[i:], w) && lexkit.WordBoundary(src, i+len(w)) {
 			return len(w), fh.KeywordConstant
 		}
 	}
