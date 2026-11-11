@@ -60,6 +60,11 @@ func TestLinearTime(t *testing.T) {
 		{"php", "A &"},
 		{"php", "(a):"},
 		{"php", "function("},
+		// Python: type hints scan a bounded distance forward and backward from each ":" and "->".
+		{"python", "a:"},
+		{"python", "a.:"},
+		{"python", "->a"},
+		{"python", "def f(a:"},
 	}
 	for _, c := range cases {
 		l := fasthighlight.LookupRegistered(c.lang)

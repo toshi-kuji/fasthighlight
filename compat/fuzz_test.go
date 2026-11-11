@@ -109,7 +109,7 @@ func chromaMode(l *fh.Language) func(string) []fh.Token {
 	case "Python":
 		l.Tokenise("") // preparation (word lists)
 		lex = func(text string, end int) []fh.Token {
-			return python.Lex(text, end, python.Options{ChromaDocstring: true})
+			return python.Lex(text, end, python.Options{ChromaDocstring: true, ChromaTypes: true})
 		}
 	case "TypeScript":
 		l.Tokenise("") // preparation (word lists)

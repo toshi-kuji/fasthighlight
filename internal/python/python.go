@@ -100,6 +100,13 @@ type Options struct {
 	// color. If false, {,2} is read as a repetition of 0 to 2 times (as in Pygments), and a
 	// """…""" at the start of a line gets the docstring color.
 	ChromaDocstring bool
+	// If ChromaTypes is true, names in type hints are Name, as in Chroma. If false, names in
+	// annotations get NameClass (the type of class names): parameter annotations (after ":" directly
+	// in a def's parameter list, not in a default value), return annotations (after "->"), and
+	// variable annotations ("name: Type" or "a.b: Type" alone at the start of a line, outside
+	// brackets), including the names inside their subscripts. Keywords, built-ins and None keep their
+	// types, and a name followed by "." (a module) stays Name. See types.go.
+	ChromaTypes bool
 }
 
 type lexer struct {
@@ -112,6 +119,8 @@ type lexer struct {
 	// repeatedly).
 	wpos, wlen int
 	wmask      uint16
+	// The state for type hints (types.go; unused with Options.ChromaTypes).
+	types typeState
 }
 
 // Lex splits src into tokens (the same contract as Lex of fasthighlight.Language). compat/ uses it
@@ -155,6 +164,7 @@ func (l *lexer) step(f frame, i int) (int, bool) {
 		}
 		if n := nameLen(l.src, i); n > 0 {
 			l.pop()
+			l.types.defPending = true
 			return l.emit(fh.NameFunction, i, i+n)
 		}
 		l.pop()
@@ -256,6 +266,7 @@ func (l *lexer) root(i int) (int, bool) {
 	src := l.src
 	c := src[i]
 	if c == '\n' {
+		l.types.newline()
 		return l.emit(fh.Text, i, i+1)
 	}
 	// ^(\s*)([rRuUbB]{,2})("""(?:.|\n)*?""") and its ''' version (docstring). See Options.ChromaDocstring.
@@ -413,6 +424,9 @@ func (l *lexer) expr(i int) (int, bool) {
 	if n, t := l.number(i); n > 0 {
 		return l.emit(t, i, i+n)
 	}
+	if !l.opt.ChromaTypes && l.stack[len(l.stack)-1].kind == root {
+		l.trackType(i)
+	}
 	// !=|==|<<|>>|:=|[-~+/*%=<>&^|.]
 	if i+1 < len(src) {
 		switch src[i : i+2] {
@@ -474,6 +488,9 @@ func (l *lexer) expr(i int) (int, bool) {
 		return l.emit(fh.Operator, i, i+1)
 	}
 	if n := nameLen(src, i); n > 0 {
+		if i < l.types.end && l.at(i+n) != '.' {
+			return l.emit(fh.NameClass, i, i+n)
+		}
 		return l.emit(fh.Name, i, i+n)
 	}
 	return 0, false
