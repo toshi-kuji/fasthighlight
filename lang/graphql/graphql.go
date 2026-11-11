@@ -48,7 +48,17 @@ var constantWords = [...]string{
 	"ENUM_VALUE", "INPUT_OBJECT", "INPUT_FIELD_DEFINITION",
 }
 
+// wordStart marks the first bytes of declarations and keywords: at any other byte none of them can match,
+// so they are not compared one by one.
+var wordStart [256]bool
+
 func prepare() {
+	for _, w := range declarations {
+		wordStart[w[0]] = true
+	}
+	for _, w := range keywords {
+		wordStart[w[0]] = true
+	}
 	constants = make(map[string]bool, len(constantWords))
 	for _, w := range constantWords {
 		constants[w] = true
@@ -93,14 +103,16 @@ func match(src string, i int, st state) (n int, t fh.TokenType, push, pop bool) 
 			return n, fh.NameClass, false, true
 		}
 	}
-	for _, w := range declarations {
-		if strings.HasPrefix(src[i:], w) {
-			return len(w), fh.KeywordDeclaration, true, false
+	if wordStart[c] {
+		for _, w := range declarations {
+			if strings.HasPrefix(src[i:], w) {
+				return len(w), fh.KeywordDeclaration, true, false
+			}
 		}
-	}
-	for _, w := range keywords {
-		if strings.HasPrefix(src[i:], w) {
-			return len(w), fh.KeywordDeclaration, false, false
+		for _, w := range keywords {
+			if strings.HasPrefix(src[i:], w) {
+				return len(w), fh.KeywordDeclaration, false, false
+			}
 		}
 	}
 	if n := lexkit.Span(src, i, lexkit.IsWord); n > 0 {
