@@ -148,6 +148,14 @@ func (l *lexer) declaredType(i int) {
 	if p > 0 && src[p-1] == '.' {
 		return
 	}
+	// A pattern combinator (x is A or B, x is not Foo) is not a type either.
+	if n := l.name(i); n > 0 {
+		for _, w := range notDeclared {
+			if src[i:i+n] == w {
+				return
+			}
+		}
+	}
 	e := l.typeExpr(i)
 	if e == 0 {
 		return

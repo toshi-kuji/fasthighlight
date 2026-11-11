@@ -35,6 +35,11 @@ func TestTypePositions(t *testing.T) {
 		{"var r = p with { A = 1 };", nil, []string{"r", "p", "A"}},
 		{"return x == y;", nil, []string{"x", "y"}},
 		{"a.b = c < d;", nil, []string{"a", "b", "c", "d"}},
+		// Pattern combinators are not types (the type after "is" is left as it is).
+		{"return x is A or B;", nil, []string{"x", "or"}},
+		{"var y = x switch { A or B => 1 };", nil, []string{"y", "x", "or"}},
+		{"if (x is not Foo) {}", nil, []string{"x", "not"}},
+		{"var w = x is Foo and Bar;", nil, []string{"w", "x", "and"}},
 	} {
 		got := map[string]fh.TokenType{}
 		for _, tok := range Lex(c.src, len(c.src), Options{}) {
