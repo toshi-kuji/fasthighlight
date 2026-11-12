@@ -263,13 +263,31 @@ func (r *report) json() jsonObject {
 	return append(o, jsonField{"errors", objects(r.Errors)}, jsonField{"summary", r.Summary.json()})
 }
 
-func (b codeBlock) json() jsonObject {
-	o := jsonObject{{"file", b.File}, {"line", b.Line}, {"lang", b.Lang}, {"open", b.Open}, {"code", b.Code},
-		{"close", b.Close}, {"colored", b.Colored}}
+// encodeCodeBlock writes one line of --code-blocks: b as a compact JSON object followed by a newline, the same
+// bytes as encode(w, b.json(), false). It writes the members directly, without building a jsonObject, since
+// --code-blocks writes one record per code block.
+func (e *jsonEncoder) encodeCodeBlock(w io.Writer, b codeBlock) error {
+	e.b = append(e.b[:0], `{"file":`...)
+	e.b = appendJSONString(e.b, b.File)
+	e.b = append(e.b, `,"line":`...)
+	e.b = strconv.AppendInt(e.b, int64(b.Line), 10)
+	e.b = append(e.b, `,"lang":`...)
+	e.b = appendJSONString(e.b, b.Lang)
+	e.b = append(e.b, `,"open":`...)
+	e.b = appendJSONString(e.b, b.Open)
+	e.b = append(e.b, `,"code":`...)
+	e.b = appendJSONString(e.b, b.Code)
+	e.b = append(e.b, `,"close":`...)
+	e.b = appendJSONString(e.b, b.Close)
+	e.b = append(e.b, `,"colored":`...)
+	e.b = strconv.AppendBool(e.b, b.Colored)
 	if b.Reason != "" {
-		o = append(o, jsonField{"reason", b.Reason})
+		e.b = append(e.b, `,"reason":`...)
+		e.b = appendJSONString(e.b, b.Reason)
 	}
-	return o
+	e.b = append(e.b, "}\n"...)
+	_, err := w.Write(e.b)
+	return err
 }
 
 func (l langEntry) json() jsonObject {

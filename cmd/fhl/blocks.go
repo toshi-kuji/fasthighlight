@@ -64,7 +64,7 @@ func runCodeBlocks(o *options, e env) int {
 				if !b.Colored && b.Reason != "plain" {
 					uncolored++
 				}
-				if err := enc.encode(out, b.json(), false); err != nil {
+				if err := enc.encodeCodeBlock(out, b); err != nil {
 					fmt.Fprintf(e.stderr, "fhl: cannot write the output: %v\n", err)
 					return 1
 				}

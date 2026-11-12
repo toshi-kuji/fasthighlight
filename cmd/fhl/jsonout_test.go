@@ -111,6 +111,7 @@ func randReport(r *rand.Rand) *report {
 // writes it.
 func TestJSONMatchesEncodingJSON(t *testing.T) {
 	r := rand.New(rand.NewPCG(7, 11))
+	var enc jsonEncoder // reused across records, as runCodeBlocks does
 	for i := range 5000 {
 		rep := randReport(r)
 		if got, want := ownJSON(t, rep.json(), true), stdJSON(t, rep, true); !sameJSON(got, want) {
@@ -121,7 +122,11 @@ func TestJSONMatchesEncodingJSON(t *testing.T) {
 		if r.IntN(2) == 0 {
 			b.Reason = randString(r)
 		}
-		if got, want := ownJSON(t, b.json(), false), stdJSON(t, b, false); !sameJSON(got, want) {
+		var buf bytes.Buffer
+		if err := enc.encodeCodeBlock(&buf, b); err != nil {
+			t.Fatal(err)
+		}
+		if got, want := buf.String(), stdJSON(t, b, false); !sameJSON(got, want) {
 			t.Fatalf("code block %d:\ngot  %q\nwant %q", i, got, want)
 		}
 		var langs []langEntry
