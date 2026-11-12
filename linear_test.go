@@ -1,8 +1,8 @@
 package fasthighlight_test
 
 import (
-	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -175,19 +175,19 @@ var rescanCases = []struct{ lang, unit string }{
 	{"csharp", "[\n"},
 }
 
-// TestFindSlowInputs looks for inputs that make a tokenizer take more than linear time, in every language: each
-// one- and two-character combination of a small alphabet, repeated. Those that take at least 5 ms at 64 KB are
-// measured again at 256 KB and 1 MB, and printed at once when the time grows more than 8 times for the 4 times
-// larger input (about 4 when linear, 16 when quadratic). It takes several minutes, so it runs only when
-// FASTHIGHLIGHT_SCAN is set:
+// TestFindSlowInputs looks for inputs that may make a tokenizer take more than linear time, in every language:
+// each one- and two-character combination of a small alphabet, repeated to 64 KB. It lists those that take at
+// least 30 ms, the slowest first, with the time at 32 KB for comparison. It takes about 6 minutes, so it runs
+// only when FASTHIGHLIGHT_SCAN is set:
 //
-//	FASTHIGHLIGHT_SCAN=1 go test -run TestFindSlowInputs -v -timeout 60m .
+//	FASTHIGHLIGHT_SCAN=1 go test -run TestFindSlowInputs -v -timeout 30m .
 //
-// A hit is a candidate: confirm it at larger sizes before treating it as quadratic (a single measurement can be
-// noisy), then add it to rescanCases.
+// A listed input is only a candidate: many are linear but slow (bounded scans), and single measurements are
+// noisy. Confirm one by timing it at several sizes, best of three (64 KB to 4 MB: a linear tokenizer takes
+// roughly 64 to 150 times as long, a quadratic one about 4000 times), then fix it and add it to rescanCases.
 func TestFindSlowInputs(t *testing.T) {
 	if os.Getenv("FASTHIGHLIGHT_SCAN") == "" {
-		t.Skip("set FASTHIGHLIGHT_SCAN=1 to run it (several minutes)")
+		t.Skip("set FASTHIGHLIGHT_SCAN=1 to run it (about 6 minutes)")
 	}
 	alpha := []string{"a", "A", "1", " ", "\n", "\t", "é", "<", ">", "(", ")", "[", "]", "{", "}", "\"", "'", "`", "/",
 		"\\", "*", "#", "$", "@", ":", ";", ",", ".", "-", "+", "=", "&", "|", "!", "?", "%", "^", "~", "_"}
@@ -205,22 +205,21 @@ func TestFindSlowInputs(t *testing.T) {
 		l.Tokenise(src)
 		return time.Since(start)
 	}
-	hits := 0
+	type hit struct {
+		lang, unit string
+		half, full time.Duration
+	}
+	var hits []hit
 	for _, l := range fasthighlight.Languages() {
-		start, checked := time.Now(), 0
 		for _, u := range units {
-			if timed(l, u, 64<<10) < 5*time.Millisecond {
-				continue
-			}
-			checked++
-			ds, dl := timed(l, u, 256<<10), timed(l, u, 1<<20)
-			if float64(dl) > 8*float64(ds) {
-				hits++
-				fmt.Fprintf(os.Stderr, "HIT %-12s %-8q 256 KB %-10v 1 MB %-10v (%.1f times)\n", l.Name, u,
-					ds.Round(time.Millisecond), dl.Round(time.Millisecond), float64(dl)/float64(ds))
+			if d := timed(l, u, 64<<10); d >= 30*time.Millisecond {
+				hits = append(hits, hit{l.Name, u, timed(l, u, 32<<10), d})
 			}
 		}
-		fmt.Fprintf(os.Stderr, "done %-12s %4d measured again, %v\n", l.Name, checked, time.Since(start).Round(time.Second))
 	}
-	t.Logf("%d inputs grew more than 8 times for 4 times the size", hits)
+	sort.Slice(hits, func(i, j int) bool { return hits[i].full > hits[j].full })
+	for _, h := range hits {
+		t.Logf("%-12s %-8q 32 KB %-10v 64 KB %v", h.lang, h.unit, h.half.Round(time.Millisecond), h.full.Round(time.Millisecond))
+	}
+	t.Logf("%d inputs took 30 ms or more at 64 KB", len(hits))
 }
