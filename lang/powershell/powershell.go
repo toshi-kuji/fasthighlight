@@ -68,6 +68,9 @@ type lexer struct {
 	// typeEnd and typeClose do the same for the type rule (\[)([a-z_\[][\w. `,\[\]]*)(\]): the end of the run of
 	// type characters, and the position of the last ] in it (-1 if none).
 	typeEnd, typeClose int
+	// helpRun is the last run of # and whitespace that helpLine measured: it is tried at every # at the start
+	// of a line, and the run spans lines, so lines of only # would otherwise be measured again from each line.
+	helpRun lexkit.SpanCache
 	// hereMiss is the position from which the here-string rule @'\n.*?\n'@ found no closing \n'@ (len(src)+1
 	// until one search fails). A later @'\n cannot find one either, so it does not search again.
 	hereMiss int
@@ -328,7 +331,7 @@ func (l *lexer) helpLine(i int) int {
 	if i > 0 && src[i-1] != '\n' {
 		return 0
 	}
-	j := i + 1 + lexkit.Span(src, i+1, func(r rune) bool { return r == '#' || lexkit.IsSpace(r) })
+	j := i + 1 + l.helpRun.Span(src, i+1, isHashOrSpace)
 	if l.at(j) != '.' {
 		return 0
 	}
@@ -343,6 +346,9 @@ func (l *lexer) helpLine(i int) int {
 	}
 	return 0
 }
+
+// isHashOrSpace reports whether r is # or whitespace (the characters of helpLine's [#\s]*).
+func isHashOrSpace(r rune) bool { return r == '#' || lexkit.IsSpace(r) }
 
 // single returns the length of '([^']|”)*' at i (0 if it does not match). A ” is read as a pair; if no
 // lone ' closes the string, the regular expression backtracks to the first ' of the last pair.

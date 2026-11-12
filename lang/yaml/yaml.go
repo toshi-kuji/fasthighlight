@@ -126,10 +126,10 @@ func key(x *lexkit.Tokens, kc *colonCache, src string, i int) (int, bool) {
 	// "[^"\n#].*": (within a line, up to the last ": ")
 	if src[i] == '"' && i+1 < len(src) && strings.IndexByte("\"\n#", src[i+1]) < 0 {
 		_, w := lexkit.Rune(src, i+1)
-		start, le := i+1+w, lexkit.LineEnd(src, i)
+		start, le := i+1+w, kc.line.of(src, i)
 		if start <= le {
-			if p := strings.LastIndex(src[start:le], "\": "); p >= 0 {
-				e := start + p + 3
+			if p := kc.quote.last(src, start, le); p >= 0 {
+				e := p + 3
 				x.Emit(fh.NameTag, i, e)
 				return e, true
 			}
@@ -138,7 +138,7 @@ func key(x *lexkit.Tokens, kc *colonCache, src string, i int) (int, bool) {
 	// (-)( )((?:(?!//)[^"\n{#])*?)(:)( ) never gets here, because the earlier [\n?]?\s*- always matches first.
 	// ((?:(?!//)[^"\n{#])*?)(:)( ) and ((?:(?!//)[^"\n{#])*?)(:)(\n)
 	for a, after := range [...]byte{' ', '\n'} {
-		if j := kc[a].find(src, i, after); j >= 0 {
+		if j := kc.scans[a].find(src, i, after); j >= 0 {
 			x.Emit(fh.NameTag, i, j)
 			x.Emit(fh.Punctuation, j, j+1)
 			x.Emit(fh.TextWhitespace, j+1, j+2)
@@ -148,8 +148,44 @@ func key(x *lexkit.Tokens, kc *colonCache, src string, i int) (int, bool) {
 	return 0, false
 }
 
-// colonCache remembers the last keyColon scan for each of the two characters after the colon.
-type colonCache [2]colonScan
+// colonCache remembers the last keyColon scan for each of the two characters after the colon, and the last
+// search for the "\": " of a quoted key.
+type colonCache struct {
+	scans [2]colonScan
+	quote quoteScan
+	line  lineScan
+}
+
+// lineScan remembers the end of the last line measured: every position from from up to end is on that line,
+// so a line with many " is measured once instead of once for each ".
+type lineScan struct{ from, end int }
+
+// of returns lexkit.LineEnd(src, i).
+func (c *lineScan) of(src string, i int) int {
+	if c.end == 0 || i < c.from || i > c.end {
+		c.from, c.end = i, lexkit.LineEnd(src, i)
+	}
+	return c.end
+}
+
+// quoteScan remembers, for the line ending at le, the last "\": " that starts at or after from (pos, -1 if
+// none). A later start on the same line has the same answer while it is not past pos, so a line with many "
+// is searched once instead of once for each ".
+type quoteScan struct{ from, le, pos int }
+
+// last returns the position of the last "\": " in src[start:le], or -1 if there is none.
+func (q *quoteScan) last(src string, start, le int) int {
+	if q.le != le || start < q.from || q.le == 0 {
+		q.from, q.le, q.pos = start, le, -1
+		if p := strings.LastIndex(src[start:le], "\": "); p >= 0 {
+			q.pos = start + p
+		}
+	}
+	if q.pos < start || q.pos+3 > le {
+		return -1
+	}
+	return q.pos
+}
 
 // colonScan is one keyColon scan: it started at from and looked at every position up to upto, where
 // it found the colon (res >= 0) or stopped (res == -1). Every start in [from, upto] gives the same

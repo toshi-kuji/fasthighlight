@@ -55,6 +55,11 @@ type lexer struct {
 	typeEnd int
 	// argsFrom and argsStop are the start and stop of the last failed type-argument scan (types.go).
 	argsFrom, argsStop int
+	// attrEnd remembers a failed search for the ] of an attribute at a line start, so that many lines
+	// starting with [ and no ] are not each searched to the end.
+	attrEnd lexkit.Finder
+	// tickEnd remembers a failed search for the closing backtick of a name.
+	tickEnd lexkit.Finder
 }
 
 // Lex splits src into tokens (the same contract as Lex of fasthighlight.Language). compat/ uses it
@@ -131,7 +136,7 @@ func (l *lexer) backtick(i int) int {
 	if l.at(i) != '`' {
 		return 0
 	}
-	if k := strings.IndexByte(l.src[i+1:], '`'); k > 0 {
+	if k := l.tickEnd.Index(l.src, i+1, "`"); k > 0 {
 		return k + 2
 	}
 	return 0
@@ -392,7 +397,7 @@ func (l *lexer) root(i int) (int, bool) {
 	// ^\s*\[.*?\]
 	if i == 0 || src[i-1] == '\n' {
 		if j := i + l.spaces(i); l.at(j) == '[' {
-			if k := strings.IndexByte(src[j+1:], ']'); k >= 0 {
+			if k := l.attrEnd.Index(src, j+1, "]"); k >= 0 {
 				return l.emit(fh.NameAttribute, i, j+1+k+1)
 			}
 		}

@@ -68,6 +68,8 @@ type lexer struct {
 	// tc is the last run of type characters measured by the function rule, so that a long run that is not
 	// followed by whitespace (such as A<A<A<…) is measured once, not again from each of its positions.
 	tc lexkit.SpanCache
+	// lineEnd and commentEnd remember failed searches for the newline after // and for */.
+	lineEnd, commentEnd lexkit.Finder
 	// typeEnd is the end of the type arguments being read (production only): before it, a name is a type.
 	typeEnd int
 	// prefix is set for the text before a method name that the function rule reads again (its last word
@@ -255,7 +257,7 @@ func (l *lexer) root(i int) (int, bool) {
 	}
 	if c == '/' {
 		if l.at(i+1) == '/' { // (//.*?)(\n)
-			if k := strings.IndexByte(src[i+2:], '\n'); k >= 0 {
+			if k := l.lineEnd.Index(src, i+2, "\n"); k >= 0 {
 				k += i + 2
 				l.x.Emit(fh.CommentSingle, i, k)
 				l.x.Emit(fh.TextWhitespace, k, k+1)
@@ -263,7 +265,7 @@ func (l *lexer) root(i int) (int, bool) {
 			}
 		}
 		if l.at(i+1) == '*' { // /\*.*?\*/
-			if k := strings.Index(src[i+2:], "*/"); k >= 0 {
+			if k := l.commentEnd.Index(src, i+2, "*/"); k >= 0 {
 				return l.emit(fh.CommentMultiline, i, i+2+k+2)
 			}
 		}

@@ -43,6 +43,9 @@ jobs:
         run: go vet ./...
       - name: test (main module)
         run: go test -race -count=1 ./...
+      - name: linear time at 1 MB (without -race)
+        # TestLinearTimeLarge is skipped with -race, which makes every tokenizer about ten times slower.
+        run: go test -count=1 -run TestLinearTimeLarge .
       - name: vet and test (comparison with Chroma)
         working-directory: compat
         # Without -race: these tests run one at a time and start no goroutines of their own, and the parallel

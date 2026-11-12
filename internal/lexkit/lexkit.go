@@ -450,3 +450,24 @@ func (c *SpanCache) Span(src string, i int, f func(rune) bool) int {
 	}
 	return n
 }
+
+// Finder is strings.Index that remembers a search that failed: if sub does not occur in src[i:], it does not
+// occur in src[j:] for any j >= i either, nor in any shorter prefix of src, so a later search there is answered
+// without scanning. Without it, a rule that looks for a closing delimiter (*/, ?>, a newline, …) from every
+// opening one would scan to the end again for each opening delimiter of an input that never closes them, in
+// time quadratic in its size. Use one Finder per sub, with src always the same string or a prefix of it.
+type Finder struct {
+	missFrom, missLen int // sub does not occur in src[missFrom:missLen] (missLen 0: nothing remembered)
+}
+
+// Index returns strings.Index(src[i:], sub).
+func (f *Finder) Index(src string, i int, sub string) int {
+	if f.missLen > 0 && i >= f.missFrom && len(src) <= f.missLen {
+		return -1
+	}
+	k := strings.Index(src[i:], sub)
+	if k < 0 && len(src) > 0 {
+		f.missFrom, f.missLen = i, len(src)
+	}
+	return k
+}

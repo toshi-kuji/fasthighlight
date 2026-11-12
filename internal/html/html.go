@@ -35,6 +35,9 @@ type lexer struct {
 	stack []state
 	// entity remembers the last scan for &\S*?;.
 	entity lexkit.EntityCache
+	// The searches for closing delimiters that failed, so that an input with many opening delimiters and no
+	// closing one is not scanned to its end again for each of them.
+	dquote, squote, scriptLT, cdata, pi, decl lexkit.Finder
 }
 
 // Prepare builds the tables of the language used inside (CSS).
@@ -142,7 +145,11 @@ func (l *lexer) step(st state, i int) (int, bool) {
 		}
 	case attr:
 		if c == '"' || c == '\'' { // ".*?" and '.*?' (dot_all)
-			if k := strings.IndexByte(src[i+1:], c); k >= 0 {
+			f := &l.dquote
+			if c == '\'' {
+				f = &l.squote
+			}
+			if k := f.Index(src, i+1, string(c)); k >= 0 {
 				l.pop()
 				return l.emit(fh.LiteralString, i, i+1+k+1)
 			}
@@ -164,7 +171,7 @@ func (l *lexer) step(st state, i int) (int, bool) {
 		// .+?(?=<\s*/\s*script\s*>)
 		p := i + 1
 		for {
-			k := strings.IndexByte(src[p:], '<')
+			k := l.scriptLT.Index(src, p, "<")
 			if k < 0 {
 				return 0, false
 			}
@@ -246,7 +253,7 @@ func (l *lexer) root(i int) (int, bool) {
 	}
 	// From here on, c == '<'
 	if n := prefixFold(src, i, "<![cdata["); n > 0 { // \<\!\[CDATA\[.*?\]\]\>
-		if k := strings.Index(src[i+n:], "]]>"); k >= 0 {
+		if k := l.cdata.Index(src, i+n, "]]>"); k >= 0 {
 			return l.emit(fh.CommentPreproc, i, i+n+k+3)
 		}
 	}
@@ -256,12 +263,12 @@ func (l *lexer) root(i int) (int, bool) {
 		return l.emit(fh.Comment, i, i+4)
 	}
 	if strings.HasPrefix(rest, "<?") { // <\?.*?\?>
-		if k := strings.Index(src[i+2:], "?>"); k >= 0 {
+		if k := l.pi.Index(src, i+2, "?>"); k >= 0 {
 			return l.emit(fh.CommentPreproc, i, i+2+k+2)
 		}
 	}
 	if strings.HasPrefix(rest, "<!") { // <![^>]*>
-		if k := strings.IndexByte(src[i+2:], '>'); k >= 0 {
+		if k := l.decl.Index(src, i+2, ">"); k >= 0 {
 			return l.emit(fh.CommentPreproc, i, i+2+k+1)
 		}
 	}

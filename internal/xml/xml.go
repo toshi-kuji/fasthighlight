@@ -32,9 +32,10 @@ func Lex(src string, end int) []fh.Token {
 func LexInto(x *lexkit.Tokens, src string, end int) {
 	stack := []state{root}
 	var entity lexkit.EntityCache // the last scan for &\S*?;
+	var f finders
 	for i := 0; i < end && len(stack) > 0; {
 		st := stack[len(stack)-1]
-		n, t, push, pop := match(src, i, st, &entity)
+		n, t, push, pop := match(src, i, st, &entity, &f)
 		if n == 0 {
 			if src[i] == '\n' && st != root {
 				stack = stack[:1]
@@ -58,7 +59,11 @@ func LexInto(x *lexkit.Tokens, src string, end int) {
 func isNameChar(r rune) bool { return lexkit.IsWord(r) || r == ':' || r == '.' || r == '-' }
 
 // match tries the rules of state st in order. If none matches, n is 0.
-func match(src string, i int, st state, entity *lexkit.EntityCache) (n int, t fh.TokenType, push state, pop bool) {
+// finders remember the searches for closing delimiters that failed, so that an input with many opening
+// delimiters and no closing one is not scanned to its end again for each of them.
+type finders struct{ cdata, pi, decl lexkit.Finder }
+
+func match(src string, i int, st state, entity *lexkit.EntityCache, f *finders) (n int, t fh.TokenType, push state, pop bool) {
 	push = -1
 	c := src[i]
 	rest := src[i:]
@@ -75,7 +80,7 @@ func match(src string, i int, st state, entity *lexkit.EntityCache) (n int, t fh
 		}
 		// From here on, c == '<'
 		if strings.HasPrefix(rest, "<![CDATA[") { // \<\!\[CDATA\[.*?\]\]\>
-			if k := strings.Index(src[i+9:], "]]>"); k >= 0 {
+			if k := f.cdata.Index(src, i+9, "]]>"); k >= 0 {
 				return 9 + k + 3, fh.CommentPreproc, push, false
 			}
 		}
@@ -83,12 +88,12 @@ func match(src string, i int, st state, entity *lexkit.EntityCache) (n int, t fh
 			return 4, fh.Comment, comment, false
 		}
 		if strings.HasPrefix(rest, "<?") { // <\?.*?\?>
-			if k := strings.Index(src[i+2:], "?>"); k >= 0 {
+			if k := f.pi.Index(src, i+2, "?>"); k >= 0 {
 				return 2 + k + 2, fh.CommentPreproc, push, false
 			}
 		}
 		if strings.HasPrefix(rest, "<!") { // <![^>]*>
-			if k := strings.IndexByte(src[i+2:], '>'); k >= 0 {
+			if k := f.decl.Index(src, i+2, ">"); k >= 0 {
 				return 2 + k + 1, fh.CommentPreproc, push, false
 			}
 		}

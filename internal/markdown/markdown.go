@@ -48,6 +48,9 @@ type lexer struct {
 	x   *lexkit.Tokens
 	src string
 	sp  lexkit.SpanCache // the last run of whitespace at a line start
+	// closeBracket and closeParen remember failed searches of link for ] and ), so that many [ without a ]
+	// are not each searched to the end.
+	closeBracket, closeParen lexkit.Finder
 }
 
 // Lex splits src into tokens (the same contract as Lex of fasthighlight.Language). Markdown does not
@@ -407,7 +410,7 @@ func (l *lexer) link(src string, i int) int {
 	if o >= len(src) || src[o] != '[' {
 		return 0
 	}
-	n := strings.IndexByte(src[o+1:], ']')
+	n := l.closeBracket.Index(src, o+1, "]")
 	if n <= 0 {
 		return 0
 	}
@@ -415,7 +418,7 @@ func (l *lexer) link(src string, i int) int {
 	if b+1 >= len(src) || src[b+1] != '(' {
 		return 0
 	}
-	n = strings.IndexByte(src[b+2:], ')')
+	n = l.closeParen.Index(src, b+2, ")")
 	if n <= 0 {
 		return 0
 	}

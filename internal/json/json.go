@@ -32,6 +32,9 @@ func Lex(src string, end int) []fh.Token {
 // x.Sub for src (JSON embedded in another language, as with Chroma's using).
 func LexInto(x *lexkit.Tokens, src string, end int) {
 	stack := []state{root}
+	// nl remembers a failed search for the newline that ends a // comment, so that many // on the last line are
+	// not each searched to the end.
+	nl := &lexkit.Finder{}
 	for i := 0; i < end && len(stack) > 0; {
 		st := stack[len(stack)-1]
 		n, t := 0, fh.TokenType(0)
@@ -39,21 +42,21 @@ func LexInto(x *lexkit.Tokens, src string, end int) {
 		c := src[i]
 		switch st {
 		case root:
-			n, t, push = value(src, i)
+			n, t, push = value(src, i, nl)
 		case objectValue:
 			// whitespace, comment, key string, }
 			switch {
 			case lexkit.Span(src, i, lexkit.IsSpace) > 0:
 				n, t = lexkit.Span(src, i, lexkit.IsSpace), fh.Text
-			case commentLen(src, i) > 0:
-				n, t = commentLen(src, i), fh.CommentSingle
+			case commentLen(src, i, nl) > 0:
+				n, t = commentLen(src, i, nl), fh.CommentSingle
 			case c == '"' && stringLen(src, i) > 0:
 				n, t, push = stringLen(src, i), fh.NameTag, objectAttribute
 			case c == '}':
 				n, t, pop = 1, fh.Punctuation, 1
 			}
 		case objectAttribute:
-			if n, t, push = value(src, i); n == 0 {
+			if n, t, push = value(src, i, nl); n == 0 {
 				switch c {
 				case ':':
 					n, t = 1, fh.Punctuation
@@ -64,7 +67,7 @@ func LexInto(x *lexkit.Tokens, src string, end int) {
 				}
 			}
 		case arrayValue:
-			if n, t, push = value(src, i); n == 0 {
+			if n, t, push = value(src, i, nl); n == 0 {
 				switch c {
 				case ',':
 					n, t = 1, fh.Punctuation
@@ -96,7 +99,7 @@ func LexInto(x *lexkit.Tokens, src string, end int) {
 
 // value tries the rules of the value state in json.xml (whitespace, simplevalue, comment, {, [) in
 // this order. If none matches, n is 0. push is the state to enter (-1 if none).
-func value(src string, i int) (n int, t fh.TokenType, push state) {
+func value(src string, i int, nl *lexkit.Finder) (n int, t fh.TokenType, push state) {
 	push = -1
 	if n = lexkit.Span(src, i, lexkit.IsSpace); n > 0 {
 		return n, fh.Text, push
@@ -104,7 +107,7 @@ func value(src string, i int) (n int, t fh.TokenType, push state) {
 	if n, t = simpleValue(src, i); n > 0 {
 		return n, t, push
 	}
-	if n = commentLen(src, i); n > 0 {
+	if n = commentLen(src, i, nl); n > 0 {
 		return n, fh.CommentSingle, push
 	}
 	switch src[i] {
@@ -180,11 +183,11 @@ func expLen(src string, i int) int {
 }
 
 // commentLen returns the length matching //.*?\n (dot_all). It returns 0 if there is no newline.
-func commentLen(src string, i int) int {
+func commentLen(src string, i int, nl *lexkit.Finder) int {
 	if !strings.HasPrefix(src[i:], "//") {
 		return 0
 	}
-	if k := strings.IndexByte(src[i+2:], '\n'); k >= 0 {
+	if k := nl.Index(src, i+2, "\n"); k >= 0 {
 		return 2 + k + 1
 	}
 	return 0
