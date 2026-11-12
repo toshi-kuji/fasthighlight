@@ -2,6 +2,8 @@ module github.com/toshi-kuji/fasthighlight/bench
 
 go 1.25
 
+toolchain go1.27.4
+
 require (
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/odvcencio/gotreesitter v0.56.0

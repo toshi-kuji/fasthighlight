@@ -367,21 +367,22 @@ func (c *FoldWordCache) Word(src string, i int) (int, uint32) {
 	}
 	c.pos, c.key, c.mask = i+1, c.key[:0], 0
 	c.n = c.run.Span(src, i, IsWord)
-	// Only a run of at most longest characters can be a word; build its lowercased key.
-	ascii := true
+	// Only a run of at most longest characters can be a word, and the words are ASCII: build the lowercased
+	// key, and stop at the first character that does not fold to ASCII (then the run is no word). Stopping
+	// early matters for long runs of non-ASCII letters, where folding each character is slow.
 	for j, chars := i, 0; j < i+c.n; chars++ {
 		if chars == c.Lists.longest {
 			return c.n, 0
 		}
 		r, w := Rune(src, j)
-		if f := FoldASCII(r); f < utf8.RuneSelf {
-			c.key = append(c.key, byte(f))
-		} else {
-			ascii = false
+		f := FoldASCII(r)
+		if f >= utf8.RuneSelf {
+			return c.n, 0
 		}
+		c.key = append(c.key, byte(f))
 		j += w
 	}
-	if c.n > 0 && ascii {
+	if c.n > 0 {
 		c.mask = c.Lists.words[string(c.key)]
 	}
 	return c.n, c.mask
