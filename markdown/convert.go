@@ -3,6 +3,8 @@ package markdown
 import (
 	"io"
 
+	"github.com/toshi-kuji/fasthighlight/internal/mdcore"
+
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
@@ -28,7 +30,7 @@ const (
 
 // ParallelMinBytes is the total size of the contents of the code blocks to be highlighted above which
 // ParallelAuto goes parallel (it must be exceeded).
-const ParallelMinBytes = 32 * 1024
+const ParallelMinBytes = mdcore.MinBytes
 
 // Converter turns Markdown (GFM) into HTML. It is goldmark with Extension added. To use your own goldmark
 // configuration, use Extension instead of Converter. Parallelism decides whether code blocks are

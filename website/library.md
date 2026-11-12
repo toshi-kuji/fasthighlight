@@ -4,6 +4,7 @@ This page covers the basics. The full API is on pkg.go.dev:
 
 - [fasthighlight](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight): highlighting code
 - [fasthighlight/markdown](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight/markdown): Markdown with goldmark
+- [fasthighlight/markdown/v2](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight/markdown/v2): Markdown with goldmark v2
 
 ## Install
 
@@ -11,12 +12,13 @@ This page covers the basics. The full API is on pkg.go.dev:
 go get github.com/toshi-kuji/fasthighlight
 ```
 
-It needs Go 1.24 or later. The module has two kinds of packages. One `go get` covers both.
+It needs Go 1.25 or later. The module has two kinds of packages. One `go get` covers both.
 
 | Package | What it does | Depends on |
 | --- | --- | --- |
 | `github.com/toshi-kuji/fasthighlight` | highlights code | the standard library only |
-| `github.com/toshi-kuji/fasthighlight/markdown` | turns Markdown into HTML with highlighted code blocks | [goldmark](https://github.com/yuin/goldmark) |
+| `github.com/toshi-kuji/fasthighlight/markdown` | turns Markdown into HTML with highlighted code blocks | [goldmark](https://github.com/yuin/goldmark) v1 |
+| `github.com/toshi-kuji/fasthighlight/markdown/v2` | the same, for goldmark v2 | goldmark v2 |
 
 Import `markdown` to convert Markdown. To color code only, import `fasthighlight` alone; then goldmark is not compiled into your program.
 
@@ -49,6 +51,28 @@ err := md.Convert(src, w)
 ```
 
 A `goldmark.Markdown` with the extension can be used from several goroutines at the same time.
+
+## goldmark v2
+
+goldmark v2 (`github.com/yuin/goldmark/v2`) changed the extension API, so it has its own package, [`fasthighlight/markdown/v2`](https://pkg.go.dev/github.com/toshi-kuji/fasthighlight/markdown/v2). It has the same API as `markdown`, with goldmark v2's types (`*ast.CodeBlock` in place of `*ast.FencedCodeBlock`), and writes the same HTML for the same Markdown. Import only the one for your goldmark: the other goldmark is then neither downloaded nor compiled into your program.
+
+goldmark v2 has separate parser and renderer extensions. `Extension` is both, so pass the same value to both:
+
+```go
+import (
+	"github.com/toshi-kuji/fasthighlight/markdown/v2"
+	"github.com/yuin/goldmark/v2/extension"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer/html"
+)
+
+ext := &markdown.Extension{}
+p := parser.New(parser.WithExtensions(extension.NewGFMParser(), ext))
+r := html.New(html.WithExtensions(extension.NewGFMHTMLRenderer(), ext))
+err := r.Render(w, src, p.Parse(src))
+```
+
+`markdown.NewConverter().Convert(src, w)` works as with goldmark v1. Indented code blocks are left to goldmark's own renderer, as with v1. The `fhl` command still uses goldmark v1.
 
 ## Highlight one piece of code
 

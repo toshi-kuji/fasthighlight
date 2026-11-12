@@ -1,6 +1,6 @@
 module github.com/toshi-kuji/fasthighlight
 
-go 1.24
+go 1.25
 
 toolchain go1.25.0
 
@@ -8,3 +8,5 @@ toolchain go1.25.0
 retract v0.6.1
 
 require github.com/yuin/goldmark v1.8.7
+
+require github.com/yuin/goldmark/v2 v2.1.16

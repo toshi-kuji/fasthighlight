@@ -58,6 +58,8 @@ jobs:
         run: |
           go test -run='^$' -fuzz=FuzzTokenise -fuzztime=150000x .
           go test -run='^$' -fuzz=FuzzConvert -fuzztime=80000x ./markdown
+          go test -run='^$' -fuzz=FuzzConvert -fuzztime=40000x ./markdown/v2
+          go test -run='^$' -fuzz=FuzzSameAsV1 -fuzztime=10000x ./internal/mdparity
           (cd compat && go test -run='^$' -fuzz=FuzzHTMLMatchesChroma -fuzztime=50000x .)
           (cd compat && go test -run='^$' -fuzz=FuzzTokensMatchChroma -fuzztime=60000x .)
       - name: fhl distribution archives (only check that they can be built)

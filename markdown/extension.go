@@ -2,11 +2,9 @@ package markdown
 
 import (
 	"bytes"
-	"runtime"
-	"sync"
-	"sync/atomic"
 
 	fh "github.com/toshi-kuji/fasthighlight"
+	"github.com/toshi-kuji/fasthighlight/internal/mdcore"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/parser"
@@ -66,68 +64,9 @@ func (t *parallelTransformer) Transform(doc *ast.Document, reader text.Reader, _
 // (nil for blocks of languages that are not registered, which are light and are written in place). It
 // returns nil when it does not go parallel.
 func highlightAll(p Parallelism, blocks []*ast.FencedCodeBlock, src []byte) [][]byte {
-	if p == ParallelNever || len(blocks) < 2 {
-		return nil
-	}
-	codes := make([]string, len(blocks))
-	names := make([]string, len(blocks))
-	langs := make([]*fh.Language, len(blocks))
-	colored, need, size := 0, 3, 0
-	for k, b := range blocks {
-		codes[k] = blockCode(b, src)
-		names[k] = LanguageName(b, src)
-		if langs[k] = fh.LookupRegistered(names[k]); langs[k] != nil {
-			colored++
-			need = max(need, needBlocks(langs[k]))
-			size += len(codes[k])
-		}
-	}
-	if !parallel(p, colored, need, size) {
-		return nil
-	}
-	// The blocks to highlight are shared among as many goroutines as there are CPUs (including the calling
-	// goroutine).
-	outs := make([][]byte, len(blocks))
-	var next atomic.Int32
-	work := func() {
-		for {
-			k := int(next.Add(1)) - 1
-			if k >= len(blocks) {
-				return
-			}
-			if langs[k] == nil {
-				continue
-			}
-			var buf bytes.Buffer
-			buf.Grow(len(codes[k]) * 4)
-			_ = fh.Highlight(&buf, names[k], codes[k]) // writing to a bytes.Buffer does not fail
-			outs[k] = buf.Bytes()
-		}
-	}
-	var wg sync.WaitGroup
-	for range min(runtime.GOMAXPROCS(0), colored) - 1 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			work()
-		}()
-	}
-	work()
-	wg.Wait()
-	return outs
-}
-
-// parallel returns true if highlighting should be parallel, when there are n code blocks to highlight, the
-// number of blocks needed to go parallel is need (the largest the languages' ParallelHint calls for), and their
-// contents total size bytes.
-func parallel(p Parallelism, n, need, size int) bool {
-	switch p {
-	case ParallelAlways:
-		return true
-	case ParallelNever:
-		return false
-	}
-	return size > ParallelMinBytes && n >= need
+	return mdcore.HighlightAll(mdcore.Mode(p), len(blocks),
+		func(k int) string { return blockCode(blocks[k], src) },
+		func(k int) string { return LanguageName(blocks[k], src) })
 }
 
 // codeRenderer writes code blocks. It writes the HTML highlighted in advance if there is any, and
@@ -170,15 +109,6 @@ func blockCode(b *ast.FencedCodeBlock, src []byte) string {
 	return code.String()
 }
 
-// needBlocks returns the number of code blocks needed to highlight language l in parallel with
-// ParallelAuto: 3 if its ParallelHint is HintHeavy, 4 otherwise (HintLight or HintDefault).
-func needBlocks(l *fh.Language) int {
-	if l.ParallelHint == fh.HintHeavy {
-		return 3
-	}
-	return 4
-}
-
 // LanguageName returns the language name of a fenced code block, as the extension reads it: the first word of
 // its info string, up to a space or tab, with backslash escapes and entity references resolved as CommonMark does (goldmark's
 // FencedCodeBlock.Language splits only at a space and leaves both as they are).
@@ -202,7 +132,7 @@ func LanguageName(b *ast.FencedCodeBlock, src []byte) string {
 			i += 2
 			continue
 		case c == '&':
-			if j := bytes.IndexByte(info[i:], ';'); j > 0 {
+			if j := bytes.IndexByte(info[i:], ';'); j > 0 && isRefName(info[i+1:i+j]) {
 				ref := info[i : i+j+1]
 				r := util.ResolveEntityNames(util.ResolveNumericReferences(ref))
 				if !bytes.Equal(r, ref) {
@@ -216,4 +146,16 @@ func LanguageName(b *ast.FencedCodeBlock, src []byte) string {
 		i++
 	}
 	return string(out)
+}
+
+// isRefName reports whether b can be the inside of an entity or numeric reference (between & and ;). Only such a
+// reference is resolved; without this check, "&\+&#43;" would be read as one reference up to the ; and the \+
+// in it would be left as is.
+func isRefName(b []byte) bool {
+	for _, c := range b {
+		if !('a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' || '0' <= c && c <= '9' || c == '#') {
+			return false
+		}
+	}
+	return true
 }
