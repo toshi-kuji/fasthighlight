@@ -1,10 +1,7 @@
 package markdown
 
 import (
-	"bytes"
-	"strings"
-
-	fh "github.com/toshi-kuji/fasthighlight"
+	"github.com/toshi-kuji/fasthighlight/internal/mdcore"
 	"github.com/yuin/goldmark/ast"
 )
 
@@ -55,29 +52,12 @@ func (c *Converter) CodeBlocks(d *Document) []HighlightedBlock {
 			html = pre[k]
 		}
 		if html == nil {
-			var buf bytes.Buffer
-			_ = fh.Highlight(&buf, name, blockCode(b, d.src)) // writing to a bytes.Buffer does not fail
-			html = buf.Bytes()
+			html = mdcore.Highlight(name, blockCode(b, d.src))
 		}
-		h := string(html)
-		// The HTML is <pre …><code …>, the code, then </code></pre>; the code itself has no <code.
-		i := strings.Index(h, "<code")
-		i += strings.IndexByte(h[i:], '>') + 1
-		j := len(h) - len("</code></pre>")
-		hb := HighlightedBlock{Node: b, Document: d.Name, Line: fenceLine(d.src, b), Lang: name,
-			Open: h[:i], Code: h[i:j], Close: h[j:], Colored: true}
-		switch {
-		case name == "":
-			hb.Colored, hb.Reason = false, "no-language"
-		case fh.LookupRegistered(name) != nil:
-		case fh.IsPlainText(name):
-			hb.Colored, hb.Reason = false, "plain"
-		case fh.LookupSupported(name) != nil:
-			hb.Colored, hb.Reason = false, "not-built-in"
-		default:
-			hb.Colored, hb.Reason = false, "unsupported"
-		}
-		out = append(out, hb)
+		open, code, close := mdcore.Split(string(html))
+		reason, _, _ := mdcore.Reason(name)
+		out = append(out, HighlightedBlock{Node: b, Document: d.Name, Line: fenceLine(d.src, b), Lang: name,
+			Open: open, Code: code, Close: close, Colored: reason == "", Reason: reason})
 	}
 	return out
 }

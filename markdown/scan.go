@@ -4,6 +4,7 @@ import (
 	"bytes"
 
 	fh "github.com/toshi-kuji/fasthighlight"
+	"github.com/toshi-kuji/fasthighlight/internal/mdcore"
 	"github.com/yuin/goldmark/ast"
 )
 
@@ -51,20 +52,18 @@ func Scan(docs ...*Document) *ScanResult {
 		for _, b := range d.blocks {
 			name := LanguageName(b, d.src)
 			cb := CodeBlock{Document: d.Name, Line: fenceLine(d.src, b), Lang: name}
-			switch l := fh.LookupRegistered(name); {
-			case name == "":
-				r.NoLanguage = append(r.NoLanguage, cb)
-			case l != nil:
+			switch reason, pkg, l := mdcore.Reason(name); reason {
+			case "":
 				used[l] = true
-			case fh.IsPlainText(name):
+			case "no-language":
+				r.NoLanguage = append(r.NoLanguage, cb)
+			case "plain":
 				// Plain text on purpose (text and the like): not highlighted, and not reported.
+			case "not-built-in":
+				cb.Package = pkg
+				r.NotBuiltIn = append(r.NotBuiltIn, cb)
 			default:
-				if c := fh.LookupSupported(name); c != nil {
-					cb.Package = c.Package
-					r.NotBuiltIn = append(r.NotBuiltIn, cb)
-				} else {
-					r.Unsupported = append(r.Unsupported, cb)
-				}
+				r.Unsupported = append(r.Unsupported, cb)
 			}
 		}
 	}
