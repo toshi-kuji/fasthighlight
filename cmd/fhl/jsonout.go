@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"math"
+	"slices"
 	"strconv"
 	"unicode/utf8"
 )
@@ -31,17 +32,25 @@ type jsonObject []jsonField
 // encodeJSON writes v to w followed by a newline, as Encoder.Encode does: indented with two spaces if indent is
 // true, otherwise compact (one line).
 func encodeJSON(w io.Writer, v jsonValue, indent bool) error {
-	e := jsonEncoder{indent: indent}
-	e.value(v)
-	e.b = append(e.b, '\n')
-	_, err := w.Write(e.b)
-	return err
+	var e jsonEncoder
+	return e.encode(w, v, indent)
 }
 
+// jsonEncoder writes JSON values. Its buffer is reused from one encode to the next, so writing many records
+// (one per code block with --code-blocks) does not allocate a new buffer for each.
 type jsonEncoder struct {
 	b      []byte
 	indent bool
 	depth  int
+}
+
+// encode writes v to w followed by a newline, as encodeJSON does.
+func (e *jsonEncoder) encode(w io.Writer, v jsonValue, indent bool) error {
+	e.b, e.indent, e.depth = e.b[:0], indent, 0
+	e.value(v)
+	e.b = append(e.b, '\n')
+	_, err := w.Write(e.b)
+	return err
 }
 
 // newline starts a new line at the current depth, when indenting.
@@ -131,14 +140,18 @@ func (e *jsonEncoder) array(n int, elem func(i int)) {
 // U+2029 are escaped.
 func appendJSONString(b []byte, s string) []byte {
 	const hex = "0123456789abcdef"
+	b = slices.Grow(b, len(s)+2)
 	b = append(b, '"')
 	start := 0
 	for i := 0; i < len(s); {
+		// Most bytes are written as they are: skip them in a tight loop.
+		for i < len(s) && jsonPlain[s[i]] {
+			i++
+		}
+		if i == len(s) {
+			break
+		}
 		if c := s[i]; c < utf8.RuneSelf {
-			if c >= 0x20 && c != '"' && c != '\\' {
-				i++
-				continue
-			}
 			b = append(b, s[start:i]...)
 			switch c {
 			case '"', '\\':
@@ -161,25 +174,30 @@ func appendJSONString(b []byte, s string) []byte {
 			continue
 		}
 		r, size := utf8.DecodeRuneInString(s[i:])
-		if r == utf8.RuneError && size == 1 {
+		switch {
+		case r == utf8.RuneError && size == 1:
 			b = append(b, s[start:i]...)
 			b = append(b, `\ufffd`...)
-			i += size
-			start = i
-			continue
-		}
-		if r == '\u2028' || r == '\u2029' {
+			start = i + size
+		case r == '\u2028' || r == '\u2029':
 			b = append(b, s[start:i]...)
 			b = append(b, '\\', 'u', '2', '0', '2', hex[r&0xf])
-			i += size
-			start = i
-			continue
+			start = i + size
 		}
 		i += size
 	}
 	b = append(b, s[start:]...)
 	return append(b, '"')
 }
+
+// jsonPlain says which bytes appendJSONString writes as they are: ASCII other than control characters, " and
+// \. Bytes of non-ASCII characters are checked one character at a time.
+var jsonPlain = func() (t [256]bool) {
+	for c := 0x20; c < utf8.RuneSelf; c++ {
+		t[c] = c != '"' && c != '\\'
+	}
+	return t
+}()
 
 // appendJSONFloat appends f as encoding/json writes a float64: the shortest form, with an exponent only for
 // very small or very large values (and a two-digit exponent written without a leading zero).
@@ -245,13 +263,31 @@ func (r *report) json() jsonObject {
 	return append(o, jsonField{"errors", objects(r.Errors)}, jsonField{"summary", r.Summary.json()})
 }
 
-func (b codeBlock) json() jsonObject {
-	o := jsonObject{{"file", b.File}, {"line", b.Line}, {"lang", b.Lang}, {"open", b.Open}, {"code", b.Code},
-		{"close", b.Close}, {"colored", b.Colored}}
+// encodeCodeBlock writes one line of --code-blocks: b as a compact JSON object followed by a newline, the same
+// bytes as encode(w, b.json(), false). It writes the members directly, without building a jsonObject, since
+// --code-blocks writes one record per code block.
+func (e *jsonEncoder) encodeCodeBlock(w io.Writer, b codeBlock) error {
+	e.b = append(e.b[:0], `{"file":`...)
+	e.b = appendJSONString(e.b, b.File)
+	e.b = append(e.b, `,"line":`...)
+	e.b = strconv.AppendInt(e.b, int64(b.Line), 10)
+	e.b = append(e.b, `,"lang":`...)
+	e.b = appendJSONString(e.b, b.Lang)
+	e.b = append(e.b, `,"open":`...)
+	e.b = appendJSONString(e.b, b.Open)
+	e.b = append(e.b, `,"code":`...)
+	e.b = appendJSONString(e.b, b.Code)
+	e.b = append(e.b, `,"close":`...)
+	e.b = appendJSONString(e.b, b.Close)
+	e.b = append(e.b, `,"colored":`...)
+	e.b = strconv.AppendBool(e.b, b.Colored)
 	if b.Reason != "" {
-		o = append(o, jsonField{"reason", b.Reason})
+		e.b = append(e.b, `,"reason":`...)
+		e.b = appendJSONString(e.b, b.Reason)
 	}
-	return o
+	e.b = append(e.b, "}\n"...)
+	_, err := w.Write(e.b)
+	return err
 }
 
 func (l langEntry) json() jsonObject {

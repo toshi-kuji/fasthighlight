@@ -35,6 +35,7 @@ func runCodeBlocks(o *options, e env) int {
 		return 1
 	}
 	out := bufio.NewWriter(e.stdout)
+	var enc jsonEncoder
 	failed := false
 	files, blocks, uncolored := 0, 0, 0
 	conv := markdown.NewConverter()
@@ -63,7 +64,7 @@ func runCodeBlocks(o *options, e env) int {
 				if !b.Colored && b.Reason != "plain" {
 					uncolored++
 				}
-				if err := encodeJSON(out, b.json(), false); err != nil {
+				if err := enc.encodeCodeBlock(out, b); err != nil {
 					fmt.Fprintf(e.stderr, "fhl: cannot write the output: %v\n", err)
 					return 1
 				}
