@@ -1,8 +1,8 @@
 package fasthighlight_test
 
 import (
+	"fmt"
 	"os"
-	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -177,13 +177,14 @@ var rescanCases = []struct{ lang, unit string }{
 
 // TestFindSlowInputs looks for inputs that make a tokenizer take more than linear time, in every language: each
 // one- and two-character combination of a small alphabet, repeated. Those that take at least 5 ms at 64 KB are
-// measured again at 256 KB and 1 MB (best of two), and listed when the time grows more than 8 times for the 4
-// times larger input (about 4 when linear, 16 when quadratic). It takes several minutes, so it runs only when
+// measured again at 256 KB and 1 MB, and printed at once when the time grows more than 8 times for the 4 times
+// larger input (about 4 when linear, 16 when quadratic). It takes several minutes, so it runs only when
 // FASTHIGHLIGHT_SCAN is set:
 //
-//	FASTHIGHLIGHT_SCAN=1 go test -run TestFindSlowInputs -v -timeout 30m .
+//	FASTHIGHLIGHT_SCAN=1 go test -run TestFindSlowInputs -v -timeout 60m .
 //
-// Confirm a hit at larger sizes before treating it as quadratic, then add it to rescanCases.
+// A hit is a candidate: confirm it at larger sizes before treating it as quadratic (a single measurement can be
+// noisy), then add it to rescanCases.
 func TestFindSlowInputs(t *testing.T) {
 	if os.Getenv("FASTHIGHLIGHT_SCAN") == "" {
 		t.Skip("set FASTHIGHLIGHT_SCAN=1 to run it (several minutes)")
@@ -198,38 +199,28 @@ func TestFindSlowInputs(t *testing.T) {
 			}
 		}
 	}
-	best := func(l *fasthighlight.Language, src string) time.Duration {
-		d := time.Duration(1<<63 - 1)
-		for range 2 {
-			start := time.Now()
-			l.Tokenise(src)
-			d = min(d, time.Since(start))
-		}
-		return d
+	timed := func(l *fasthighlight.Language, u string, size int) time.Duration {
+		src := strings.Repeat(u, size/len(u))
+		start := time.Now()
+		l.Tokenise(src)
+		return time.Since(start)
 	}
-	type hit struct {
-		lang, unit   string
-		small, large time.Duration
-	}
-	var hits []hit
+	hits := 0
 	for _, l := range fasthighlight.Languages() {
+		start, checked := time.Now(), 0
 		for _, u := range units {
-			start := time.Now()
-			l.Tokenise(strings.Repeat(u, (64<<10)/len(u)))
-			if time.Since(start) < 5*time.Millisecond {
+			if timed(l, u, 64<<10) < 5*time.Millisecond {
 				continue
 			}
-			ds := best(l, strings.Repeat(u, (256<<10)/len(u)))
-			dl := best(l, strings.Repeat(u, (1<<20)/len(u)))
+			checked++
+			ds, dl := timed(l, u, 256<<10), timed(l, u, 1<<20)
 			if float64(dl) > 8*float64(ds) {
-				hits = append(hits, hit{l.Name, u, ds, dl})
+				hits++
+				fmt.Fprintf(os.Stderr, "HIT %-12s %-8q 256 KB %-10v 1 MB %-10v (%.1f times)\n", l.Name, u,
+					ds.Round(time.Millisecond), dl.Round(time.Millisecond), float64(dl)/float64(ds))
 			}
 		}
+		fmt.Fprintf(os.Stderr, "done %-12s %4d measured again, %v\n", l.Name, checked, time.Since(start).Round(time.Second))
 	}
-	sort.Slice(hits, func(i, j int) bool { return hits[i].large > hits[j].large })
-	for _, h := range hits {
-		t.Logf("%-12s %-8q 256 KB %-10v 1 MB %-10v (%.1f times)", h.lang, h.unit, h.small.Round(time.Millisecond),
-			h.large.Round(time.Millisecond), float64(h.large)/float64(h.small))
-	}
-	t.Logf("%d inputs grew more than 8 times for 4 times the size", len(hits))
+	t.Logf("%d inputs grew more than 8 times for 4 times the size", hits)
 }
