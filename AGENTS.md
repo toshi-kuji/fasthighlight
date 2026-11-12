@@ -31,7 +31,8 @@ go build -o /dev/null -tags 'grammar_subset grammar_subset_typescript grammar_su
 (cd compat && go test -run='^$' -bench=BenchmarkTokenise .)
 
 # Distribution archives of fhl (.github/workflows/release.yml builds them and attaches them to the release, when a tag vX.Y.Z
-# is pushed, or when it is run by hand on main with a version vX.Y.Z, which also makes the tag)
+# is pushed, or when it is run by hand on main with a version vX.Y.Z, which also makes the tag; run by hand, it also takes
+# notes in Markdown, which go above the generated list of changes on the release page)
 scripts/release.sh dev /tmp/dist
 
 # The documentation site (converts the Markdown in website/ with fhl --static-site; the output defaults to _site/)

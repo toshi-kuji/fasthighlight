@@ -6,6 +6,7 @@ name: Release
 #     vX.Y.Z: the release and its tag are made here, on the commit the run started from.
 # A tag made by this workflow (with GITHUB_TOKEN) does not start another run, so a release is not made twice.
 # The archives are built by scripts/release.sh (CI also runs it with the version set to dev to check that it works).
+# When run by hand, notes (Markdown) can be given: they go above the generated list of changes on the release page.
 # At the end it starts the Pages workflow on main, which rebuilds the site and the demo with the new version.
 # (A release made with GITHUB_TOKEN starts no other workflow by itself; workflow_dispatch is the exception.)
 on:
@@ -18,6 +19,11 @@ on:
         description: 'Version to release, vX.Y.Z (the tag is made on main)'
         required: true
         type: string
+      notes:
+        description: 'Notes (Markdown) put above the generated list of changes; may be empty'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -29,6 +35,8 @@ jobs:
     env:
       # The version comes from the input or the tag; it is passed through the environment, never pasted into a script.
       VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+      # The notes, like the version, are passed through the environment, never pasted into a script.
+      NOTES: ${{ github.event_name == 'workflow_dispatch' && inputs.notes || '' }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v5
@@ -55,9 +63,14 @@ jobs:
         run: scripts/release.sh "$VERSION" dist
       - name: Attach to the release page
         run: |
+          # gh puts the notes given with --notes above the generated list of changes.
+          notes=()
+          if [ -n "$NOTES" ]; then
+            notes=(--notes "$NOTES")
+          fi
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             # Makes the tag on the commit this run checked out.
-            gh release create "$VERSION" dist/* --title "$VERSION" --generate-notes --target "$GITHUB_SHA"
+            gh release create "$VERSION" dist/* --title "$VERSION" --generate-notes "${notes[@]}" --target "$GITHUB_SHA"
           else
             gh release create "$VERSION" dist/* --title "$VERSION" --generate-notes --verify-tag
           fi
