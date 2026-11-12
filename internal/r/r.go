@@ -43,6 +43,12 @@ type lexer struct {
 	src   string
 	stack []state
 	words lexkit.WordCache
+	// tickFail is where the last failed backtick scan stopped (0 if none): a backtick before it was read by
+	// that scan as an escaped character, so a scan from it would follow the same path and fail too.
+	tickFail int
+	// quoteMiss does the same for quoted, for ' and " (quoteMiss[0] and [1]): the start and the stop of the last
+	// failed scan.
+	quoteMiss [2]struct{ from, upto int }
 }
 
 // Lex splits src into tokens (with the same contract as the Lex of fasthighlight.Language). compat/ uses it
@@ -81,7 +87,7 @@ func isNameChar(r rune) bool { return r == '.' || lexkit.IsWord(r) }
 // backtick returns the length of `[^`\\]*(?:\\.[^`\\]*)*` (0 if it does not match).
 func (l *lexer) backtick(i int) int {
 	src := l.src
-	if l.at(i) != '`' {
+	if l.at(i) != '`' || i < l.tickFail {
 		return 0
 	}
 	for j := i + 1; j < len(src); {
@@ -90,6 +96,7 @@ func (l *lexer) backtick(i int) int {
 			return j + 1 - i
 		case '\\':
 			if j+1 >= len(src) || src[j+1] == '\n' {
+				l.tickFail = j
 				return 0
 			}
 			_, n := lexkit.Rune(src, j+1)
@@ -98,6 +105,7 @@ func (l *lexer) backtick(i int) int {
 		}
 		j++
 	}
+	l.tickFail = len(src)
 	return 0
 }
 
@@ -127,7 +135,15 @@ func (l *lexer) names(i int, f func(e int) bool) int {
 // quoted returns the length of ([^q\\]|\\.)*q (0 if it does not match).
 func (l *lexer) quoted(i int, q byte) int {
 	src := l.src
-	if strings.IndexByte(src[i:], q) < 0 {
+	miss := &l.quoteMiss[0]
+	if q == '"' {
+		miss = &l.quoteMiss[1]
+	}
+	// A failed scan from miss.from read every position before miss.upto either as a character of its own or as
+	// the character after a backslash. A start that the scan read as a character of its own (the start itself,
+	// or one not right after a backslash) would follow the same path and fail too. A start right after a
+	// backslash may have been escaped in that scan, so it is scanned again.
+	if miss.upto > 0 && miss.from <= i && i < miss.upto && (i == miss.from || src[i-1] != '\\') {
 		return 0
 	}
 	for j := i; j < len(src); {
@@ -136,6 +152,7 @@ func (l *lexer) quoted(i int, q byte) int {
 			return j + 1 - i
 		case '\\':
 			if j+1 >= len(src) || src[j+1] == '\n' {
+				miss.from, miss.upto = i, j
 				return 0
 			}
 			_, n := lexkit.Rune(src, j+1)
@@ -144,6 +161,7 @@ func (l *lexer) quoted(i int, q byte) int {
 		}
 		j++
 	}
+	miss.from, miss.upto = i, len(src)
 	return 0
 }
 

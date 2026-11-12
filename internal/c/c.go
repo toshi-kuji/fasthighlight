@@ -86,6 +86,8 @@ type lexer struct {
 	wmask      uint16
 	// semiFrom and semiAt cache the position of the first ; at or after position semiFrom (len(src) if there is none).
 	semiFrom, semiAt int
+	// commentEnd remembers a failed search for */ in leading.
+	commentEnd lexkit.Finder
 	// sp, wordRun and funcRun remember the last run of whitespace, of word characters and of [\w*\s]:
 	// without them, a long run that is not taken as one token would be scanned again from each of its positions.
 	sp, wordRun, funcRun lexkit.SpanCache
@@ -217,9 +219,15 @@ func (l *lexer) leading(i int, f func(q int) bool) bool {
 	src := l.src
 	p := i + l.spaces(i)
 	if strings.HasPrefix(src[p:], "/*") {
+		// .*? does not cross a newline, so a */ after the first newline cannot end the comment. Finding that
+		// newline once keeps a line with many */ from being searched again for each of them.
+		nl := len(src)
+		if k := strings.IndexByte(src[p+2:], '\n'); k >= 0 {
+			nl = p + 2 + k
+		}
 		for m := p + 2; ; {
-			k := strings.Index(src[m:], "*/")
-			if k < 0 || strings.IndexByte(src[p+2:m+k], '\n') >= 0 {
+			k := l.commentEnd.Index(src, m, "*/")
+			if k < 0 || m+k > nl {
 				break
 			}
 			ce := m + k + 2

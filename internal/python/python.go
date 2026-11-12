@@ -121,6 +121,9 @@ type lexer struct {
 	wmask      uint16
 	// The state for type hints (types.go; unused with Options.ChromaTypes).
 	types typeState
+	// space is the last run of whitespace that docstring measured: it is tried at the start of every line,
+	// and \s spans lines, so lines of only whitespace would otherwise be measured again from each line.
+	space lexkit.SpanCache
 }
 
 // Lex splits src into tokens (the same contract as Lex of fasthighlight.Language). compat/ uses it
@@ -316,7 +319,7 @@ func (l *lexer) root(i int) (int, bool) {
 // docstring tries the docstring rule from i, the start of a line.
 func (l *lexer) docstring(i int) (int, bool) {
 	src := l.src
-	j := i + lexkit.Span(src, i, lexkit.IsSpace)
+	j := i + l.space.Span(src, i, lexkit.IsSpace)
 	a := j // end of the prefix
 	if l.opt.ChromaDocstring {
 		// one character of [rRuUbB], and the literal characters "{,2}"

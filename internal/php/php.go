@@ -79,6 +79,10 @@ type lexer struct {
 	// typeEnd is the end of the type being read (production only): before it, a name is NameClass.
 	// noTypeEnd is the end of the last scan that found no type, so names before it are not scanned again.
 	typeEnd, noTypeEnd int
+	// quoteFail is, for ' and ` (quoteFail[0] and [1]), where the last failed quoted scan stopped (0 if
+	// none): a quote before it was read by that scan as an escaped character, so a scan from it would follow
+	// the same path and fail too.
+	quoteFail [2]int
 }
 
 // dollars returns the end of the run of "$" at i, remembering it so that a long run is scanned once.
@@ -224,12 +228,20 @@ func (l *lexer) step(st state, i int) (int, bool) {
 // quoted returns the length of q([^q\\]*(?:\\.[^q\\]*)*)q (0 if it does not match). src[i] is q.
 func (l *lexer) quoted(i int, q byte) int {
 	src := l.src
+	fail := &l.quoteFail[0]
+	if q == '`' {
+		fail = &l.quoteFail[1]
+	}
+	if i < *fail {
+		return 0
+	}
 	for j := i + 1; j < len(src); {
 		switch src[j] {
 		case q:
 			return j + 1 - i
 		case '\\':
 			if j+1 >= len(src) {
+				*fail = len(src)
 				return 0
 			}
 			_, n := lexkit.Rune(src, j+1)
@@ -238,6 +250,7 @@ func (l *lexer) quoted(i int, q byte) int {
 		}
 		j++
 	}
+	*fail = len(src)
 	return 0
 }
 
