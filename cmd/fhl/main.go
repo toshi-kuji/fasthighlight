@@ -4,7 +4,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -64,6 +63,21 @@ type report struct {
 	Copied    *[]string     `json:"copied,omitempty"` // files copied by --static-site; only with --static-site
 	Errors    []errorResult `json:"errors"`
 	Summary   summary       `json:"summary"`
+}
+
+// langEntry is one entry of fhl --list-langs --json.
+type langEntry struct {
+	Name      string   `json:"name"`
+	Aliases   []string `json:"aliases"`
+	Filenames []string `json:"filenames"`
+}
+
+// themeEntry is one entry of fhl --list-themes --json.
+type themeEntry struct {
+	Name  string `json:"name"`
+	Label string `json:"label"`
+	Light string `json:"light"`
+	Dark  string `json:"dark"`
 }
 
 type summary struct {
@@ -313,7 +327,7 @@ func run(args []string, e env) int {
 	r.Summary.Seconds = float64(time.Since(start).Round(time.Millisecond)) / float64(time.Second)
 	jsonFailed := false
 	if o.json {
-		if err := writeJSON(e.stdout, r); err != nil {
+		if err := encodeJSON(e.stdout, r.json(), true); err != nil {
 			fmt.Fprintf(e.stderr, "fhl: cannot write the --json result: %v\n", err)
 			jsonFailed = true
 		}
@@ -402,17 +416,12 @@ func versionString() string {
 
 // listLangs writes the list of supported languages.
 func listLangs(w io.Writer, asJSON bool) error {
-	type lang struct {
-		Name      string   `json:"name"`
-		Aliases   []string `json:"aliases"`
-		Filenames []string `json:"filenames"`
-	}
-	var langs []lang
+	var langs []langEntry
 	for _, l := range fh.Languages() {
-		langs = append(langs, lang{l.Name, append([]string{}, l.Aliases...), append([]string{}, l.Filenames...)})
+		langs = append(langs, langEntry{l.Name, append([]string{}, l.Aliases...), append([]string{}, l.Filenames...)})
 	}
 	if asJSON {
-		return writeJSON(w, langs)
+		return encodeJSON(w, objects(langs), true)
 	}
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "NAME\tALIASES\tFILES")
@@ -535,18 +544,12 @@ func themeError(v string) string {
 
 // listThemes writes the list of available color themes.
 func listThemes(w io.Writer, asJSON bool) error {
-	type entry struct {
-		Name  string `json:"name"`
-		Label string `json:"label"`
-		Light string `json:"light"`
-		Dark  string `json:"dark"`
-	}
-	var list []entry
+	var list []themeEntry
 	for _, t := range themes {
-		list = append(list, entry{t.name, t.label, t.lightSource, t.darkSource})
+		list = append(list, themeEntry{t.name, t.label, t.lightSource, t.darkSource})
 	}
 	if asJSON {
-		return writeJSON(w, list)
+		return encodeJSON(w, objects(list), true)
 	}
 	fmt.Fprintln(w, "Use --theme MODE:THEME, where MODE is light, dark or both (e.g. --theme light:github).")
 	fmt.Fprintln(w)
@@ -607,12 +610,4 @@ func outputStatus(e env, err error) int {
 		return 1
 	}
 	return 0
-}
-
-// writeJSON writes v to w as indented JSON.
-func writeJSON(w io.Writer, v any) error {
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	enc.SetEscapeHTML(false)
-	return enc.Encode(v)
 }

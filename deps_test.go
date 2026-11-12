@@ -51,3 +51,17 @@ func TestOneGoldmarkPerPackage(t *testing.T) {
 		}
 	}
 }
+
+// fhl writes its JSON with its own small encoder (cmd/fhl/jsonout.go): with Go 1.27, encoding/json is built on
+// encoding/json/v2 and would add about 0.6 MB to fhl. Its tests may use encoding/json; fhl itself may not.
+func TestNoEncodingJSONInFhl(t *testing.T) {
+	out, err := exec.Command("go", "list", "-deps", "github.com/toshi-kuji/fasthighlight/cmd/fhl").CombinedOutput()
+	if err != nil {
+		t.Fatalf("go list: %v\n%s", err, out)
+	}
+	for _, p := range strings.Fields(string(out)) {
+		if p == "encoding/json" || strings.HasPrefix(p, "encoding/json/") {
+			t.Errorf("fhl depends on %s; write JSON with encodeJSON (cmd/fhl/jsonout.go) instead", p)
+		}
+	}
+}
