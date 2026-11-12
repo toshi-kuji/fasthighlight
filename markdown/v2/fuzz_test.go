@@ -31,7 +31,7 @@ func FuzzConvert(f *testing.F) {
 	f.Add([]byte("```ts\nconst x = 1\n"))           // an unclosed code block
 	f.Add([]byte("~~~js title=\"a.js\"\nx\n~~~\n")) // info after the language name
 	f.Add([]byte("```\nno lang\n```\n```go\nfunc f() {}\n```\n"))
-	f.Add([]byte(edge))
+	f.Add([]byte(testcases.MarkdownEdge))
 	seq, par := md2.NewConverter(), md2.NewConverter()
 	seq.Parallelism, par.Parallelism = md2.ParallelNever, md2.ParallelAlways
 	f.Fuzz(func(t *testing.T, src []byte) {

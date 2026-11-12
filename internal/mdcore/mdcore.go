@@ -29,8 +29,9 @@ const MinBytes = 32 * 1024
 
 // HighlightAll highlights the code blocks with the given contents and language names in parallel when p says
 // so, and returns the HTML of each block (nil for blocks of languages that are not registered, which are light
-// and are written in place). It returns nil when it does not go parallel. codes and names are called only
-// when needed: code(k) and name(k) give the contents and language name of block k of n.
+// and are written in place). It returns nil when it does not go parallel. code(k) and name(k) give the
+// contents and language name of block k of n; when p is not Never and n is 2 or more, both are called for every
+// block, before deciding whether to go parallel.
 func HighlightAll(p Mode, n int, code, name func(k int) string) [][]byte {
 	if p == Never || n < 2 {
 		return nil
@@ -64,10 +65,7 @@ func HighlightAll(p Mode, n int, code, name func(k int) string) [][]byte {
 			if langs[k] == nil {
 				continue
 			}
-			var buf bytes.Buffer
-			buf.Grow(len(codes[k]) * 4)
-			_ = fh.Highlight(&buf, names[k], codes[k]) // writing to a bytes.Buffer does not fail
-			outs[k] = buf.Bytes()
+			outs[k] = Highlight(names[k], codes[k])
 		}
 	}
 	var wg sync.WaitGroup
@@ -105,22 +103,23 @@ func NeedBlocks(l *fh.Language) int {
 	return 4
 }
 
-// Reason says why a code block with language name name is not highlighted: "" when it is highlighted,
-// otherwise "no-language", "plain", "not-built-in" or "unsupported". For "not-built-in", pkg is the package to
-// import.
-func Reason(name string) (reason, pkg string) {
-	switch {
-	case name == "":
-		return "no-language", ""
-	case fh.LookupRegistered(name) != nil:
-		return "", ""
-	case fh.IsPlainText(name):
-		return "plain", ""
+// Reason says why a code block with language name name is not highlighted: "" when it is highlighted (then
+// l is its language), otherwise "no-language", "plain", "not-built-in" or "unsupported". For "not-built-in",
+// pkg is the package to import.
+func Reason(name string) (reason, pkg string, l *fh.Language) {
+	if name == "" {
+		return "no-language", "", nil
+	}
+	if l := fh.LookupRegistered(name); l != nil {
+		return "", "", l
+	}
+	if fh.IsPlainText(name) {
+		return "plain", "", nil
 	}
 	if c := fh.LookupSupported(name); c != nil {
-		return "not-built-in", c.Package
+		return "not-built-in", c.Package, nil
 	}
-	return "unsupported", ""
+	return "unsupported", "", nil
 }
 
 // Split splits the HTML of a highlighted code block, <pre …><code …>, the code, then </code></pre>, into its
@@ -135,6 +134,7 @@ func Split(h string) (open, code, close string) {
 // Highlight highlights one code block and returns its HTML.
 func Highlight(name, code string) []byte {
 	var buf bytes.Buffer
+	buf.Grow(len(code) * 4)
 	_ = fh.Highlight(&buf, name, code) // writing to a bytes.Buffer does not fail
 	return buf.Bytes()
 }

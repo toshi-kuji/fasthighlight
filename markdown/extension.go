@@ -2,6 +2,8 @@ package markdown
 
 import (
 	"bytes"
+	"strconv"
+	"unicode/utf8"
 
 	fh "github.com/toshi-kuji/fasthighlight"
 	"github.com/toshi-kuji/fasthighlight/internal/mdcore"
@@ -133,9 +135,7 @@ func LanguageName(b *ast.FencedCodeBlock, src []byte) string {
 			continue
 		case c == '&':
 			if j := bytes.IndexByte(info[i:], ';'); j > 0 && isRefName(info[i+1:i+j]) {
-				ref := info[i : i+j+1]
-				r := util.ResolveEntityNames(util.ResolveNumericReferences(ref))
-				if !bytes.Equal(r, ref) {
+				if r, ok := resolveRef(info[i : i+j+1]); ok {
 					out = append(out, r...)
 					i += j + 1
 					continue
@@ -148,12 +148,50 @@ func LanguageName(b *ast.FencedCodeBlock, src []byte) string {
 	return string(out)
 }
 
-// isRefName reports whether b can be the inside of an entity or numeric reference (between & and ;). Only such a
-// reference is resolved; without this check, "&\+&#43;" would be read as one reference up to the ; and the \+
-// in it would be left as is.
+// resolveRef resolves one reference, &…; (whose inside isRefName accepted), as CommonMark does: a numeric
+// reference is the character of that code point (U+FFFD for 0, a surrogate or one above U+10FFFF), and an
+// entity reference is resolved only if the name is an HTML entity. goldmark v1's ResolveNumericReferences is
+// not used for numbers: it reads "&#0000065;" (7 digits) as "5".
+func resolveRef(ref []byte) ([]byte, bool) {
+	inner := ref[1 : len(ref)-1]
+	if inner[0] != '#' {
+		r := util.ResolveEntityNames(ref)
+		return r, !bytes.Equal(r, ref)
+	}
+	base, digits := 10, inner[1:]
+	if digits[0] == 'x' || digits[0] == 'X' {
+		base, digits = 16, digits[1:]
+	}
+	n, err := strconv.ParseUint(string(digits), base, 32)
+	if err != nil {
+		return nil, false
+	}
+	r := rune(n)
+	if r == 0 || !utf8.ValidRune(r) {
+		r = utf8.RuneError
+	}
+	return utf8.AppendRune(nil, r), true
+}
+
+// isRefName reports whether b can be the inside of an entity or numeric reference (between & and ;), as
+// CommonMark defines them: a name of ASCII letters and digits, # and 1 to 7 decimal digits, or #x and 1 to 6
+// hex digits. Only such a reference is resolved; without this check, "&\+&#43;" would be read as one reference
+// up to the ; and the \+ in it would be left as is, and "&#x0000041;" would be resolved.
 func isRefName(b []byte) bool {
-	for _, c := range b {
-		if !('a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' || '0' <= c && c <= '9' || c == '#') {
+	digits, max := b, 0
+	switch {
+	case len(b) > 1 && b[0] == '#' && (b[1] == 'x' || b[1] == 'X'):
+		digits, max = b[2:], 6
+	case len(b) > 0 && b[0] == '#':
+		digits, max = b[1:], 7
+	}
+	if len(digits) == 0 || max > 0 && len(digits) > max {
+		return false
+	}
+	for _, c := range digits {
+		ok := '0' <= c && c <= '9' || max == 6 && ('a' <= c && c <= 'f' || 'A' <= c && c <= 'F') ||
+			max == 0 && ('a' <= c && c <= 'z' || 'A' <= c && c <= 'Z')
+		if !ok {
 			return false
 		}
 	}

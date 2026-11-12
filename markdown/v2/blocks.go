@@ -52,7 +52,7 @@ func (c *Converter) CodeBlocks(d *Document) []HighlightedBlock {
 			html = mdcore.Highlight(name, blockCode(b, d.src))
 		}
 		open, code, close := mdcore.Split(string(html))
-		reason, _ := mdcore.Reason(name)
+		reason, _, _ := mdcore.Reason(name)
 		out = append(out, HighlightedBlock{Node: b, Document: d.Name, Line: fenceLine(d.src, b), Lang: name,
 			Open: open, Code: code, Close: close, Colored: reason == "", Reason: reason})
 	}

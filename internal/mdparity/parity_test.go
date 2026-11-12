@@ -2,13 +2,13 @@ package mdparity_test
 
 import (
 	"bytes"
-	"fmt"
 	"math/rand/v2"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/toshi-kuji/fasthighlight/internal/testcases"
 	_ "github.com/toshi-kuji/fasthighlight/lang/all"
 	md1 "github.com/toshi-kuji/fasthighlight/markdown"
 	md2 "github.com/toshi-kuji/fasthighlight/markdown/v2"
@@ -19,26 +19,9 @@ import (
 	"github.com/yuin/goldmark/v2/parser"
 )
 
-// edge holds code blocks in the places and forms that are easy to get wrong: indented code (left to goldmark),
-// ~~~ fences, nesting, info strings with escapes, references and extra words, and languages that are not
-// highlighted.
-const edge = "# T\n\n" +
-	"    indented <code> & stuff\n\n" +
-	"```go\nfunc f() {}\n```\n\n" +
-	"~~~ python extra words\nprint(\"x\")\n~~~\n\n" +
-	"- item\n\n  ```js\n  let a = 1 < 2;\n  ```\n\n" +
-	"> ```rust\n> fn main() {}\n> ```\n\n" +
-	"```c\\+\\+\nint x;\n```\n\n" +
-	"```c&#43;&#43;\nint y;\n```\n\n" +
-	"```\nno language <b>\n```\n\n" +
-	"```text\nplain\n```\n\n" +
-	"```nosuchlang\nx\n```\n\n" +
-	"```\n```\n\n" +
-	"```go\n```\n"
-
 func corpus(t *testing.T) map[string][]byte {
 	t.Helper()
-	docs := map[string][]byte{"edge": []byte(edge)}
+	docs := map[string][]byte{"edge": []byte(testcases.MarkdownEdge)}
 	for _, f := range []string{"input.md", "multilang.md"} {
 		b, err := os.ReadFile("../../testdata/" + f)
 		if err != nil {
@@ -65,7 +48,7 @@ func TestSameHTMLAsV1(t *testing.T) {
 				t.Fatal(err)
 			}
 			if !bytes.Equal(b1.Bytes(), b2.Bytes()) {
-				t.Errorf("%s, parallelism %d: v2 output differs from v1\n%s", name, p, firstDiff(b1.String(), b2.String()))
+				t.Errorf("%s, parallelism %d: v2 output differs from v1\n%s", name, p, testcases.FirstDiff(b1.String(), b2.String()))
 			}
 		}
 	}
@@ -120,8 +103,8 @@ func sameBlocks(a []md1.CodeBlock, b []md2.CodeBlock) bool {
 func TestLanguageNameSameAsV1(t *testing.T) {
 	r := rand.New(rand.NewPCG(1, 2))
 	parts := []string{"a", "go", "c", "+", " ", "\t", "\\", "\\+", "\\a", "&", ";", "&amp;", "&#43;", "&#32;",
-		"&#x2B;", "&lt;", "&nosuch;", "&#;", "{", "}", ".", "é", "日本", "`", "~"}
-	infos := []string{"", " go", "go ", "\tgo\t", "c\\+\\+", "c&#43;&#43;", "a&#32;b", "\\&amp;", "&amp;amp;"}
+		"&#x2B;", "&lt;", "&nosuch;", "&#;", "&#x0000041;", "&#x000041;", "&#00000065;", "&#0000065;", "&#xFFFFFFF;", "&#X41;", "&#x;", "&#a;", "{", "}", ".", "é", "日本", "`", "~"}
+	infos := []string{"", " go", "go ", "\tgo\t", "c\\+\\+", "c&#43;&#43;", "a&#32;b", "\\&amp;", "&amp;amp;", "&#x0000063;", "&#x00000041;", "&#xFFFFFFF;", "&#99999999;"}
 	for range 20000 {
 		var sb strings.Builder
 		for range r.IntN(6) + 1 {
@@ -162,13 +145,4 @@ func name2(src []byte) string {
 		return ast2.WalkContinue, nil
 	})
 	return name
-}
-
-func firstDiff(a, b string) string {
-	i := 0
-	for i < len(a) && i < len(b) && a[i] == b[i] {
-		i++
-	}
-	lo := max(0, i-80)
-	return fmt.Sprintf("at byte %d:\nwant …%q\ngot  …%q", i, a[lo:min(len(a), i+80)], b[lo:min(len(b), i+80)])
 }

@@ -52,9 +52,9 @@ func Scan(docs ...*Document) *ScanResult {
 		for _, b := range d.blocks {
 			name := LanguageName(b, d.src)
 			cb := CodeBlock{Document: d.Name, Line: fenceLine(d.src, b), Lang: name}
-			switch reason, pkg := mdcore.Reason(name); reason {
+			switch reason, pkg, l := mdcore.Reason(name); reason {
 			case "":
-				used[fh.LookupRegistered(name)] = true
+				used[l] = true
 			case "no-language":
 				r.NoLanguage = append(r.NoLanguage, cb)
 			case "plain":

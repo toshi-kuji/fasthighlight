@@ -7,29 +7,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/toshi-kuji/fasthighlight/internal/testcases"
 	_ "github.com/toshi-kuji/fasthighlight/lang/all"
 	md2 "github.com/toshi-kuji/fasthighlight/markdown/v2"
 	"github.com/yuin/goldmark/v2/extension"
 	"github.com/yuin/goldmark/v2/parser"
 	"github.com/yuin/goldmark/v2/renderer/html"
 )
-
-// edge holds code blocks in the places and forms that are easy to get wrong: indented code (left to goldmark),
-// ~~~ fences, nesting, info strings with escapes, references and extra words, and languages that are not
-// highlighted.
-const edge = "# T\n\n" +
-	"    indented <code> & stuff\n\n" +
-	"```go\nfunc f() {}\n```\n\n" +
-	"~~~ python extra words\nprint(\"x\")\n~~~\n\n" +
-	"- item\n\n  ```js\n  let a = 1 < 2;\n  ```\n\n" +
-	"> ```rust\n> fn main() {}\n> ```\n\n" +
-	"```c\\+\\+\nint x;\n```\n\n" +
-	"```c&#43;&#43;\nint y;\n```\n\n" +
-	"```\nno language <b>\n```\n\n" +
-	"```text\nplain\n```\n\n" +
-	"```nosuchlang\nx\n```\n\n" +
-	"```\n```\n\n" +
-	"```go\n```\n"
 
 // The output for testdata/input.md is the golden file the v1 package is checked against.
 func TestConvertMatchesGolden(t *testing.T) {
@@ -46,11 +30,11 @@ func TestConvertMatchesGolden(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(out.Bytes(), want) {
-		t.Errorf("output differs from testdata/input.html\n%s", firstDiff(string(want), out.String()))
+		t.Errorf("output differs from testdata/input.html\n%s", testcases.FirstDiff(string(want), out.String()))
 	}
 }
 
-// The empty block at the end of edge has its line in v2.
+// The empty block at the end of testcases.MarkdownEdge has its line in v2.
 func TestEmptyBlockLine(t *testing.T) {
 	src := []byte("text\n\n```\n```\n")
 	c := md2.NewConverter()
@@ -63,7 +47,7 @@ func TestEmptyBlockLine(t *testing.T) {
 // Extension in your own goldmark v2 configuration gives the same HTML as Converter, highlights only fenced
 // blocks, and lets NewDocument and CodeBlocks work on what your parser returned.
 func TestExtensionInOwnConfig(t *testing.T) {
-	src := []byte(edge)
+	src := []byte(testcases.MarkdownEdge)
 	ext := &md2.Extension{Parallelism: md2.ParallelAlways}
 	p := parser.New(parser.WithExtensions(extension.NewGFMParser(), ext))
 	r := html.New(html.WithExtensions(extension.NewGFMHTMLRenderer(), ext))
@@ -76,7 +60,7 @@ func TestExtensionInOwnConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(got.Bytes(), want.Bytes()) {
-		t.Errorf("own configuration differs from Converter\n%s", firstDiff(want.String(), got.String()))
+		t.Errorf("own configuration differs from Converter\n%s", testcases.FirstDiff(want.String(), got.String()))
 	}
 	if !strings.Contains(got.String(), "<pre><code>indented &lt;code&gt; &amp; stuff\n</code></pre>") {
 		t.Errorf("indented code block was not left to goldmark:\n%s", got.String())
@@ -123,13 +107,4 @@ func TestParallelEqualsSequentialConcurrent(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-}
-
-func firstDiff(a, b string) string {
-	i := 0
-	for i < len(a) && i < len(b) && a[i] == b[i] {
-		i++
-	}
-	lo := max(0, i-80)
-	return fmt.Sprintf("at byte %d:\nwant …%q\ngot  …%q", i, a[lo:min(len(a), i+80)], b[lo:min(len(b), i+80)])
 }
