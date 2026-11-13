@@ -59,6 +59,12 @@ jobs:
         run: |
           go vet ./...
           go test -race -count=1 ./...
+      - name: Known vulnerabilities (govulncheck, as in vuln.yml)
+        # Built and run with the Go that builds the release (go.mod's toolchain line). With a Go older than 1.26,
+        # govulncheck cannot be built, and the release stops here too.
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          "$(go env GOPATH)/bin/govulncheck" ./...
       - name: Build the archives
         run: scripts/release.sh "$VERSION" dist
       - name: Attach to the release page

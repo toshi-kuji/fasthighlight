@@ -1,0 +1,48 @@
+name: Vulnerabilities
+
+# Runs govulncheck (https://go.dev/security/vuln) on the main module with the Go version in go.mod's toolchain line,
+# the one CI and releases build with. It fails when code of this module calls a function with a known
+# vulnerability, in a dependency or in the standard library of that Go version; for the standard library, the fix
+# is usually to move the toolchain line to a newer Go release. New vulnerabilities are published without any change
+# here, so besides changes to Go code or go.mod it also runs every Monday. The Release workflow runs the same check
+# before building.
+#
+# govulncheck is built with the latest stable Go: it type-checks the standard library of the Go it scans, so it must
+# be at least as new. It then scans with the toolchain from go.mod (GOTOOLCHAIN), not with the Go that built it;
+# `go run golang.org/x/vuln/cmd/govulncheck@…` instead picks its own Go and scanned the wrong standard library.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/vuln.yml'
+  pull_request:
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/vuln.yml'
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+      - name: govulncheck with the toolchain in go.mod
+        run: |
+          toolchain=$(go mod edit -json | jq -r '.Toolchain // ("go" + .Go)')
+          echo "Scanning with $toolchain"
+          GOTOOLCHAIN="$toolchain" "$(go env GOPATH)/bin/govulncheck" ./...
