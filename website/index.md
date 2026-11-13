@@ -145,15 +145,15 @@ The numbers below come from our own measurements. Where the difference shows, an
 
 | | fasthighlight | syntect | giallo |
 | --- | --- | --- | --- |
-| 21 snippets all three support (warm, total) | about 0.68 ms | about 20 ms | about 35 ms |
-| 27 snippets fasthighlight and giallo support (warm, total) | about 0.91 ms | - | about 44 ms |
-| Initialization | - | about 1 ms | about 40 ms |
-| First use of each language (total) | about 2.4 ms | about 92 ms | about 720 ms |
+| 21 snippets all three support (warm, total) | about 0.55 ms | about 15 ms | about 27 ms |
+| 27 snippets fasthighlight and giallo support (warm, total) | about 0.73 ms | - | about 34 ms |
+| Initialization | - | about 0.6 ms | about 35 ms |
+| First use of each language (total) | about 2.2 ms | about 71 ms | about 530 ms |
 
 - **What:** one code snippet to HTML with classes (highlighting and writing HTML), without Markdown parsing, on one thread. syntect and giallo are highlighting libraries written in Rust.
 - **Input:** the 27 code blocks of `multilang.md` and `input.md` (except `text`), about 350 to 1,350 bytes each, in the same 24 languages.
 - **Output:** fasthighlight `Highlight`; syntect `ClassedHTMLGenerator` (`ClassStyle::Spaced`); giallo `HtmlRenderer` with `css_class_prefix`. All three write classes.
-- **Environment:** Nov 11, 2026, v0.6.4, a 4-core cloud machine, Go 1.25.0, Rust 1.97.0 (release build), syntect 5.3.0, giallo 0.5.2. Median of 9 rounds of 200 runs per snippet; the three were run in turn, three times each, in the same session, and the whole measurement was done twice.
+- **Environment:** Nov 13, 2026, v0.7.2, a 4-core cloud machine, Go 1.27.4, Rust 1.97.0 (release build), syntect 5.3.0, giallo 0.5.2. Median of 9 rounds of 200 runs per snippet; the three were run in turn, three times each, in the same session, and the whole measurement was done twice.
 - **Note:** the output differs in detail (the number of `<span>`s goes either way depending on the language, and the three color differently). syntect's default grammars have no TypeScript, TOML, Kotlin or Swift. giallo supports more than 220 languages, many more than fasthighlight. Only small snippets were measured. We wrote the measurement ourselves and have not checked that it uses each library the way its authors recommend.
 
 </div>
