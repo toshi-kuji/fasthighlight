@@ -131,14 +131,14 @@ The numbers below come from our own measurements. Where the difference shows, an
 
 | Implementation | `input.md` (30 KB, 6 code blocks) | `multilang.md` (25 KB, 25 code blocks: one in each of 24 languages, and one plain text) |
 | --- | --- | --- |
-| fasthighlight | 0.58–0.63 ms | 1.3–1.5 ms |
-| Chroma (all languages) | 3.9–4.3 ms | 38.1–40.7 ms |
-| Node: markdown-it + highlight.js | 2.5–2.8 ms | 8.7–9.6 ms |
-| Node: markdown-it + Shiki | 7.7–8.2 ms | 58.2–64.9 ms |
+| fasthighlight | 0.46–0.51 ms | 1.06–1.12 ms |
+| Chroma (all languages) | 3.37–3.43 ms | 30.0–30.2 ms |
+| Node: markdown-it + highlight.js | 2.06–2.19 ms | 6.89–7.26 ms |
+| Node: markdown-it + Shiki | 6.03–7.00 ms | 51.3–52.9 ms |
 
 - **What:** the time to turn a Markdown document into HTML with highlighted code blocks, warm (after initialization), median time per conversion; each cell is the range over two runs of the measurement.
 - **Input:** [`input.md`](https://github.com/toshi-kuji/fasthighlight/blob/main/testdata/input.md) and [`multilang.md`](https://github.com/toshi-kuji/fasthighlight/blob/main/testdata/multilang.md). They are kept as they were made (Nov 4, 2026), so that the numbers can be compared over time: `multilang.md` has the 24 languages supported then, not the 10 added since (Bash Session, Docker, GraphQL, HTTP, INI, Makefile, PowerShell, Protocol Buffer, SCSS and react).
-- **Environment:** Nov 11, 2026, v0.6.4, a 4-core cloud machine, Go 1.25.0, Node 22.23.4.
+- **Environment:** Nov 13, 2026, v0.7.2, a 4-core cloud machine, Go 1.27.4, Node 22.23.4.
 - **Note:** the implementations color code at different levels of detail, so this compares whole conversions, not identical output. How to measure it yourself: [docs/benchmark.md](https://github.com/toshi-kuji/fasthighlight/blob/main/docs/benchmark.md).
 
 ### Highlighting code only

@@ -6,7 +6,7 @@ fasthighlight is fast syntax highlighting written in Go, without regular express
 
 ✨ Try it in your browser: [the demo](https://toshi-kuji.github.io/fasthighlight/demo/) (a WebAssembly build made only for the demo; fasthighlight does not ship one).
 
-- **Fast.** In our measurements (v0.6.4), converting a Markdown document was about 4.5 to 6.5 times as fast as Node with markdown-it and highlight.js, and about 7 to 28 times as fast as Chroma with all its languages ([numbers](#speed)).
+- **Fast.** In our measurements (v0.7.2), converting a Markdown document was about 4 to 7 times as fast as Node with markdown-it and highlight.js, and about 7 to 28 times as fast as Chroma with all its languages ([numbers](#speed)).
 - **Two ways in.** Go packages for Go programs (`markdown` adds highlighting to goldmark; `fasthighlight` highlights code on its own), and the `fhl` command for everything else (static site builds in other languages, CI, AI agents).
 - **Small dependency footprint.** The highlighting package has no dependencies outside the standard library. The `markdown` package depends only on goldmark.
 - **Plain HTML and CSS.** Code blocks become `<pre class="highlight">` with short, widely used token classes (`k`, `s`, `nf`, … as in Pygments, Chroma and Rouge). The output is the same for the same input, byte for byte.
@@ -138,7 +138,7 @@ import (
 )
 ```
 
-As of v0.2.0, in a small program on Linux amd64 built with Go 1.25.0 and `-ldflags "-s -w"`, calling only `Highlight` took about 1.63 MB; importing the Go language added about 0.07 MB, and importing all the languages (`lang/all`) about 0.77 MB. Using `markdown.Converter` (with goldmark) added about 1.04 MB more. Only what you import is compiled into your program; the `fhl` command is not.
+As of v0.7.2, in a small program on Linux amd64 built with Go 1.27.4 and `-ldflags "-s -w"`, calling only `Highlight` took about 1.63 MB; importing the Go language added about 0.09 MB, and importing all the languages (`lang/all`) about 0.86 MB. Using `markdown.Converter` (with goldmark) added about 1.14 MB more, and the `markdown/v2` one (with goldmark v2) about 1.17 MB. Only what you import is compiled into your program; the `fhl` command is not.
 
 To list the code blocks that will not be colored before converting (for example, to warn about a language you did not import), parse the documents with `markdown.Converter.Parse`, call `markdown.Scan`, and then `markdown.Converter.Render`. To check a single language name, `fasthighlight.LookupSupported` tells whether fasthighlight supports it and which package to import.
 
@@ -173,14 +173,14 @@ The changes fix Chroma bugs and behavior that gets in the way of readers, such a
 
 ## Speed
 
-Warm conversion of a whole Markdown document (median time per conversion, after initialization; the range over two runs of the measurement), measured on Nov 11, 2026, with v0.6.4, on a 4-core cloud machine with Go 1.25.0 and Node 22.23.4:
+Warm conversion of a whole Markdown document (median time per conversion, after initialization; the range over two runs of the measurement), measured on Nov 13, 2026, with v0.7.2, on a 4-core cloud machine with Go 1.27.4 and Node 22.23.4:
 
 | Implementation | `input.md` (30 KB, 6 code blocks) | `multilang.md` (25 KB, 25 code blocks: one in each of 24 languages, and one plain text) |
 | --- | --- | --- |
-| fasthighlight | 0.58–0.63 ms | 1.3–1.5 ms |
-| Chroma (all languages) | 3.9–4.3 ms | 38.1–40.7 ms |
-| Node: markdown-it + highlight.js | 2.5–2.8 ms | 8.7–9.6 ms |
-| Node: markdown-it + Shiki | 7.7–8.2 ms | 58.2–64.9 ms |
+| fasthighlight | 0.46–0.51 ms | 1.06–1.12 ms |
+| Chroma (all languages) | 3.37–3.43 ms | 30.0–30.2 ms |
+| Node: markdown-it + highlight.js | 2.06–2.19 ms | 6.89–7.26 ms |
+| Node: markdown-it + Shiki | 6.03–7.00 ms | 51.3–52.9 ms |
 
 Both documents are in [`testdata/`](testdata/). They are kept as they were made (Nov 4, 2026), so that the numbers can be compared over time: `multilang.md` has the 24 languages supported then, not the 10 added since (Bash Session, Docker, GraphQL, HTTP, INI, Makefile, PowerShell, Protocol Buffer, SCSS and react). The implementations color code at different levels of detail, so the numbers compare whole conversions, not identical output. To measure them yourself, including cold starts and a 270 KB document, see [docs/benchmark.md](docs/benchmark.md).
 
