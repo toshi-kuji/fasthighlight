@@ -12,6 +12,14 @@ go install github.com/toshi-kuji/fasthighlight/cmd/fhl@latest
 
 Or download a single binary for Linux, macOS or Windows from the [releases page](https://github.com/toshi-kuji/fasthighlight/releases). No Go needed.
 
+With an AI agent, paste:
+
+```text
+Install fhl from https://github.com/toshi-kuji/fasthighlight/releases/latest and run `fhl --help`.
+```
+
+[More on agents](cli.html#with-an-ai-agent)
+
 [GitHub](https://github.com/toshi-kuji/fasthighlight) · [Contents](contents.html) · [✨DEMO](demo/)
 
 </div>

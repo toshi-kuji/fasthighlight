@@ -12,6 +12,19 @@ go install github.com/toshi-kuji/fasthighlight/cmd/fhl@latest
 
 Or download an archive for your system (Linux, macOS or Windows; amd64 or arm64) from the [releases page](https://github.com/toshi-kuji/fasthighlight/releases), and put `fhl` on your `PATH`. It is a single binary with no dependencies; Go is not needed.
 
+### With an AI agent
+
+Paste this into your agent:
+
+```text
+Install the command fhl: download the archive for this OS and CPU from
+https://github.com/toshi-kuji/fasthighlight/releases/latest,
+extract it, and put fhl on the PATH. Then run `fhl --version` and
+`fhl --help`, and use the help to do what I ask next.
+```
+
+For how an agent reads the results, see [AI agents](#ai-agents).
+
 All the supported languages are built in. `fhl --version` prints the version; `fhl` and the library share one version.
 
 ## Use
